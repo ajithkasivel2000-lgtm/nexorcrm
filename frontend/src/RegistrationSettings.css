@@ -1,0 +1,298 @@
+.registration-settings-page {
+  flex: 1;
+  padding: 15px 30px;
+  overflow-y: auto;
+  background-color: var(--bg-main, #f0f2f5);
+  display: flex;
+  flex-direction: column;
+}
+
+.reg-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.header-left h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.page-breadcrumb .slash {
+  margin: 0 8px;
+  color: #999;
+}
+
+.reg-content-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.reg-form-column {
+  flex: 2;
+}
+
+.reg-help-column {
+  flex: 1;
+}
+
+.reg-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.reg-card-header {
+  padding: 15px 20px;
+  border-bottom: 1px dashed #eee;
+}
+
+.reg-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.reg-form {
+  padding: 20px;
+}
+
+.form-group-radio, .form-group-dropdown, .form-group-range {
+  margin-bottom: 20px;
+}
+
+.group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.group-label span {
+  color: #ef4444;
+}
+
+/* Custom Radio Buttons */
+.radio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-options.inline {
+  flex-direction: column; /* In screenshot, even Yes/No are stacked */
+}
+
+.custom-radio {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 22px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #444;
+  user-select: none;
+}
+
+.custom-radio input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.radio-mark {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 14px;
+  width: 14px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+}
+
+.custom-radio:hover input ~ .radio-mark {
+  background-color: #f0f0f0;
+}
+
+/* Base states */
+.custom-radio input:checked ~ .radio-mark {
+  background-color: #fff;
+  border-color: #ef4444; /* default red */
+}
+
+.custom-radio input:checked ~ .radio-mark:after {
+  content: "";
+  position: absolute;
+  display: block;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+/* For "Yes" or specific selections we can make them green */
+.custom-radio input[value="true"]:checked ~ .radio-mark {
+  border-color: #10b981;
+}
+.custom-radio input[value="true"]:checked ~ .radio-mark:after {
+  background: #10b981;
+}
+/* For Admin Activation selection (green in screenshot) */
+.custom-radio input[value="Admin Activation"]:checked ~ .radio-mark {
+  border-color: #f97316; /* Actually in screenshot it's orange! */
+}
+.custom-radio input[value="Admin Activation"]:checked ~ .radio-mark:after {
+  background: #f97316;
+}
+.custom-radio input[value="No Activation (immediate access)"]:checked ~ .radio-mark {
+  border-color: #10b981; /* Green in screenshot */
+}
+.custom-radio input[value="No Activation (immediate access)"]:checked ~ .radio-mark:after {
+  background: #10b981;
+}
+/* If unchecked but value="true", border is green */
+.custom-radio input[value="true"] ~ .radio-mark {
+  border-color: #10b981;
+}
+/* If unchecked but value="false", border is red */
+.custom-radio input[value="false"] ~ .radio-mark {
+  border-color: #ef4444;
+}
+
+/* Range Inputs */
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.range-inputs input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: #fcfcfc;
+}
+
+.range-inputs input:focus {
+  border-color: #6a67ce;
+  outline: none;
+  background-color: #fff;
+}
+
+.to-text {
+  font-size: 12px;
+  color: #777;
+}
+
+/* Custom Dropdown */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  padding: 10px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #444;
+  background-color: #fcfcfc;
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-select-wrapper.open .custom-select-trigger {
+  border: 1px dashed #6a67ce;
+  background-color: #fff;
+}
+
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.custom-select-option {
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.custom-select-option:hover {
+  background-color: #f5f5f5;
+}
+
+.custom-select-option.selected {
+  background-color: #1e60d0; /* Blue highlight */
+  color: #fff;
+}
+
+/* Submit Button */
+.form-actions {
+  margin-top: 25px;
+}
+
+.btn-submit-changes {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-submit-changes:hover {
+  background-color: #f9f9f9;
+}
+
+/* Help section */
+.help-content {
+  padding: 20px;
+}
+
+.help-content p {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.help-content p strong {
+  color: #333;
+}

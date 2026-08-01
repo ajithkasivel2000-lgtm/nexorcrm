@@ -1,0 +1,249 @@
+.user-settings-page {
+  flex: 1;
+  padding: 15px 30px;
+  overflow-y: auto;
+  background-color: var(--bg-main, #f0f2f5);
+  display: flex;
+  flex-direction: column;
+}
+
+.user-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.header-left h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.page-breadcrumb .slash {
+  margin: 0 8px;
+  color: #999;
+}
+
+.user-content-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.user-form-column {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.user-help-column {
+  flex: 1;
+}
+
+.user-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.user-card-header {
+  padding: 15px 20px;
+  border-bottom: 1px dashed #eee;
+}
+
+.user-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.user-form {
+  padding: 20px;
+}
+
+.form-group-radio, .form-group-input {
+  margin-bottom: 20px;
+}
+
+.group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+/* Custom Radio Buttons */
+.radio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-options.inline {
+  flex-direction: column;
+}
+
+.custom-radio {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 22px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #444;
+  user-select: none;
+}
+
+.custom-radio input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.radio-mark {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 14px;
+  width: 14px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+}
+
+.custom-radio:hover input ~ .radio-mark {
+  background-color: #f0f0f0;
+}
+
+.custom-radio input:checked ~ .radio-mark {
+  background-color: #fff;
+  border-color: #ef4444; 
+}
+.custom-radio input:checked ~ .radio-mark:after {
+  content: "";
+  position: absolute;
+  display: block;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.custom-radio input[value="true"]:checked ~ .radio-mark {
+  border-color: #10b981;
+}
+.custom-radio input[value="true"]:checked ~ .radio-mark:after {
+  background: #10b981;
+}
+.custom-radio input[value="true"] ~ .radio-mark {
+  border-color: #10b981;
+}
+.custom-radio input[value="false"] ~ .radio-mark {
+  border-color: #ef4444;
+}
+.custom-radio input[value="By Admin (Set below..)"]:checked ~ .radio-mark {
+  border-color: #f97316;
+}
+.custom-radio input[value="By Admin (Set below..)"]:checked ~ .radio-mark:after {
+  background: #f97316;
+}
+
+/* Input Fields */
+.input-with-suffix {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.input-with-suffix input {
+  flex: 1;
+  max-width: 300px;
+  padding: 8px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: #fcfcfc;
+}
+
+.input-with-suffix input:focus {
+  border-color: #6a67ce;
+  outline: none;
+  background-color: #fff;
+}
+
+.suffix {
+  font-size: 12px;
+  color: #777;
+}
+
+/* Help text blocks */
+.path-help-text, .exclude-help-text {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #777;
+  line-height: 1.6;
+}
+.path-help-text p {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+/* Submit Button */
+.form-actions {
+  margin-top: 15px;
+}
+
+.btn-submit-purple {
+  background-color: #6a67ce;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 24px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-submit-purple:hover {
+  background-color: #5551b8;
+}
+
+/* Help section */
+.help-content {
+  padding: 20px;
+}
+
+.help-content p {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.help-content p strong {
+  color: #333;
+}

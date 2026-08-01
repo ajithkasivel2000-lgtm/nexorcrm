@@ -1,0 +1,228 @@
+.il-container {
+  padding: 20px;
+  background-color: #f5f6fa;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.il-header-block {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.il-title {
+  margin: 0 0 5px 0;
+  font-size: 24px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.il-breadcrumbs {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #8c6cf5;
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.il-breadcrumbs .il-home-icon {
+  width: 14px;
+  height: 14px;
+  color: #8c6cf5;
+}
+
+.il-breadcrumbs .il-separator {
+  color: #bdc3c7;
+  margin: 0 4px;
+}
+
+/* Grid Layout */
+.il-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Form Card */
+.il-form-card {
+  background: white;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.il-card-title {
+  font-size: 18px;
+  color: #2c3e50;
+  font-weight: 600;
+  margin: 0 0 5px 0;
+}
+
+.il-card-subtitle {
+  font-size: 12px;
+  color: #7f8fa4;
+  margin: 0 0 25px 0;
+}
+
+.il-form-group {
+  margin-bottom: 20px;
+}
+
+.il-form-label {
+  display: block;
+  font-size: 12px;
+  color: #2c3e50;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.il-form-control {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px dotted #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #4a5568;
+  outline: none;
+  background-color: white;
+  appearance: none;
+}
+
+.il-form-control:focus {
+  border-style: solid;
+  border-color: #8c6cf5;
+}
+
+.il-file-upload-container {
+  display: flex;
+  align-items: center;
+  border: 1px dotted #ccc;
+  border-radius: 6px;
+  padding: 5px;
+  gap: 10px;
+  position: relative;
+}
+
+.il-file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.il-file-btn {
+  background-color: #f4f6fa;
+  border: 1px solid #e1e5ea;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4a5568;
+  pointer-events: none;
+}
+
+.il-file-name {
+  font-size: 13px;
+  color: #7f8fa4;
+  pointer-events: none;
+}
+
+.il-file-upload-container:focus-within {
+  border-style: solid;
+  border-color: #8c6cf5;
+}
+
+.il-help-text {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 11px;
+  color: #a0aec0;
+  margin-top: 10px;
+  margin-bottom: 30px;
+  gap: 5px;
+}
+
+.il-download-link {
+  color: #8c6cf5;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.il-download-link:hover {
+  text-decoration: underline;
+}
+
+.il-divider {
+  border: 0;
+  border-top: 1px dotted #e1e5ea;
+  margin: 30px 0;
+}
+
+.il-submit-btn {
+  background-color: #8c6cf5;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 30px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+  transition: background-color 0.2s;
+}
+
+.il-submit-btn:hover {
+  background-color: #7265e3;
+}
+
+/* Help Card */
+.il-help-card {
+  background: white;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.il-help-card .il-card-title {
+  margin-bottom: 20px;
+}
+
+.il-help-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.il-help-item {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #4a5568;
+  margin-bottom: 15px;
+}
+
+.il-help-item strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Custom invalid state styling like in the screenshot */
+input:invalid:not(:focus):not(:placeholder-shown),
+select:invalid:not(:focus) {
+  border-color: #e53e3e;
+}
+
+/* Ensure focus states look uniform */
+select, input[type="file"] {
+  cursor: pointer;
+}

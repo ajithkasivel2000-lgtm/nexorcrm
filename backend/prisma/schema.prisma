@@ -1,0 +1,452 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ChannelPartner {
+  id                        String              @id @default(uuid())
+  cpId                      String              @unique
+  typeOfChannelPartner      String
+  message                   String
+  companyName               String
+  websiteUrl                String
+  ownerName                 String
+  aadhaarNumber             String?
+  mobileNumber              String
+  officeLandline            String?
+  panOfCompany              String?
+  emailAddress              String
+  companyRegistrationNumber String?
+  gstRegistrationNumber     String?
+  registeredAddress         String?
+  reraRegistrationNumber    String
+  communicationAddress      String?
+  uploadAadhaarCopy         String?
+  uploadPanCopy             String?
+  uploadGstCopy             String?
+  uploadReraCopy            String?
+  beneficiaryBankName       String?
+  beneficiaryName           String?
+  bankAccountNumber         String?
+  ifscCode                  String?
+  leadOwner                 String              @default("admin")
+  status                    String              @default("Registered")
+  logs                      ChannelPartnerLog[]
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+}
+
+model ChannelPartnerLog {
+  id               String         @id @default(uuid())
+  channelPartnerId String
+  channelPartner   ChannelPartner @relation(fields: [channelPartnerId], references: [id], onDelete: Cascade)
+  title            String?
+  subtitle         String?
+  date             DateTime       @default(now())
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  customerId     String   @unique
+  customerName   String?
+  customerEmail  String?
+  customerMobile String?
+  stage          String   @default("Customer")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Enquiry {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  mobile    String
+  source    String
+  project   String?
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GlobalUserSetting {
+  id                      String   @id @default(uuid())
+  allowMultipleLogins     Boolean  @default(true)
+  individualUserHomepages Boolean  @default(false)
+  howAreTheySet           String   @default("By Admin (Set below..)")
+  pathSetByAdmin          String   @default("/")
+  excludeAdmins           Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Lead {
+  id                String   @id @default(uuid())
+  name              String
+  email             String?
+  mobile            String
+  primarySource     String?
+  secondarySource   String?
+  tertiarySource    String?
+  channelPartnerName String?
+  project           String?
+  status            String   @default("New Lead")
+  owner             String   @default("admin")
+  ownerId           String?
+  openReason        String?
+  callStatus        String?
+  callRemarks       String?
+  followUpDate      DateTime?
+  rejectionType     String?
+  reasonDetails     String?
+  budgetLimit       String?
+  competitorName    String?
+  competitorOffer   String?
+  invalidReason     String?
+  otherNotes        String?
+  additionalRemarks String?
+  siteVisitStatus   String?
+  siteVisitDate     DateTime?
+  siteVisitNote     String?
+  siteVisitConfirmedDate DateTime?
+  siteVisitConfirmedNote String?
+  siteVisitDoneDate     DateTime?
+  siteVisitDoneNote     String?
+  bookingStatus         String?
+  logs              LeadLog[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model LeadLog {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title     String?
+  subtitle  String?
+  date      DateTime @default(now())
+}
+
+model MailSetting {
+  id           String   @id @default(uuid())
+  smtpHost     String   @default("")
+  smtpPort     Int      @default(587)
+  smtpUsername String   @default("")
+  smtpPassword String   @default("")
+  fromEmail    String   @default("")
+  fromName     String   @default("")
+  smtpAuth     String   @default("True")
+  starttls     String   @default("True")
+  defaultCC    String   @default("")
+  defaultBCC   String   @default("")
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LeadStatus {
+  id         String   @id @default(uuid())
+  statusName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LeadType {
+  id        String   @id @default(uuid())
+  typeName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Opportunity {
+  id                      String   @id @default(uuid())
+  oppId                   String   @unique
+  leadId                  String?
+  bvd                     String?
+  opportunityName         String?
+  mobileNumber            String?
+  emailAddress            String?
+  enquiryProject          String?
+  alternateMobile         String?
+  alternateEmail          String?
+  occupation              String?
+  companyName             String?
+  allocator               String?
+  opportunityOwner        String   @default("admin")
+  stage                   String   @default("Site Visit Converted")
+  selectedUnit            String?
+  unitType                String?
+  bookingDate             DateTime?
+  bookingDetails          String?
+  bookingAmount           String?
+  bookingAmountStatus     String?
+  bookingDoneDate         DateTime?
+  comments                String?
+  reportingManager        String?
+  cpCommissionPercent     String?
+  approvalStage           String?
+  preferredBudget         String?
+  preferredLocality       String?
+  locationCommission      String?
+  locationCommissionInr   String?
+  channelPartnerName      String?
+  channelPartnerId        String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  logs                    OpportunityLog[]
+}
+
+model OpportunityLog {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  title         String?
+  subtitle      String?
+  date          DateTime    @default(now())
+}
+
+model PrimarySource {
+  id         String   @id @default(uuid())
+  sourceName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Project {
+  id               String   @id @default(uuid())
+  projectName      String   @unique
+  projectLocation  String?
+  projectAmenities String?
+  features         String?
+  mapLink          String?
+  projectContact   String?
+  projectEmail     String?
+  projectType      String?
+  projectStatus    String?  @default("Pre Launch")
+  propertyType     String?
+  developers       String?
+  developerId      String?
+  status           String   @default("Active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ProjectStatus {
+  id         String   @id @default(uuid())
+  statusName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ProjectType {
+  id        String   @id @default(uuid())
+  typeName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Property {
+  id                String   @id @default(uuid())
+  propertyId        String   @unique
+  name              String
+  category          String?
+  type              String?
+  propertyFor       String?
+  city              String?
+  locality          String?
+  price             String?
+  discountPrice     String?
+  beds              String?
+  baths             String?
+  sqft              String?
+  garage            String?
+  image             String?
+  lat               Float?
+  lng               Float?
+  featured          Boolean  @default(false)
+  hot               Boolean  @default(false)
+  createdBy         String   @default("admin")
+  createdOn         String?
+  description       String?
+  possessionStatus  String?
+  bookingAmount     String?
+  parking           String?
+  floors            String?
+  visitorParking    String?
+  powerBackup       String?
+  fireSafety        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model RegistrationSetting {
+  id                      String   @id @default(uuid())
+  accountActivation       String   @default("Admin Activation")
+  limitUsernameCharacters String   @default("Letter Num and Spaces")
+  usernameLengthMin       Int      @default(5)
+  usernameLengthMax       Int      @default(36)
+  passwordLengthMin       Int      @default(8)
+  passwordLengthMax       Int      @default(120)
+  sendWelcomeEmail        Boolean  @default(true)
+  enableCaptcha           Boolean  @default(false)
+  usernameLowercase       Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model RRQ {
+  id            String   @id @default(uuid())
+  rrqId         String   @unique
+  projectName   String
+  rrqName       String
+  rrqType       String
+  assignedUsers String[] @default(["admin"])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SecondarySource {
+  id         String   @id @default(uuid())
+  sourceName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SecuritySetting {
+  id                   String   @id @default(uuid())
+  disallowedUsernames  String[] @default([])
+  bannedIPs            String[] @default([])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Service {
+  id                   String   @id @default(uuid())
+  title                String
+  slug                 String   @unique
+  category             String?
+  mode                 String?
+  featuredImagePreview String?
+  bannerImagePreview   String?
+  shortDesc            String?
+  detailedDesc         String?
+  propertyType         String?
+  locations            String?
+  price                String?
+  priceType            String?
+  status               String   @default("Active")
+  featured             Boolean  @default(false)
+  allowInquiry         Boolean  @default(true)
+  created              String?
+  sections             ServiceSection[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model ServiceSection {
+  id             String   @id @default(uuid())
+  serviceId      String
+  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title          String?
+  content        String?
+  imagePreview   String?
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  username   String
+  ipAddress  String
+  persistent Boolean  @default(false)
+  lastActive DateTime @default(now())
+  expiry     DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SessionSetting {
+  id                    String   @id @default(uuid())
+  userInactivityTimeout Int      @default(20)
+  guestTimeout          Int      @default(5)
+  resetExpiryAtLogon    String   @default("Yes")
+  cookieExpiry          Int      @default(14)
+  cookiePath            String   @default("/")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model TertiarySource {
+  id         String   @id @default(uuid())
+  sourceName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model User {
+  id                  String      @id @default(uuid())
+  username            String      @unique
+  firstName           String
+  lastName            String?
+  password            String?
+  userlevel           Int         @default(1)
+  dept_id             String?
+  reporting_to        String?
+  email               String?
+  phone               String?
+  timestamp           Int         @default(0)
+  previous_visit      Int         @default(0)
+  ip                  String      @default("127.0.0.1")
+  regdate             Int         @default(0)
+  lastip              String?
+  user_login_attempts Int         @default(0)
+  user_home_path      String?
+  profile_image       String?
+  status              String      @default("Manager")
+  role                String      @default("Manager")
+  registeredIp        String      @default("127.0.0.1")
+  lastActiveIp        String      @default("127.0.0.1")
+  lastLoginAt         DateTime    @default(now())
+  homePagePath        String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  userGroups          UserGroup[] @relation("UserGroupMembers")
+}
+
+model UserGroup {
+  id         String   @id @default(uuid())
+  groupName  String   @unique
+  groupLevel Int
+  members    User[]   @relation("UserGroupMembers")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  username  String
+  event     String
+  ipAddress String
+  createdAt DateTime @default(now())
+}
+
+model PageAccess {
+  id          String   @id @default(uuid())
+  role        String   @unique
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  templateId  String   @unique
+  name        String
+  subject     String
+  templateKey String   @unique
+  type        String   @default("Custom")
+  status      Boolean  @default(true)
+  bodyContent String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -1,0 +1,224 @@
+.session-settings-page {
+  flex: 1;
+  padding: 15px 30px;
+  overflow-y: auto;
+  background-color: var(--bg-main, #f0f2f5);
+  display: flex;
+  flex-direction: column;
+}
+
+.session-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.header-left h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.page-breadcrumb .slash {
+  margin: 0 8px;
+  color: #999;
+}
+
+.session-content-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.session-form-column {
+  flex: 2;
+}
+
+.session-help-column {
+  flex: 1;
+}
+
+.session-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.session-card-header {
+  padding: 15px 20px;
+  border-bottom: 1px dashed #eee;
+}
+
+.session-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.session-form {
+  padding: 20px;
+}
+
+.form-group-input, .form-group-dropdown {
+  margin-bottom: 20px;
+}
+
+.group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.group-label span {
+  color: #ef4444;
+}
+
+.input-with-suffix {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.input-with-suffix input {
+  flex: 1;
+  max-width: 300px;
+  padding: 8px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: #fcfcfc;
+}
+
+.input-with-suffix input:focus {
+  border-color: #6a67ce;
+  outline: none;
+  background-color: #fff;
+}
+
+.suffix {
+  font-size: 12px;
+  color: #777;
+}
+
+.path-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: #fcfcfc;
+}
+
+.path-input:focus {
+  border-color: #6a67ce;
+  outline: none;
+  background-color: #fff;
+}
+
+/* Custom Dropdown */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+
+.custom-select-trigger {
+  padding: 10px 12px;
+  border: 1px dashed #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #444;
+  background-color: #fcfcfc;
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-select-wrapper.open .custom-select-trigger {
+  border: 1px dashed #6a67ce;
+  background-color: #fff;
+}
+
+.custom-select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.custom-select-option {
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.custom-select-option:hover {
+  background-color: #f5f5f5;
+}
+
+.custom-select-option.selected {
+  background-color: #1e60d0;
+  color: #fff;
+}
+
+/* Submit Button */
+.form-actions {
+  margin-top: 25px;
+}
+
+.btn-submit-changes {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-submit-changes:hover {
+  background-color: #f9f9f9;
+}
+
+/* Help section */
+.help-content {
+  padding: 20px;
+}
+
+.help-content p {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.help-content p strong {
+  color: #333;
+}

@@ -1,0 +1,264 @@
+.edit-project-page {
+  flex: 1;
+  padding: 15px 30px;
+  overflow-y: auto;
+  background-color: var(--bg-main, #f0f2f5);
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-project-header {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+
+.edit-project-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.page-breadcrumb .slash {
+  margin: 0 8px;
+  color: #999;
+}
+
+.edit-project-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.form-container {
+  flex: 1;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 30px;
+}
+
+.edit-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.row-layout {
+  display: flex;
+  align-items: flex-start;
+}
+
+.field-label {
+  width: 200px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  padding-top: 10px;
+}
+
+.field-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.field-input-wrapper input {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px dashed #c0c0c0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.field-input-wrapper input:focus {
+  border: 1px solid #9ea5f0;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.rich-text-wrapper {
+  border: 1px dashed #c0c0c0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fdfdfd;
+}
+
+.rich-text-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.toolbar-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.toolbar-btn:hover {
+  background-color: #e9ecef;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #ddd;
+  margin: 0 8px;
+}
+
+.rich-text-area {
+  width: 100%;
+  min-height: 120px;
+  border: none;
+  padding: 15px;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  resize: vertical;
+}
+
+/* Reusing CustomSelect Styles */
+.custom-select-trigger {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px dashed #c0c0c0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  background-color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.custom-select-trigger.open {
+  border: 1px solid #9ea5f0;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #6366f1;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.custom-select-option {
+  padding: 10px 15px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  background-color: white;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.custom-select-option:hover {
+  background-color: #0b5ed7;
+  color: white;
+}
+
+.custom-select-option.selected {
+  background-color: #e9ecef;
+}
+
+.custom-select-option.selected:hover {
+  background-color: #0b5ed7;
+  color: white;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.btn-edit-project {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-edit-project:hover {
+  background-color: #4f46e5;
+}
+
+/* Side Panel */
+.side-panel {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.help-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 25px;
+}
+
+.help-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px 0;
+}
+
+.help-section {
+  margin-bottom: 20px;
+}
+
+.help-section:last-child {
+  margin-bottom: 0;
+}
+
+.help-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 5px 0;
+}
+
+.help-section p {
+  font-size: 13px;
+  color: #777;
+  margin: 0;
+  line-height: 1.4;
+}

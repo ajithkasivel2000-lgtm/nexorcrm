@@ -1,0 +1,60 @@
+/* Campaign Leads uses the same class names as Leads page */
+/* All styles are imported via Leads.css and FollowUpLeads.css */
+
+.campaign-leads-container {
+  padding: 24px;
+}
+
+.campaign-leads-header {
+  margin-bottom: 24px;
+}
+
+.campaign-leads-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.campaign-leads-title h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.campaign-leads-title svg {
+  color: #8b5cf6;
+}
+
+.campaign-leads-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 60px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.campaign-leads-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #94a3b8;
+}
+
+.campaign-leads-placeholder svg {
+  color: #cbd5e1;
+}
+
+.campaign-leads-placeholder h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
+.campaign-leads-placeholder p {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
