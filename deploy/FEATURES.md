@@ -22,7 +22,7 @@ set up.
 
 ## Branding
 **Settings → Integrations → Company & lead forms → Branding:** upload a logo and pick a brand colour.
-They're used in the app and on the company's own sign-in page ().
+They're used in the app and on the company's own sign-in page (`https://os.nexorcrm.com/?company=<slug>`).
 Emails are sent in the company's name unless Mail Settings has a From name.
 
 ## Report builder
