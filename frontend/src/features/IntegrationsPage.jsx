@@ -276,7 +276,7 @@ function ReportsTab() {
   useEffect(() => { load(); }, [load]);
   const columns = [
     { key: 'name', label: 'Report', render: (r) => <span className="nx-page__strong">{r.name}</span> },
-    { key: 'type', label: 'Type', render: (r) => ({ pipeline: 'Pipeline', collections: 'Collections', activity: 'Team activity' }[r.type] || r.type) },
+    { key: 'type', label: 'Type', render: (r) => ({ pipeline: 'Pipeline', collections: 'Collections', activity: 'Team activity', custom: 'Custom (Report Builder)' }[r.type] || r.type) },
     { key: 'frequency', label: 'Every', render: (r) => ({ daily: 'Day', weekly: 'Week', monthly: 'Month' }[r.frequency]) },
     { key: 'recipients', label: 'To', render: (r) => r.recipients.join(', ') },
     { key: 'nextRunAt', label: 'Next', render: (r) => (r.enabled ? fmtDate(r.nextRunAt) : 'Paused') },
@@ -336,7 +336,7 @@ function ReportModal({ report, onClose, onSaved }) {
       }}>
         <Field label="Name" required><Input value={form.name} onChange={set('name')} data-autofocus /></Field>
         <FormGrid columns={2}>
-          <Field label="Report"><Select value={form.type} onChange={set('type')} advanceOnPick={false} options={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'collections', label: 'Collections' }, { value: 'activity', label: 'Team activity' }]} /></Field>
+          <Field label="Report"><Select value={form.type} onChange={set('type')} advanceOnPick={false} options={[{ value: 'pipeline', label: 'Pipeline' }, { value: 'collections', label: 'Collections' }, { value: 'activity', label: 'Team activity' }, ...(form.type === 'custom' ? [{ value: 'custom', label: 'Custom (Report Builder)' }] : [])]} disabled={form.type === 'custom'} /></Field>
           <Field label="Every"><Select value={form.frequency} onChange={set('frequency')} advanceOnPick={false} options={[{ value: 'daily', label: 'Day' }, { value: 'weekly', label: 'Week' }, { value: 'monthly', label: 'Month' }]} /></Field>
         </FormGrid>
         <Field label="Send to" required hint="Email addresses, separated by commas."><Input value={form.recipients} onChange={set('recipients')} /></Field>

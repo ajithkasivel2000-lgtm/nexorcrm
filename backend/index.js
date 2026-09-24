@@ -57,6 +57,7 @@ const integrationRoutes = require('./routes/integrationRoutes');
 const calendarRoutes = require('./routes/calendarRoutes');
 const partnerRoutes = require('./routes/partnerRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const reportBuilderRoutes = require('./routes/reportBuilderRoutes');
 const app = express();
 
 /* In production nginx terminates HTTPS and forwards here, so req.protocol and
@@ -160,6 +161,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/partner', partnerRoutes.portal);
 app.use('/api/partner-accounts', partnerRoutes.accounts);
 app.use('/api/billing', billingRoutes);
+app.use('/api/report-builder', reportBuilderRoutes);
 app.get('/api/branding', require('./middleware/authMiddleware').authMiddleware, require('./controllers/brandingController').current);
 
 // Public website API (no auth required)

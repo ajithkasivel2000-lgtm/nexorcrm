@@ -74,6 +74,7 @@ const IntegrationsPage = lazyWithRetry(() => import('./features/IntegrationsPage
 const PlatformPage = lazyWithRetry(() => import('./features/PlatformPage'));
 const PartnerPortal = lazyWithRetry(() => import('./features/PartnerPortal'));
 const BillingPage = lazyWithRetry(() => import('./features/BillingPage'));
+const ReportBuilderPage = lazyWithRetry(() => import('./features/ReportBuilderPage'));
 
 /**
  * Keeps the tab title and meta tags in step with the route.
@@ -674,6 +675,7 @@ function App() {
               <Route path="settings/integrations" element={<IntegrationsPage />} />
               <Route path="settings/billing" element={<BillingPage />} />
               <Route path="bookings" element={<BookingsPage />} />
+              <Route path="report-builder" element={<ReportBuilderPage />} />
               <Route path="platform/companies" element={<PlatformPage />} />
               <Route path="my-profile" element={<MyProfile loggedInUser={loggedInUser} />} />
 

@@ -21,6 +21,7 @@ const sidebarMenus = [
       { name: 'Customer', path: '/customers', icon: <Users size={18} />, pageId: 'customers' },
       { name: 'Bookings & Payments', path: '/bookings', icon: <IndianRupee size={18} />, pageId: 'bookings' },
       { name: 'Report', path: '/report', icon: <BarChart2 size={18} />, pageId: 'report' },
+      { name: 'Report Builder', path: '/report-builder', icon: <BarChart2 size={18} />, pageId: 'report', managersOnly: true },
       { name: 'Channel Partners', path: '/channel-partners', icon: <Users size={18} />, pageId: 'channel-partners' },
       { name: 'Team Chat', path: '/team-chat', icon: <MessageSquare size={18} />, pageId: 'team-chat' },
       { name: 'Assistant', path: '/assistant', icon: <Sparkles size={18} />, pageId: 'assistant' },
@@ -305,6 +306,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
           : item))
         /* A parent with children is worth showing only while it still has
            one; a parent without children is judged on its own id. */
+        .filter((item) => !item.managersOnly || ['Admin', 'superadmin', 'Manager'].includes(localStorage.getItem('userStatus')))
         .filter((item) => (item.subItems ? item.subItems.length > 0 : canViewPage(item.pageId))),
     }))
     .filter((section) => section.items.length > 0), [canViewPage, isPlatformAdmin]);

@@ -78,11 +78,24 @@ async function activityReport(since) {
 
 const BUILDERS = { pipeline: pipelineReport, collections: collectionsReport, activity: activityReport };
 
+/** A report-builder report, run as the platform would see it (no per-user scope). */
+async function customReport(report, since) {
+  const saved = report.savedReportId ? await prisma.savedReport.findUnique({ where: { id: report.savedReportId } }) : null;
+  if (!saved) return '<p>The saved report behind this schedule no longer exists.</p>';
+  const { runReport, toHtml, ENTITIES } = require('./reportBuilder');
+  const config = { ...saved.config };
+  // A scheduled run covers the schedule's period on the report's date field.
+  if (!config.dateFrom && !config.dateTo) config.dateFrom = since.toISOString().slice(0, 10);
+  config.dateField = config.dateField || ENTITIES[config.entity]?.defaultDate;
+  return toHtml(saved.name, await runReport(config, { status: 'superadmin' }));
+}
+
 /** Build a report's HTML for the period ending now. */
 async function buildReport(report) {
   const since = new Date(Date.now() - (PERIOD_DAYS[report.frequency] || 7) * 86400000);
-  const build = BUILDERS[report.type] || pipelineReport;
-  const body = await build(since);
+  const body = report.type === 'custom'
+    ? await customReport(report, since)
+    : await (BUILDERS[report.type] || pipelineReport)(since);
   return `<div style="font-family:Arial,sans-serif;padding:20px">
     <h2 style="margin:0 0 4px">${esc(report.name)}</h2>
     <p style="color:#666;margin:0 0 16px">${since.toISOString().slice(0, 10)} to ${new Date().toISOString().slice(0, 10)}</p>

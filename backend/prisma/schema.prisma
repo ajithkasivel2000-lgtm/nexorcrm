@@ -1798,17 +1798,19 @@ model CallLog {
 
 /// A report emailed on a schedule, e.g. the weekly pipeline to managers.
 model ScheduledReport {
-  companyId  String
-  id         String    @id @default(uuid())
-  name       String
-  type       String    @default("pipeline") // pipeline | collections | activity
-  frequency  String    @default("weekly") // daily | weekly | monthly
-  recipients String[]
-  enabled    Boolean   @default(true)
-  lastSentAt DateTime?
-  nextRunAt  DateTime  @default(now())
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  companyId     String
+  id            String    @id @default(uuid())
+  name          String
+  type          String    @default("pipeline") // pipeline | collections | activity | custom
+  /// For type "custom": the saved report-builder report to send.
+  savedReportId String?
+  frequency     String    @default("weekly") // daily | weekly | monthly
+  recipients    String[]
+  enabled       Boolean   @default(true)
+  lastSentAt    DateTime?
+  nextRunAt     DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([companyId])
   @@index([enabled, nextRunAt])

@@ -157,8 +157,11 @@ function reportData(body) {
   const data = {};
   if (body.name !== undefined) data.name = String(body.name).trim();
   if (body.type !== undefined) {
-    if (!['pipeline', 'collections', 'activity'].includes(body.type)) throw Object.assign(new Error('Unknown report type.'), { status: 400 });
+    if (!['pipeline', 'collections', 'activity', 'custom'].includes(body.type)) throw Object.assign(new Error('Unknown report type.'), { status: 400 });
     data.type = body.type;
+  }
+  if (body.savedReportId !== undefined) {
+    data.savedReportId = body.savedReportId || null;
   }
   if (body.frequency !== undefined) {
     if (!['daily', 'weekly', 'monthly'].includes(body.frequency)) throw Object.assign(new Error('Unknown frequency.'), { status: 400 });
