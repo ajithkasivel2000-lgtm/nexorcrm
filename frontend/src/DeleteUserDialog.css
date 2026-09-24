@@ -1,0 +1,105 @@
+/* Delete-user dialog: the hand-over comes first, the deletion second. */
+
+.dud { display: flex; flex-direction: column; gap: var(--nx-space-4); }
+
+.dud__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  margin: 0;
+  padding: var(--nx-space-4) 0;
+  color: var(--nx-text-muted);
+  font-size: var(--nx-text-base);
+}
+
+@keyframes dud-spin { to { transform: rotate(360deg); } }
+.dud__spin { animation: dud-spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .dud__spin { animation: none; }
+}
+
+/* ---- The warning --------------------------------------------------------- */
+.dud__warning,
+.dud__done {
+  display: flex;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-3);
+  border: 1px solid;
+  border-radius: var(--nx-radius);
+}
+.dud__warning { border-color: var(--nx-warning); background: var(--nx-warning-bg); color: var(--nx-warning); }
+.dud__done { border-color: var(--nx-success); background: var(--nx-success-bg); color: var(--nx-success); }
+
+.dud__warning svg,
+.dud__done svg { flex: none; margin-top: 1px; }
+
+.dud__warning strong,
+.dud__done strong {
+  display: block;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+}
+.dud__warning p,
+.dud__done p {
+  margin: 3px 0 0;
+  font-size: var(--nx-text-sm);
+  line-height: 1.55;
+  color: var(--nx-text-secondary);
+}
+
+/* ---- What they hold ------------------------------------------------------ */
+.dud__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  overflow: hidden;
+}
+.dud__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-3);
+  padding: 9px var(--nx-space-3);
+  border-bottom: var(--nx-divider);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-secondary);
+}
+.dud__list li:last-child { border-bottom: none; }
+.dud__list strong {
+  color: var(--nx-text);
+  font-weight: var(--nx-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Choosing the new owner ---------------------------------------------- */
+.dud__field { display: flex; flex-direction: column; gap: 5px; }
+.dud__label {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.dud__clear {
+  margin: 0;
+  font-size: var(--nx-text-base);
+  line-height: 1.6;
+  color: var(--nx-text-secondary);
+}
+
+.dud__error {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-danger);
+}
+
+/* ---- Actions ------------------------------------------------------------- */
+.dud__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nx-space-2);
+  margin-top: var(--nx-space-4);
+  padding-top: var(--nx-space-4);
+  border-top: var(--nx-divider);
+}

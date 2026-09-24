@@ -1,0 +1,320 @@
+/* The Project Status board.
+   Colours come from the app's tokens rather than hex, so the whole thing
+   follows dark mode without a second palette to keep in step. */
+
+.psb {
+  padding: var(--nx-space-4);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+}
+
+/* ---- header ------------------------------------------------------------- */
+
+.psb__head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--nx-space-4);
+}
+
+.psb__head-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: var(--nx-radius);
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.psb__head-text { min-width: 0; flex: 1; }
+
+.psb__head-text h3 {
+  margin: 0;
+  font-size: var(--nx-text-lg, 17px);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.psb__head-text p {
+  margin: 2px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.psb__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  flex-wrap: wrap;
+}
+
+.psb__control { position: relative; }
+
+.psb__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font: inherit;
+  font-size: var(--nx-text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.psb__btn:hover { border-color: var(--nx-accent); }
+.psb__btn svg { color: var(--nx-text-muted); flex: none; }
+.psb__btn svg.is-open { transform: rotate(180deg); }
+.psb__btn--icon { padding: 8px; }
+.psb__btn--icon.is-on { border-color: var(--nx-accent); background: var(--nx-accent-soft); }
+.psb__btn--icon.is-on svg { color: var(--nx-accent); }
+
+/* ---- the two dropdowns -------------------------------------------------- */
+
+.psb__menu,
+.psb__range {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: var(--nx-z-dropdown, 1000);
+  min-width: 210px;
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-raised, var(--nx-bg-surface));
+  box-shadow: var(--nx-overlay-ring);
+}
+
+.psb__menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font: inherit;
+  font-size: var(--nx-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.psb__menu button:hover { background: var(--nx-bg-hover); }
+.psb__menu button.is-active { background: var(--nx-accent-soft); color: var(--nx-accent); }
+
+.psb__range { display: grid; gap: var(--nx-space-2); padding: var(--nx-space-3); }
+.psb__range label { display: grid; gap: 4px; }
+.psb__range span { font-size: var(--nx-text-xs); color: var(--nx-text-muted); }
+
+.psb__range input {
+  padding: 7px 9px;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font: inherit;
+  font-size: var(--nx-text-sm);
+}
+
+.psb__range-presets { display: flex; gap: 6px; margin-top: 2px; }
+
+.psb__range-presets button {
+  flex: 1;
+  padding: 6px 4px;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-secondary);
+  font: inherit;
+  font-size: var(--nx-text-xs);
+  cursor: pointer;
+}
+
+.psb__range-presets button:hover { border-color: var(--nx-accent); color: var(--nx-accent); }
+
+.psb__empty {
+  margin: 0;
+  padding: var(--nx-space-6, 28px) var(--nx-space-4);
+  text-align: center;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* ---- the tiles ---------------------------------------------------------- */
+
+.psb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: var(--nx-space-3);
+}
+
+.psb-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+  min-width: 0;
+}
+
+.psb-tile:hover { border-color: var(--nx-accent); }
+.psb-tile.is-skeleton { height: 132px; background: var(--nx-bg-sunken); }
+
+.psb-tile__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.psb-tile__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--nx-radius);
+}
+
+.psb-tile__label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.psb-tile__menu { position: relative; flex: none; }
+
+.psb-tile__menu-btn {
+  display: flex;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.psb-tile__menu-btn:hover { background: var(--nx-bg-hover); color: var(--nx-text); }
+
+.psb-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--nx-z-dropdown, 1000);
+  min-width: 150px;
+  padding: 5px;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-raised, var(--nx-bg-surface));
+  box-shadow: var(--nx-overlay-ring);
+}
+
+.psb-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font: inherit;
+  font-size: var(--nx-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.psb-menu button:hover { background: var(--nx-bg-hover); }
+
+.psb-tile__value {
+  margin: 0;
+  font-size: 26px;
+  font-weight: var(--nx-weight-bold, 700);
+  line-height: 1.1;
+  color: var(--nx-text);
+}
+
+.psb-tile__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.psb-tile__change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.psb-tile__change.is-up { color: var(--nx-success); }
+.psb-tile__change.is-down { color: var(--nx-danger); }
+.psb-tile__change.is-flat { color: var(--nx-text-muted); }
+
+.psb-tile__basis {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.psb-bars { flex: none; width: 54px; height: 26px; display: block; }
+
+.psb-tile__link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nx-accent);
+  font: inherit;
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+
+.psb-tile__link:hover { text-decoration: underline; }
+
+/* ---- tones --------------------------------------------------------------
+   The tint identifies the tile; the figure itself stays in text ink so the
+   colour never carries the reading. */
+
+.psb-tile.is-blue  .psb-tile__icon { background: var(--nx-info-bg); color: var(--nx-info); }
+.psb-tile.is-green .psb-tile__icon { background: var(--nx-success-bg); color: var(--nx-success); }
+.psb-tile.is-amber .psb-tile__icon { background: var(--nx-warning-bg); color: var(--nx-warning); }
+.psb-tile.is-red   .psb-tile__icon { background: var(--nx-danger-bg); color: var(--nx-danger); }
+.psb-tile.is-cyan  .psb-tile__icon { background: var(--nx-info-bg); color: var(--nx-info); }
+.psb-tile.is-slate .psb-tile__icon { background: var(--nx-bg-sunken); color: var(--nx-text-secondary); }
+
+.psb-bar.is-blue  { fill: var(--nx-info); }
+.psb-bar.is-green { fill: var(--nx-success); }
+.psb-bar.is-amber { fill: var(--nx-warning); }
+.psb-bar.is-red   { fill: var(--nx-danger); }
+.psb-bar.is-cyan  { fill: var(--nx-info); }
+.psb-bar.is-slate { fill: var(--nx-text-muted); }
+
+@media (max-width: 640px) {
+  .psb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .psb__controls { width: 100%; }
+  .psb__btn { flex: 1; justify-content: center; }
+}

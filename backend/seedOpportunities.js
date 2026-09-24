@@ -11,7 +11,7 @@ const dummyOpportunities = [
     opportunityName: 'HARI PRASATH P',
     mobileNumber: '8524074657',
     emailAddress: 'hariprasath0520@gmail.com',
-    enquiryProject: 'acres247'
+    LeadsProject: 'acres247'
   },
   {
     oppId: 'OPP_6952370c81d82364',
@@ -41,7 +41,7 @@ async function seed() {
     console.log('Connected to PostgreSQL via Prisma. Seeding data...');
     // Clear existing opportunities (optional)
     await prisma.opportunity.deleteMany({});
-    
+
     // Insert dummy data
     await prisma.opportunity.createMany({ data: dummyOpportunities });
     console.log('Successfully seeded Opportunities!');

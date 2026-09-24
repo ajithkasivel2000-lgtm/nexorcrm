@@ -1,0 +1,249 @@
+/* The header bell's panel: a feed, with the desktop-alert switch beneath it. */
+
+/* The panel owns its own height, background and corners rather than relying on
+   the generic .dropdown-menu it sits in: that wrapper is shared with the user
+   menu, clips with overflow:hidden, and has no idea this one is tall enough to
+   need a scrolling middle. */
+.nx-notif {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  /* Never taller than the space under the header, so the footer is always
+     reachable and the panel cannot run off the bottom of the screen. */
+  max-height: min(70vh, 460px);
+  background: var(--nx-bg-surface);
+  border-radius: inherit;
+  overflow: hidden;
+  font-family: var(--nx-font);
+}
+
+.nx-notif__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: 1px solid var(--nx-border);
+  /* Opaque, and outside the scrolling area: only the list moves, so the
+     title and the footer stay put however long the list gets. */
+  background: var(--nx-bg-surface);
+}
+
+.nx-notif__title {
+  font-size: var(--nx-text-base);
+  font-weight: 600;
+  color: var(--nx-text);
+}
+
+.nx-notif__markall {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-accent);
+  font-family: inherit;
+  font-size: var(--nx-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nx-notif__markall:hover {
+  background: var(--nx-bg-hover);
+}
+
+/* The only part that scrolls. `min-height: 0` is what lets a flex child
+   actually shrink — without it the list keeps its full content height and
+   pushes the footer off the bottom instead of scrolling. */
+.nx-notif__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.nx-notif__empty {
+  margin: 0;
+  padding: var(--nx-space-12) var(--nx-space-6);
+  text-align: center;
+  font-size: var(--nx-text-base);
+  font-weight: 500;
+  color: var(--nx-text-muted);
+}
+
+/* The row holds two controls: the body opens the record, the tick clears it. */
+.nx-notif__item {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.nx-notif__open {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nx-space-3);
+  min-width: 0;
+  padding: var(--nx-space-3) var(--nx-space-2) var(--nx-space-3) var(--nx-space-4);
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-notif__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid transparent;
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-notif__mark:hover {
+  border-left-color: var(--nx-border);
+  background: var(--nx-bg-hover);
+  color: var(--nx-success);
+}
+
+.nx-notif__item:last-child {
+  border-bottom: none;
+}
+
+/* The list only ever holds unread ones, so there is no read/unread contrast
+   to draw — the dot marks them and the row reads plainly. */
+.nx-notif__item:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-notif__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.nx-notif__item.is-unread .nx-notif__dot {
+  background: var(--nx-accent);
+}
+
+.nx-notif__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nx-notif__item-title {
+  font-size: var(--nx-text-base);
+  font-weight: 600;
+  color: var(--nx-text);
+}
+
+.nx-notif__item-body,
+.nx-notif__time {
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.nx-notif__time {
+  font-size: 11px;
+}
+
+/* ---- the desktop-alert switch ------------------------------------------- */
+.nx-notif__foot {
+  flex: none;
+  border-top: 1px solid var(--nx-border);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  background: var(--nx-bg-sunken);
+}
+
+.nx-notif__note {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  line-height: 1.5;
+  color: var(--nx-text-muted);
+}
+
+.nx-notif__push {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+}
+
+.nx-notif__push-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-notif__push-actions {
+  display: flex;
+  gap: var(--nx-space-2);
+}
+
+.nx-notif__push-state.is-on {
+  color: var(--nx-success);
+}
+
+.nx-notif__spin {
+  animation: nx-notif-spin 900ms linear infinite;
+}
+
+@keyframes nx-notif-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-notif__spin {
+    animation: none;
+  }
+}
+
+/* ---- the badge on the bell ---------------------------------------------- */
+.nx-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--nx-danger);
+  color: #fff;
+  font-family: var(--nx-font);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  pointer-events: none;
+}
+/* ---- the wrapper this panel is dropped into ------------------------------
+   .dropdown-menu is shared with the user menu, which is a short list of links.
+   This one is a scrolling panel with its own header and footer, so it needs
+   the wrapper to stop imposing a width and to sit above the page chrome. */
+.dropdown-menu--notifications {
+  padding: 0;
+  min-width: 0;
+  width: max-content;
+  /* Above sticky page furniture; below modals and toasts. */
+  z-index: 900;
+}

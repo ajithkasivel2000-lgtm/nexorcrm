@@ -13,7 +13,7 @@ async function main() {
     {
       templateId: 'ET-2026-002',
       name: 'Lead Assigned to Customer Template',
-      subject: 'SVL ERP - Lead Representative Assigned',
+      subject: 'NexorCRM - Lead Representative Assigned',
       templateKey: 'LEAD_ASSIGNED_CUSTOMER_TEMPLATE',
       type: 'Default',
       status: true
@@ -69,7 +69,7 @@ async function main() {
     {
       templateId: 'ET-2026-009',
       name: 'Quotation Sent Template',
-      subject: 'Quotation (quotation_number) - SVL Packaging & Printing',
+      subject: 'Quotation (quotation_number) - NexorCRM',
       templateKey: 'QUOTATION_SENT_TEMPLATE',
       type: 'Default',
       status: true

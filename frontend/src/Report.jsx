@@ -1,22 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Home, Edit, Trash2, ArrowUpDown, MessageSquare, X } from 'lucide-react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Report.css';
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import formatMobile from './utils/formatMobile';
+import useLiveRefresh from './utils/useLiveRefresh';
+import DocumentPreview from './components/DocumentPreview';
+import { Button, DataTable, Modal, Page, Pill, RowActions, Select, toneForStatus } from './ui';
+
+const formatReportDate = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+};
 
 export default function Report() {
+
   const navigate = useNavigate();
-  const context = useOutletContext();
-  const loggedInUser = localStorage.getItem('loggedInUser') || '';
-  const pagePerm = context?.permissionsList?.find(p => p.page === 'report');
-  const hasExportPermission = loggedInUser === 'admin' ? true : (pagePerm ? !!pagePerm.export : true);
 
   const [leads, setLeads] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [remarksModalLeadId, setRemarksModalLeadId] = useState(null);
-  
+  // The lead whose document is on screen, or null.
+  const [previewLead, setPreviewLead] = useState(null);
+
   // Filters
   const [reportType, setReportType] = useState('Today');
   const [statusFilter, setStatusFilter] = useState('');
@@ -26,21 +32,15 @@ export default function Report() {
     'Outdoor Marketing': false,
     'Digital Marketing': false
   });
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState({
-    reportType: 'Today',
-    statusFilter: '',
-    primarySources: {
-      'Channel Partner': false,
-      'Direct Walk In': false,
-      'Outdoor Marketing': false,
-      'Digital Marketing': false
-    }
-  });
+  // Live filters
 
   useEffect(() => {
     fetchLeads();
   }, []);
+
+  /* A report read while leads are being worked on was showing the figures as
+     they stood when the page opened. */
+  useLiveRefresh(['leads'], () => { fetchLeads(); });
 
   const fetchLeads = async () => {
     try {
@@ -55,22 +55,7 @@ export default function Report() {
     }
   };
 
-  const handleDelete = async (id, name, phone) => {
-    const isConfirmed = window.confirm(`re.nexorcrm.com says\nAre you sure you wish to delete this [ ${name}-${phone} ] Leads? It will remove leads from the list.`);
-    if (isConfirmed) {
-      try {
-        const response = await fetch(`/api/leads/${id}`, {
-          method: 'DELETE'
-        });
-        if (response.ok) {
-          // Remove from local state immediately to refresh table
-          setLeads(leads.filter(lead => lead.id !== id));
-        }
-      } catch (error) {
-        console.error('Failed to delete lead:', error);
-      }
-    }
-  };
+
 
   const handleSourceChange = (source) => {
     setPrimarySources(prev => ({
@@ -79,30 +64,17 @@ export default function Report() {
     }));
   };
 
-  const handleSubmit = () => {
-    setAppliedFilters({
-      reportType,
-      statusFilter,
-      primarySources: { ...primarySources }
-    });
-    setIsSubmitted(true);
-    fetchLeads();
-  };
+
 
   // Compute Active Filters
-  const activeSources = Object.keys(appliedFilters.primarySources).filter(k => appliedFilters.primarySources[k]);
+  const activeSources = Object.keys(primarySources).filter(k => primarySources[k]);
 
   let filteredLeads = leads.filter(lead => {
     // Status filter
-    const matchesStatus = !appliedFilters.statusFilter || lead.status === appliedFilters.statusFilter;
-    
-    // Text search
-    const matchesSearch = 
-      (lead.name && lead.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (lead.mobile && lead.mobile.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+    const matchesStatus = !statusFilter || lead.status === statusFilter;
+
     // Checkbox filter
-    const matchesSource = activeSources.length === 0 || 
+    const matchesSource = activeSources.length === 0 ||
       (lead.primarySource && activeSources.some(source => source.toLowerCase() === lead.primarySource.toLowerCase()));
 
     // Report Type (date range) filter
@@ -110,132 +82,120 @@ export default function Report() {
     if (lead.createdAt) {
       const leadDate = new Date(lead.createdAt);
       const now = new Date();
-      if (appliedFilters.reportType === 'Today') {
+      if (reportType === 'Today') {
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         matchesDate = leadDate >= startOfToday && leadDate < endOfToday;
-      } else if (appliedFilters.reportType === 'Yesterday') {
+      } else if (reportType === 'Yesterday') {
         const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
         const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         matchesDate = leadDate >= startOfYesterday && leadDate < endOfYesterday;
-      } else if (appliedFilters.reportType === 'This Week') {
+      } else if (reportType === 'This Week') {
         const day = now.getDay();
         const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
         const endOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (7 - day));
         matchesDate = leadDate >= startOfWeek && leadDate < endOfWeek;
-      } else if (appliedFilters.reportType === 'This Month') {
+      } else if (reportType === 'This Month') {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         matchesDate = leadDate >= startOfMonth && leadDate < endOfMonth;
       }
     }
 
-    return matchesStatus && matchesSearch && matchesSource && matchesDate;
+    return matchesStatus && matchesSource && matchesDate;
   });
 
-  // Export functions
-  const exportCSV = () => {
-    const headers = ["ID", "Enquiry Name", "Phone Number", "Primary Source", "Status", "Owner", "Last update", "Created Date"];
-    const rows = filteredLeads.map((lead, index) => [
-      index + 1,
-      lead.name || "",
-      lead.mobile || "",
-      lead.primarySource || "",
-      lead.status || "",        lead.ownerName || lead.owner || "",
-      new Date(lead.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }).replace(/,/g, ""),
-      new Date(lead.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }).replace(/,/g, "")
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
-  const exportExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      filteredLeads.map((lead, index) => ({
-        "ID": index + 1,
-        "Enquiry Name": lead.name || "",
-        "Phone Number": lead.mobile || "",
-        "Primary Source": lead.primarySource || "",
-        "Status": lead.status || "",
-        "Owner": lead.ownerName || lead.owner || "",
-        "Last update": new Date(lead.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
-        "Created Date": new Date(lead.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
-      }))
-    );
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-    XLSX.writeFile(workbook, "report.xlsx");
-  };
 
-  const exportPDF = () => {
-    const doc = new jsPDF('landscape');
-    doc.text("Export Report", 14, 15);
-    const tableColumn = ["ID", "Enquiry Name", "Phone No", "Primary Source", "Status", "Owner", "Last update", "Created Date"];
-    const tableRows = [];
-    filteredLeads.forEach((lead, index) => {
-      tableRows.push([
-        index + 1,
-        lead.name || "-",
-        lead.mobile || "-",
-        lead.primarySource || "-",
-        lead.status || "-",
-        lead.ownerName || lead.owner || "-",
-        new Date(lead.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
-        new Date(lead.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
-      ]);
-    });
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20,
-    });
-    doc.save(`report_${Date.now()}.pdf`);
-  };
+  const reportColumns = [
+    {
+      key: 'name',
+      label: 'Leads Name',
+      render: l => <span className="nx-page__strong">{l.name || '—'}</span>,
+    },
+    {
+      key: 'mobile',
+      label: 'Phone Number',
+      width: '160px',
+      render: l => formatMobile(l.mobile),
+      exportValue: l => l.mobile || '',
+    },
+    { key: 'primarySource', label: 'Primary Source', width: '170px' },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '150px',
+      render: l => (l.status ? <Pill tone={toneForStatus(l.status)} dot>{l.status}</Pill> : '—'),
+      exportValue: l => l.status || '',
+    },
+    {
+      key: 'owner',
+      label: 'Owner',
+      width: '150px',
+      render: l => l.ownerName || l.owner || '—',
+      exportValue: l => l.ownerName || l.owner || '',
+    },
+    {
+      key: 'callRemarks',
+      label: 'Remarks',
+      width: '100px',
+      align: 'center',
+      sortable: false,
+      render: l => (
+        <Button
+          variant="ghost" size="sm" icon={MessageSquare}
+          aria-label={`Call remarks for ${l.name || 'lead'}`}
+          onClick={() => setRemarksModalLeadId(l.id)}
+        />
+      ),
+      exportValue: l => l.callRemarks || '',
+    },
+    {
+      key: 'updatedAt',
+      label: 'Last update',
+      width: '190px',
+      render: l => formatReportDate(l.updatedAt),
+      exportValue: l => formatReportDate(l.updatedAt),
+    },
+    {
+      key: 'createdAt',
+      label: 'Created Date',
+      width: '190px',
+      render: l => formatReportDate(l.createdAt),
+      exportValue: l => formatReportDate(l.createdAt),
+    },
+  ];
 
   return (
-    <div className="report-page">
-      <div className="report-header">
-        <h2>Export Report</h2>
-        <div className="page-breadcrumb">
-          <Home size={14} style={{cursor: 'pointer'}} onClick={() => navigate('/')} /> <span className="slash">/</span> <span className="current">Report</span>
-        </div>
-      </div>
-
+    <Page title="Export Report">
       <div className="report-card">
-        
+
         {/* Filters Section */}
         <div className="report-filters-section">
           <div className="filter-row">
             <span className="filter-label">Report Type:</span>
             <div className="filter-input-group">
-              <select 
-                className="filter-select" 
-                value={reportType} 
+              <Select
+                advanceOnPick={false}
+                value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
               >
                 <option value="Today">Today</option>
                 <option value="Yesterday">Yesterday</option>
                 <option value="This Week">This Week</option>
                 <option value="This Month">This Month</option>
-              </select>
+              </Select>
             </div>
           </div>
-          
+
           <div className="filter-row">
             <span className="filter-label">Primary Source:</span>
             <div className="filter-input-group checkbox-group">
               {Object.keys(primarySources).map(source => (
                 <label key={source} className="checkbox-label">
-                  <input 
-                    type="checkbox" 
-                    checked={primarySources[source]} 
+                  <input
+                    type="checkbox"
+                    checked={primarySources[source]}
                     onChange={() => handleSourceChange(source)}
                   />
                   {source}
@@ -247,8 +207,8 @@ export default function Report() {
           <div className="filter-row">
             <span className="filter-label">Status:</span>
             <div className="filter-input-group">
-              <select
-                className="filter-select"
+              <Select
+                advanceOnPick={false}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -259,147 +219,65 @@ export default function Report() {
                 <option value="Duplicate">Duplicate</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Site Visit">Site Visit</option>
-              </select>
+              </Select>
             </div>
           </div>
 
-          <div className="submit-btn-row">
-            <button className="btn-submit" onClick={handleSubmit}>Submit</button>
-          </div>
         </div>
 
-        {isSubmitted && (
-          <>
-            {/* Toolbar & Search */}
-            <div className="report-toolbar">
-              {hasExportPermission && (
-                <div className="toolbar-left">
-                  <button className="btn-export excel" onClick={exportExcel}>Excel</button>
-                  <button className="btn-export csv" onClick={exportCSV}>CSV</button>
-                  <button className="btn-export pdf" onClick={exportPDF}>PDF</button>
-                </div>
-              )}
-              <div className="toolbar-right">
-                <label className="search-label">Search:</label>
-                <input 
-                  type="text" 
-                  className="search-input" 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
 
-            {/* Table */}
-            <div className="report-table-wrapper">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Enquiry Name <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Phone Number <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Primary Source <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Status <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Owner <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Call Remarks <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Last update <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Created Date <ArrowUpDown size={12} className="table-arrows" /></th>
-                    <th>Actions <ArrowUpDown size={12} className="table-arrows" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLeads.length > 0 ? (
-                    filteredLeads.map((lead, index) => (
-                      <tr key={lead.id}>
-                        <td>{index + 1}</td>
-                        <td style={{color: '#7b68ee'}}>{lead.name}</td>
-                        <td>{lead.mobile}</td>
-                        <td>{lead.primarySource || '-'}</td>
-                        <td>{lead.status}</td>
-                        <td>{lead.ownerName || lead.owner}</td>
-                        <td>
-                           <button onClick={() => setRemarksModalLeadId(lead.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                             <span className="call-remarks-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8c6cf5', border: '1px solid #8c6cf5', borderRadius: '4px', padding: '4px' }}><MessageSquare size={14} /></span>
-                           </button>
-                        </td>
-                        <td>{new Date(lead.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                        <td>{new Date(lead.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                        <td className="rl-actions-cell">
-                          <button 
-                            className="rl-action-btn rl-edit-btn" 
-                            onClick={() => navigate(`/leads/${lead.id}`)}
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button 
-                            className="rl-action-btn rl-delete-btn" 
-                            onClick={() => handleDelete(lead.id, lead.name, lead.mobile)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="10" className="text-center">No data available in table</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+        <DataTable
+          columns={reportColumns}
+          rows={filteredLeads}
+          exportName="lead-report"
+          filters={['primarySource', 'status', 'owner']}
+          tabsFrom="status"
+          persistKey="report"
+          searchPlaceholder="Search name, phone, source or owner..."
+          emptyMessage="No data available"
+          emptyHint="Adjust the report filters above to see results."
+          actions={lead => (
+            <RowActions
+              label={lead.name || 'lead'}
+              // View shows the full Leads as a document; downloading is a
+              // button inside the preview.
+              onView={() => setPreviewLead(lead)}
+              onEdit={() => navigate(`/leads/${lead.id}?edit=1`)}
+              onLog={() => setRemarksModalLeadId(lead.id)}
+            />
+          )}
+        />
 
-            <div className="report-footer">
-              <div className="showing-entries">
-                Showing {filteredLeads.length > 0 ? 1 : 0} to {filteredLeads.length} of {filteredLeads.length} entries
-              </div>
-              <div className="pagination">
-                <button className="page-btn disabled">Previous</button>
-                {filteredLeads.length > 0 ? <button className="page-btn active">1</button> : null}
-                <button className="page-btn disabled">Next</button>
-              </div>
-            </div>
-          </>
-        )}
 
       </div>
       {/* View Remarks / Lead Logs Modal */}
-      {remarksModalLeadId && (
-        <div className="modal-overlay" style={{ position: 'fixed', zIndex: 9999, top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setRemarksModalLeadId(null)}>
-          <div className="status-modal-content" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#fff', padding: '0', borderRadius: '8px', width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="status-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>Lead Logs</h3>
-              <button className="modal-close" onClick={() => setRemarksModalLeadId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
+      <Modal
+        open={!!remarksModalLeadId}
+        onClose={() => setRemarksModalLeadId(null)}
+        size="sm"
+        title="Lead Logs"
+      >
+        {(() => {
+          const lead = leads.find(l => l.id === remarksModalLeadId);
+          const logs = lead?.logs ? [...lead.logs].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+          if (logs.length === 0) {
+            return <p className="nx-page__muted">No logs available.</p>;
+          }
+          const log = logs[0];
+          return (
+            <div className="nx-opp-log">
+              <p className="nx-opp-log__title">{log.title}</p>
+              {log.subtitle && (
+                <p className="nx-opp-log__subtitle">{log.subtitle.replace('by admin ', '')}</p>
+              )}
+              <p className="nx-opp-log__date">on {formatReportDate(log.date)}</p>
             </div>
-            <div className="status-modal-body" style={{ padding: '20px', overflowY: 'auto' }}>
-              <div className="log-list">
-                {(() => {
-                  const lead = leads.find(l => l.id === remarksModalLeadId);
-                  const logs = lead?.logs ? [...lead.logs].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
-                  if (logs.length === 0) return <div style={{ color: '#888' }}>No logs available.</div>;
-                  const log = logs[0];
-                  return (
-                    <div className="log-item" key={log.id || 0} style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-                      <div className="log-avatar-img" style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#f0ecfc' }}>
-                        <img src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${log.title}&backgroundColor=f0ecfc`} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      <div className="log-content">
-                        <p style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: '600', color: '#333' }}>{log.title}</p>
-                        <span style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '4px' }}>{log.subtitle ? log.subtitle.replace('by admin ', '') : ''}</span>
-                        <span className="log-date" style={{ fontSize: '12px', color: '#999' }}>
-                          on {new Date(log.date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+          );
+        })()}
+      </Modal>
+
+      {/* The Leads document, shown rather than saved. */}
+      <DocumentPreview lead={previewLead} onClose={() => setPreviewLead(null)} />
+    </Page>
   );
 }

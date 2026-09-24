@@ -1,12 +1,13 @@
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+}
+
 model ChannelPartner {
+  companyId                 String
   id                        String              @id @default(uuid())
   cpId                      String              @unique
   typeOfChannelPartner      String
@@ -32,46 +33,61 @@ model ChannelPartner {
   beneficiaryName           String?
   bankAccountNumber         String?
   ifscCode                  String?
-  leadOwner                 String              @default("admin")
   status                    String              @default("Registered")
-  logs                      ChannelPartnerLog[]
   createdAt                 DateTime            @default(now())
   updatedAt                 DateTime            @updatedAt
+  leadOwner                 String              @default("admin")
+  mobileCountryCode         String              @default("+91")
+  logs                      ChannelPartnerLog[]
+
+  @@index([companyId])
 }
 
 model ChannelPartnerLog {
+  companyId        String
   id               String         @id @default(uuid())
   channelPartnerId String
-  channelPartner   ChannelPartner @relation(fields: [channelPartnerId], references: [id], onDelete: Cascade)
   title            String?
   subtitle         String?
   date             DateTime       @default(now())
+  channelPartner   ChannelPartner @relation(fields: [channelPartnerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
 }
 
 model Customer {
-  id             String   @id @default(uuid())
-  customerId     String   @unique
-  customerName   String?
-  customerEmail  String?
-  customerMobile String?
-  stage          String   @default("Customer")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  companyId                 String
+  id                        String   @id @default(uuid())
+  customerId                String   @unique
+  customerName              String?
+  customerEmail             String?
+  customerMobile            String?
+  stage                     String   @default("Customer")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  customerMobileCountryCode String   @default("+91")
+
+  @@index([companyId])
 }
 
-model Enquiry {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  mobile    String
-  source    String
-  project   String?
-  message   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Leads {
+  companyId         String
+  id                String   @id @default(uuid())
+  name              String
+  email             String
+  mobile            String
+  mobileCountryCode String   @default("+91")
+  source            String
+  project           String?
+  message           String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model GlobalUserSetting {
+  companyId               String
   id                      String   @id @default(uuid())
   allowMultipleLogins     Boolean  @default(true)
   individualUserHomepages Boolean  @default(false)
@@ -80,56 +96,93 @@ model GlobalUserSetting {
   excludeAdmins           Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Lead {
-  id                String   @id @default(uuid())
-  name              String
-  email             String?
-  mobile            String
-  primarySource     String?
-  secondarySource   String?
-  tertiarySource    String?
-  channelPartnerName String?
-  project           String?
-  status            String   @default("New Lead")
-  owner             String   @default("admin")
-  ownerId           String?
-  openReason        String?
-  callStatus        String?
-  callRemarks       String?
-  followUpDate      DateTime?
-  rejectionType     String?
-  reasonDetails     String?
-  budgetLimit       String?
-  competitorName    String?
-  competitorOffer   String?
-  invalidReason     String?
-  otherNotes        String?
-  additionalRemarks String?
-  siteVisitStatus   String?
-  siteVisitDate     DateTime?
-  siteVisitNote     String?
+  companyId              String
+  id                     String           @id @default(uuid())
+  name                   String
+  email                  String?
+  mobile                 String
+  primarySource          String?
+  secondarySource        String?
+  tertiarySource         String?
+  project                String?
+  status                 String           @default("New Lead")
+  owner                  String           @default("admin")
+  openReason             String?
+  callStatus             String?
+  callRemarks            String?
+  followUpDate           DateTime?
+  rejectionType          String?
+  reasonDetails          String?
+  budgetLimit            String?
+  competitorName         String?
+  competitorOffer        String?
+  invalidReason          String?
+  otherNotes             String?
+  additionalRemarks      String?
+  siteVisitDate          DateTime?
+  siteVisitNote          String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  channelPartnerName     String?
+  siteVisitStatus        String?
+  bookingStatus          String?
   siteVisitConfirmedDate DateTime?
   siteVisitConfirmedNote String?
-  siteVisitDoneDate     DateTime?
-  siteVisitDoneNote     String?
-  bookingStatus         String?
-  logs              LeadLog[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  siteVisitDoneDate      DateTime?
+  siteVisitDoneNote      String?
+  ownerId                String?
+  mobileCountryCode      String           @default("+91")
+  allocatedDate          DateTime?
+  allocator              String?
+  alternateEmail         String?
+  alternateNo            String?
+  channelPartnerId       String?
+  companyName            String?
+  euid                   String?
+  occupation             String?
+  rating                 String?          @default("warm")
+  referrerDetails        String?
+  sourceUrl              String?
+  virtualVisit           String?
+  virtualVisitDate       DateTime?
+  alternateNoCountryCode String?          @default("+91")
+  /// *
+  ///    * Auto follow-up. `assignedAt` is when the current owner got the lead and
+  ///    * `lastActivityAt` when they last did something about it; the reassignment
+  ///    * job compares the later of the two against the configured timeout. Both
+  ///    * live on the row so a timer survives a server restart.
+  assignedAt             DateTime?
+  lastActivityAt         DateTime?
+  assignments            LeadAssignment[]
+  logs                   LeadLog[]
+  siteVisits             SiteVisit[]
+
+  @@index([companyId])
 }
 
 model LeadLog {
+  companyId String
   id        String   @id @default(uuid())
   leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   title     String?
   subtitle  String?
   date      DateTime @default(now())
+  actor     String?
+  field     String?
+  newValue  String?
+  oldValue  String?
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
 }
 
 model MailSetting {
+  companyId    String
   id           String   @id @default(uuid())
   smtpHost     String   @default("")
   smtpPort     Int      @default(587)
@@ -137,151 +190,587 @@ model MailSetting {
   smtpPassword String   @default("")
   fromEmail    String   @default("")
   fromName     String   @default("")
-  smtpAuth     String   @default("True")
-  starttls     String   @default("True")
-  defaultCC    String   @default("")
-  defaultBCC   String   @default("")
-  enabled      Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  defaultBCC   String   @default("")
+  defaultCC    String   @default("")
+  enabled      Boolean  @default(true)
+  smtpAuth     String   @default("True")
+  starttls     String   @default("True")
+
+  @@index([companyId])
 }
 
-model LeadStatus {
+model OpenReason {
+  companyId  String
+  id         String   @id @default(uuid())
+  reasonName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model CallStatus {
+  companyId  String
   id         String   @id @default(uuid())
   statusName String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model LeadStatus {
+  companyId  String
+  id         String   @id @default(uuid())
+  statusName String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model LeadType {
+  companyId String
   id        String   @id @default(uuid())
   typeName  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Opportunity {
-  id                      String   @id @default(uuid())
-  oppId                   String   @unique
-  leadId                  String?
-  bvd                     String?
-  opportunityName         String?
-  mobileNumber            String?
-  emailAddress            String?
-  enquiryProject          String?
-  alternateMobile         String?
-  alternateEmail          String?
-  occupation              String?
-  companyName             String?
-  allocator               String?
-  opportunityOwner        String   @default("admin")
-  stage                   String   @default("Site Visit Converted")
-  selectedUnit            String?
-  unitType                String?
-  bookingDate             DateTime?
-  bookingDetails          String?
-  bookingAmount           String?
-  bookingAmountStatus     String?
-  bookingDoneDate         DateTime?
-  comments                String?
-  reportingManager        String?
-  cpCommissionPercent     String?
-  approvalStage           String?
-  preferredBudget         String?
-  preferredLocality       String?
-  locationCommission      String?
-  locationCommissionInr   String?
-  channelPartnerName      String?
-  channelPartnerId        String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  logs                    OpportunityLog[]
+  companyId                  String
+  id                         String           @id @default(uuid())
+  oppId                      String           @unique
+  leadId                     String?
+  bvd                        String?
+  opportunityName            String?
+  mobileNumber               String?
+  emailAddress               String?
+  alternateMobile            String?
+  alternateEmail             String?
+  occupation                 String?
+  companyName                String?
+  allocator                  String?
+  opportunityOwner           String           @default("admin")
+  stage                      String           @default("Site Visit Converted")
+  selectedUnit               String?
+  unitType                   String?
+  bookingDate                DateTime?
+  bookingDetails             String?
+  bookingAmountStatus        String?
+  bookingDoneDate            DateTime?
+  comments                   String?
+  reportingManager           String?
+  cpCommissionPercent        String?
+  approvalStage              String?
+  preferredLocality          String?
+  channelPartnerName         String?
+  channelPartnerId           String?
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+  alternateMobileCountryCode String           @default("+91")
+  mobileCountryCode          String           @default("+91")
+  LeadsProject               String?
+  agreementDate              DateTime?
+  agreementNotes             String?
+  agreementNumber            String?
+  agreementStatus            String?
+  invoiceDate                DateTime?
+  invoiceNumber              String?
+  nextDueDate                DateTime?
+  paymentMode                String?
+  registrationDate           DateTime?
+  closeReason                String?
+  closedAt                   DateTime?
+  createdBy                  String?
+  currency                   String           @default("INR")
+  description                String?
+  expectedCloseDate          DateTime?
+  expectedValue              Decimal?
+  industry                   String?
+  lastActivityAt             DateTime?
+  nextAction                 String?
+  nextFollowUpDate           DateTime?
+  opportunityType            String?
+  pipeline                   String?          @default("Sales")
+  priority                   String?          @default("Medium")
+  probability                Int?
+  source                     String?
+  stageEnteredAt             DateTime?
+  status                     String?          @default("Open")
+  tags                       String[]
+  team                       String?
+  bookingAmount              Decimal?
+  preferredBudget            Decimal?
+  locationCommission         Decimal?
+  locationCommissionInr      Decimal?
+  agreementValue             Decimal?
+  amountPaid                 Decimal?
+  invoiceAmount              Decimal?
+  logs                       OpportunityLog[]
+
+  @@index([companyId])
+}
+
+/// *
+///  * A thing that happened: a call, an email, a meeting, a site visit.
+model Activity {
+  companyId      String
+  id             String    @id @default(uuid())
+  entityType     String
+  entityId       String
+  type           String
+  subject        String?
+  description    String?
+  occurredAt     DateTime  @default(now())
+  createdBy      String?
+  assignedTo     String?
+  status         String?   @default("Completed")
+  outcome        String?
+  nextAction     String?
+  nextActionDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([entityType, entityId, occurredAt])
+  @@index([assignedTo])
+  @@index([companyId])
+}
+
+/// *
+///  * Something somebody has to do, by a date.
+model Task {
+  companyId   String
+  id          String    @id @default(uuid())
+  entityType  String
+  entityId    String
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    String?   @default("Medium")
+  status      String    @default("Open")
+  assignedTo  String?
+  createdBy   String?
+  completedAt DateTime?
+  completedBy String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([entityType, entityId, dueDate])
+  @@index([assignedTo, status, dueDate])
+  @@index([companyId])
+}
+
+/// *
+///  * An internal note. Never shown to a customer.
+model Note {
+  companyId  String
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  body       String
+  createdBy  String?
+  updatedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityType, entityId, createdAt])
+  @@index([companyId])
+}
+
+/// *
+///  * A person at the customer's end.
+model Contact {
+  companyId       String
+  id              String   @id @default(uuid())
+  entityType      String
+  entityId        String
+  name            String
+  designation     String?
+  department      String?
+  phone           String?
+  countryCode     String?  @default("+91")
+  email           String?
+  isPrimary       Boolean  @default(false)
+  isDecisionMaker Boolean  @default(false)
+  isInfluencer    Boolean  @default(false)
+  isTechnical     Boolean  @default(false)
+  isFinance       Boolean  @default(false)
+  notes           String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([companyId])
+}
+
+/// *
+///  * A file kept against the record. The bytes live on disk; this is the index.
+model Document {
+  companyId  String
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  fileName   String
+  storedName String
+  mimeType   String?
+  size       Int?
+  category   String?  @default("Other")
+  version    Int      @default(1)
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([companyId])
+}
+
+/// *
+///  * A product or service on the record, with what it is worth.
+model LineItem {
+  companyId     String
+  id            String   @id @default(uuid())
+  entityType    String
+  entityId      String
+  productName   String
+  category      String?
+  description   String?
+  quantity      Decimal  @default(1)
+  unitPrice     Decimal?
+  discount      Decimal?
+  tax           Decimal?
+  interestLevel String?
+  notes         String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([companyId])
+}
+
+/// *
+///  * Who else is bidding.
+model Competitor {
+  companyId          String
+  id                 String   @id @default(uuid())
+  entityType         String
+  entityId           String
+  name               String
+  product            String?
+  price              Decimal?
+  strength           String?
+  weakness           String?
+  ourAdvantage       String?
+  customerPreference String?
+  status             String?
+  notes              String?
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([companyId])
+}
+
+/// *
+///  * Something that could stop the deal, and what is being done about it.
+model Risk {
+  companyId   String
+  id          String   @id @default(uuid())
+  entityType  String
+  entityId    String
+  title       String
+  category    String?
+  severity    String?  @default("Medium")
+  probability String?
+  impact      String?
+  mitigation  String?
+  owner       String?
+  status      String?  @default("Open")
+  resolution  String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entityType, entityId, status])
+  @@index([companyId])
+}
+
+/// *
+///  * One row per stage change, for whichever record moved.
+///  * The record carries the stage it is in now; this carries how it got there.
+///  * Time in each stage and the progression timeline are read from here, and
+///  * neither can be reconstructed after the fact.
+model StageHistory {
+  companyId   String
+  id          String   @id @default(uuid())
+  entityType  String
+  entityId    String
+  fromStage   String?
+  toStage     String
+  probability Int?
+  changedBy   String?
+  note        String?
+  enteredAt   DateTime @default(now())
+
+  @@index([entityType, entityId, enteredAt])
+  @@index([companyId])
 }
 
 model OpportunityLog {
+  companyId     String
   id            String      @id @default(uuid())
   opportunityId String
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   title         String?
   subtitle      String?
   date          DateTime    @default(now())
+  actor         String?
+  field         String?
+  newValue      String?
+  oldValue      String?
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, date])
+  @@index([companyId])
 }
 
 model PrimarySource {
+  companyId  String
   id         String   @id @default(uuid())
   sourceName String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Project {
-  id               String   @id @default(uuid())
-  projectName      String   @unique
-  projectLocation  String?
-  projectAmenities String?
-  features         String?
-  mapLink          String?
-  projectContact   String?
-  projectEmail     String?
-  projectType      String?
-  projectStatus    String?  @default("Pre Launch")
-  propertyType     String?
-  developers       String?
-  developerId      String?
-  status           String   @default("Active")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  companyId               String
+  id                      String            @id @default(uuid())
+  projectName             String
+  projectType             String?
+  propertyType            String?
+  developers              String?
+  developerId             String?
+  status                  String            @default("Active")
+  projectEmail            String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  features                String?
+  mapLink                 String?
+  projectAmenities        String?
+  projectContact          String?
+  projectLocation         String?
+  projectStatus           String?           @default("Pre Launch")
+  actualCompletion        DateTime?
+  /// *
+  ///    * ---- Location ----------------------------------------------------------
+  ///    * projectLocation above stays as the free-text summary it always was; these
+  ///    * are the parts, for filtering and for a map.
+  addressLine1            String?
+  addressLine2            String?
+  archivedAt              DateTime?
+  area                    String?
+  bookingAmount           Decimal?
+  builder                 String?
+  builtUpArea             Decimal?
+  campaignName            String?
+  category                String?
+  city                    String?
+  clubHouseCharges        Decimal?
+  commonArea              Decimal?
+  constructionProgress    Int?
+  /// *
+  ///    * ---- Construction ------------------------------------------------------
+  constructionStart       DateTime?
+  corpusFund              Decimal?
+  country                 String?           @default("India")
+  coveredParking          Int?
+  createdBy               String?
+  currentPhase            String?
+  defaultLeadOwner        String?
+  defaultOpportunityOwner String?
+  description             String?
+  district                String?
+  expectedCompletion      DateTime?
+  expectedRevenue         Decimal?
+  facing                  String?
+  floorRiseCharges        Decimal?
+  gstPercent              Decimal?
+  keyHighlights           String?
+  keywords                String?
+  /// *
+  ///    * ---- Configuration -----------------------------------------------------
+  landArea                Decimal?
+  landAreaUnit            String?           @default("acre")
+  landingPageUrl          String?
+  landmark                String?
+  latitude                Float?
+  launchDate              DateTime?
+  locality                String?
+  locationNote            String?
+  longitude               Float?
+  maintenanceCharges      Decimal?
+  mapEmbedUrl             String?
+  marketingBudget         Decimal?
+  marketingNote           String?
+  maxArea                 Decimal?
+  maxPrice                Decimal?
+  metaDescription         String?
+  metaTitle               String?
+  minArea                 Decimal?
+  minPrice                Decimal?
+  monthlyTarget           Decimal?
+  openParking             Int?
+  otherCharges            Decimal?
+  parkingCapacity         Int?
+  parkingCharges          Decimal?
+  pincode                 String?
+  pricePerSqft            Decimal?
+  /// *
+  ///    * ---- Identity ----------------------------------------------------------
+  ///    * Nullable-unique: Postgres allows many NULLs, so existing projects without
+  ///    * a code stay valid while new ones cannot collide.
+  projectCode             String?
+  projectManager          String?
+  promoter                String?
+  registrationPercent     Decimal?
+  reraDate                DateTime?
+  reraNumber              String?
+  saleableArea            Decimal?
+  salesManager            String?
+  salesOwner              String?
+  salesStartDate          DateTime?
+  /// *
+  ///    * ---- Sales configuration -----------------------------------------------
+  salesStatus             String?
+  salesTarget             Decimal?
+  salesTeam               String?
+  shortDescription        String?
+  slug                    String?
+  socialLinks             String?
+  stampDutyPercent        Decimal?
+  /// *
+  ///    * ---- Pricing -----------------------------------------------------------
+  ///    * Decimal throughout. Money kept as text cannot be summed or compared, which
+  ///    * is the lesson from the opportunity module.
+  startingPrice           Decimal?
+  state                   String?
+  /// *
+  ///    * ---- Marketing and SEO --------------------------------------------------
+  tagline                 String?
+  targetAudience          String?
+  totalBuildings          Int?
+  totalFloors             Int?
+  totalUnitsPlanned       Int?
+  usp                     String?
+  visitorParking          Int?
+  website                 String?
+  buildings               ProjectBuilding[]
+  units                   ProjectUnit[]
+
+  @@unique([companyId, projectName])
+  @@unique([companyId, projectCode])
+  @@unique([companyId, slug])
+  @@index([city])
+  @@index([projectStatus])
+  @@index([companyId])
+}
+
+/// *
+///  * A tower or block within a project.
+///  * Optional: a plotted development has units and no buildings, so a unit's
+///  * building may be null.
+model ProjectBuilding {
+  companyId            String
+  id                   String        @id @default(uuid())
+  projectId            String
+  name                 String
+  code                 String?
+  towerNumber          String?
+  floors               Int?
+  status               String?       @default("Planned")
+  constructionProgress Int?
+  expectedCompletion   DateTime?
+  description          String?
+  createdBy            String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  project              Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  units                ProjectUnit[]
+
+  @@index([projectId])
+  @@index([companyId])
+}
+
+/// *
+///  * One sellable unit.
+///  * The status is the inventory: every figure on the overview — available, sold,
+///  * value — is a count or a sum over this column, never a number typed on the
+///  * project.
+///  * unitNumber is unique within its building. Units with no building (plots) are
+///  * checked in the controller instead, since Postgres treats each NULL as
+///  * distinct and would allow duplicates through.
+model ProjectUnit {
+  companyId     String
+  id            String           @id @default(uuid())
+  projectId     String
+  buildingId    String?
+  unitNumber    String
+  floor         Int?
+  unitType      String?
+  bhk           String?
+  facing        String?
+  carpetArea    Decimal?
+  builtUpArea   Decimal?
+  saleableArea  Decimal?
+  balconyArea   Decimal?
+  price         Decimal?
+  pricePerSqft  Decimal?
+  parking       Int?
+  status        String           @default("Available")
+  opportunityId String?
+  reservedFor   String?
+  notes         String?
+  createdBy     String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  building      ProjectBuilding? @relation(fields: [buildingId], references: [id])
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([buildingId, unitNumber])
+  @@index([projectId, status])
+  @@index([buildingId])
+  @@index([companyId])
 }
 
 model ProjectStatus {
+  companyId  String
   id         String   @id @default(uuid())
   statusName String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model ProjectType {
+  companyId String
   id        String   @id @default(uuid())
   typeName  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-model Property {
-  id                String   @id @default(uuid())
-  propertyId        String   @unique
-  name              String
-  category          String?
-  type              String?
-  propertyFor       String?
-  city              String?
-  locality          String?
-  price             String?
-  discountPrice     String?
-  beds              String?
-  baths             String?
-  sqft              String?
-  garage            String?
-  image             String?
-  lat               Float?
-  lng               Float?
-  featured          Boolean  @default(false)
-  hot               Boolean  @default(false)
-  createdBy         String   @default("admin")
-  createdOn         String?
-  description       String?
-  possessionStatus  String?
-  bookingAmount     String?
-  parking           String?
-  floors            String?
-  visitorParking    String?
-  powerBackup       String?
-  fireSafety        String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  @@index([companyId])
 }
 
 model RegistrationSetting {
+  companyId               String
   id                      String   @id @default(uuid())
   accountActivation       String   @default("Admin Activation")
   limitUsernameCharacters String   @default("Letter Num and Spaces")
@@ -294,9 +783,12 @@ model RegistrationSetting {
   usernameLowercase       Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model RRQ {
+  companyId     String
   id            String   @id @default(uuid())
   rrqId         String   @unique
   projectName   String
@@ -305,67 +797,49 @@ model RRQ {
   assignedUsers String[] @default(["admin"])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model SecondarySource {
+  companyId  String
   id         String   @id @default(uuid())
   sourceName String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model SecuritySetting {
-  id                   String   @id @default(uuid())
-  disallowedUsernames  String[] @default([])
-  bannedIPs            String[] @default([])
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-}
+  companyId           String
+  id                  String   @id @default(uuid())
+  disallowedUsernames String[] @default([])
+  bannedIPs           String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-model Service {
-  id                   String   @id @default(uuid())
-  title                String
-  slug                 String   @unique
-  category             String?
-  mode                 String?
-  featuredImagePreview String?
-  bannerImagePreview   String?
-  shortDesc            String?
-  detailedDesc         String?
-  propertyType         String?
-  locations            String?
-  price                String?
-  priceType            String?
-  status               String   @default("Active")
-  featured             Boolean  @default(false)
-  allowInquiry         Boolean  @default(true)
-  created              String?
-  sections             ServiceSection[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-}
-
-model ServiceSection {
-  id             String   @id @default(uuid())
-  serviceId      String
-  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  title          String?
-  content        String?
-  imagePreview   String?
+  @@index([companyId])
 }
 
 model Session {
+  companyId  String
   id         String   @id @default(uuid())
   username   String
   ipAddress  String
-  persistent Boolean  @default(false)
   lastActive DateTime @default(now())
   expiry     DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  persistent Boolean  @default(false)
+  userAgent  String?
+
+  @@index([username, lastActive])
+  @@index([companyId])
 }
 
 model SessionSetting {
+  companyId             String
   id                    String   @id @default(uuid())
   userInactivityTimeout Int      @default(20)
   guestTimeout          Int      @default(5)
@@ -374,79 +848,949 @@ model SessionSetting {
   cookiePath            String   @default("/")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model TertiarySource {
+  companyId  String
   id         String   @id @default(uuid())
   sourceName String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model User {
-  id                  String      @id @default(uuid())
-  username            String      @unique
-  firstName           String
-  lastName            String?
-  password            String?
-  userlevel           Int         @default(1)
-  dept_id             String?
-  reporting_to        String?
-  email               String?
-  phone               String?
-  timestamp           Int         @default(0)
-  previous_visit      Int         @default(0)
-  ip                  String      @default("127.0.0.1")
-  regdate             Int         @default(0)
-  lastip              String?
-  user_login_attempts Int         @default(0)
-  user_home_path      String?
-  profile_image       String?
-  status              String      @default("Manager")
-  role                String      @default("Manager")
-  registeredIp        String      @default("127.0.0.1")
-  lastActiveIp        String      @default("127.0.0.1")
-  lastLoginAt         DateTime    @default(now())
-  homePagePath        String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
-  userGroups          UserGroup[] @relation("UserGroupMembers")
+  companyId                 String
+  totpSecret                String?
+  totpEnabled               Boolean            @default(false)
+  totpRecoveryCodes         String[]           @default([])
+  calendarToken             String?            @unique
+  channelPartnerId          String?
+  id                        String             @id @default(uuid())
+  username                  String             @unique
+  firstName                 String
+  lastName                  String?
+  email                     String?
+  password                  String?
+  status                    String             @default("Manager")
+  registeredIp              String             @default("127.0.0.1")
+  lastActiveIp              String             @default("127.0.0.1")
+  lastLoginAt               DateTime           @default(now())
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  role                      String             @default("Manager")
+  homePagePath              String?
+  dept_id                   String?
+  ip                        String             @default("127.0.0.1")
+  lastip                    String?
+  phone                     String?
+  previous_visit            Int                @default(0)
+  profile_image             String?
+  regdate                   Int                @default(0)
+  reporting_to              String?
+  timestamp                 Int                @default(0)
+  user_home_path            String?
+  user_login_attempts       Int                @default(0)
+  userlevel                 Int                @default(1)
+  phoneCountryCode          String             @default("+91")
+  addressLine               String?
+  /// *
+  ///    * ---- User 360°: contact & address --------------------------------------
+  alternateEmail            String?
+  alternatePhone            String?
+  alternatePhoneCountryCode String?            @default("+91")
+  archivedAt                DateTime?
+  archivedBy                String?
+  /// *
+  ///    * ---- User 360°: employment ---------------------------------------------
+  branch                    String?
+  city                      String?
+  country                   String?
+  designation               String?
+  dob                       DateTime?
+  /// *
+  ///    * ---- User 360°: identity -------------------------------------------------
+  ///    * All nullable, so every existing row keeps loading. employeeId is a
+  ///    * unique-nullable for the same reason Project.projectCode is: Postgres
+  ///    * allows many NULLs, so existing users stay valid while new ones cannot
+  ///    * collide.
+  employeeId                String?
+  employmentType            String?
+  /// *
+  ///    * When true, authMiddleware requires an unexpired Session row for this
+  ///    * user, which is what makes "revoke sessions" actually revoke. Off by
+  ///    * default so every existing signed-in user keeps working untouched.
+  enforceSessions           Boolean            @default(false)
+  forcePasswordChange       Boolean            @default(false)
+  gender                    String?
+  joiningDate               DateTime?
+  lastFailedLoginAt         DateTime?
+  lastFailedLoginIp         String?
+  location                  String?
+  /// *
+  ///    * ---- User 360°: security & lifecycle -----------------------------------
+  ///    * Nothing here invents a capability the app does not have: these back the
+  ///    * lockout, password lifecycle and archive flows actually implemented in
+  ///    * authController and userAdminController.
+  lockedUntil               DateTime?
+  passwordChangedAt         DateTime?
+  pincode                   String?
+  preferredName             String?
+  state                     String?
+  statusChangedAt           DateTime?
+  statusChangedBy           String?
+  statusReason              String?
+  team                      String?
+  authProvider              String?            @default("password")
+  googleEmail               String?
+  /// *
+  ///    * ---- Federated sign-in ---------------------------------------------------
+  ///    * googleId is Google's `sub` claim: the stable, never-reused account id.
+  ///    * Matching on it rather than on the email address is what stops a changed
+  ///    * or recycled Gmail address from silently landing on someone else's row.
+  ///    * Unique-nullable, so password-only accounts stay valid.
+  ///    * authProvider records how the row was first created ("password" for every
+  ///    * existing user, "google" for one created by a first Google sign-in), which
+  ///    * is what lets an admin see at a glance where an account came from.
+  googleId                  String?            @unique
+  lastGoogleLoginAt         DateTime?
+  lastMicrosoftLoginAt      DateTime?
+  microsoftEmail            String?
+  /// *
+  ///    * The same three for Microsoft. microsoftId is the token's `oid` claim —
+  ///    * the object id, which is stable per account and, unlike `sub`, does not
+  ///    * change between applications. Matching on it rather than on the email is
+  ///    * what stops a renamed or reassigned work address landing on someone
+  ///    * else's row, exactly as for Google above.
+  microsoftId               String?            @unique
+  notifications             Notification[]
+  pushSubscriptions         PushSubscription[]
+  departments               Department?        @relation(fields: [dept_id], references: [id])
+  userGroupMembers          UserGroupMembers[]
+  permissions               UserPermission[]
+
+  @@unique([companyId, employeeId])
+  @@index([status])
+  @@index([dept_id])
+  @@index([reporting_to])
+  @@index([companyId])
+}
+
+/// A department, so dept_id names a real thing rather than free text.
+model Department {
+  companyId   String
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  head        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+/// Who changed what on a user, with the values either side.
+///
+/// Mirrors LeadLog/OpportunityLog's field/oldValue/newValue/actor shape — that
+/// pattern is how this app already audits, just per-record. One row per field
+/// changed, so "Role: User -> Manager" renders from data.
+model UserAuditLog {
+  companyId String
+  id        String   @id @default(uuid())
+  userId    String
+  actor     String?
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  ipAddress String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, action])
+  @@index([companyId])
+}
+
+/// One row per account-lifecycle move — Active -> Suspended, Banned -> Active.
+/// The user row carries the current state; this carries how it got there.
+model UserStatusHistory {
+  companyId  String
+  id         String   @id @default(uuid())
+  userId     String
+  fromStatus String?
+  toStatus   String
+  reason     String?
+  changedBy  String?
+  changedAt  DateTime @default(now())
+
+  @@index([userId, changedAt])
+  @@index([companyId])
+}
+
+/// Per-user display and notification choices, kept apart from the global
+/// settings pages so one user's choices never change another's.
+model UserPreference {
+  companyId          String
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  language           String   @default("English")
+  timezone           String   @default("Asia/Kolkata")
+  dateFormat         String   @default("DD MMM YYYY")
+  timeFormat         String   @default("12h")
+  pageSize           Int      @default(25)
+  inAppNotifications Boolean  @default(true)
+  pushNotifications  Boolean  @default(true)
+  emailNotifications Boolean  @default(true)
+  categoryPrefs      Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model UserGroup {
-  id         String   @id @default(uuid())
-  groupName  String   @unique
-  groupLevel Int
-  members    User[]   @relation("UserGroupMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  companyId        String
+  id               String             @id @default(uuid())
+  groupName        String
+  groupLevel       Int
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  description      String?
+  userGroupMembers UserGroupMembers[]
+
+  @@unique([companyId, groupName])
+  @@index([companyId])
+}
+
+model UserGroupMembers {
+  companyId  String
+  userId     String
+  groupId    String
+  assignedAt DateTime  @default(now())
+  assignedBy String?
+  group      UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+  @@index([companyId])
 }
 
 model SystemLog {
+  companyId String
   id        String   @id @default(uuid())
   username  String
   event     String
   ipAddress String
   createdAt DateTime @default(now())
-}
 
-model PageAccess {
-  id          String   @id @default(uuid())
-  role        String   @unique
-  permissions Json     @default("[]")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  @@index([companyId])
 }
 
 model EmailTemplate {
+  companyId   String
   id          String   @id @default(uuid())
-  templateId  String   @unique
   name        String
   subject     String
-  templateKey String   @unique
+  templateKey String
   type        String   @default("Custom")
   status      Boolean  @default(true)
-  bodyContent String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bodyContent String?
+  templateId  String   @unique
+
+  @@unique([companyId, templateKey])
+  @@index([companyId])
+}
+
+model RRQType {
+  companyId String
+  id        String   @id @default(uuid())
+  typeName  String
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, typeName])
+  @@index([companyId])
+}
+
+/// One browser, on one device, that has agreed to receive notifications.
+///
+/// A person signs in from a laptop and a phone and gets two rows; both are
+/// notified. The endpoint is the subscription's identity as far as the push
+/// service is concerned, so it is the unique key rather than the user.
+model PushSubscription {
+  companyId String
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  /// Keys the push service needs to encrypt the payload for this browser.
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+}
+
+/// A pending password-reset request.
+///
+/// Tokens are stored hashed (SHA-256) for the same reason passwords are: a
+/// database dump must not hand out working reset links. Single-use — the row
+/// is deleted the moment a reset succeeds — and expired rows are swept on
+/// every request, so the table never grows.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Something a user should know about, kept so the bell has a list to show.
+///
+/// Push tells a browser once and is gone; this is the record behind it, so a
+/// notification missed while signed out is still there afterwards.
+model ChatRoom {
+  companyId String
+  id        String            @id @default(uuid())
+  name      String?
+  isGroup   Boolean           @default(true)
+  createdBy String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  members   ChatRoomMember[]
+  messages  ChatRoomMessage[]
+
+  @@index([updatedAt])
+  @@index([companyId])
+}
+
+model ChatRoomMember {
+  companyId  String
+  id         String   @id @default(uuid())
+  roomId     String
+  username   String
+  isAdmin    Boolean  @default(false)
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, username])
+  @@index([username])
+  @@index([companyId])
+}
+
+model ChatRoomMessage {
+  companyId String
+  id        String   @id @default(uuid())
+  roomId    String
+  sender    String
+  body      String
+  kind      String   @default("text")
+  createdAt DateTime @default(now())
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@index([companyId])
+}
+
+model ChatConversation {
+  companyId String
+  id        String        @id @default(uuid())
+  username  String
+  title     String        @default("New chat")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@index([username, updatedAt])
+  @@index([companyId])
+}
+
+model ChatMessage {
+  companyId      String
+  id             String           @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  topic          String?
+  createdAt      DateTime         @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([companyId])
+}
+
+model Notification {
+  companyId String
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  body      String?
+  /// Where clicking it should go, e.g. /leads/LED-2026-004.
+  url       String?
+  kind      String    @default("lead")
+  /// Null until the person has seen it. The unread count is the null ones.
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([companyId])
+}
+
+/// *
+///  * One turn of the follow-up clock.
+///  * A row is written every time a lead is assigned — by the round-robin on
+///  * creation, by a person, or by the reassignment job — and it is the timer:
+///  * `dueAt` is when the turn expires and `state` says whether it is still
+///  * running. The job only ever looks at rows in 'waiting'.
+///  * It is a row per assignment rather than per lead, so the history of who held
+///  * a lead and for how long is readable straight from the table (requirement:
+///  * a complete audit trail), and `(leadId, cycle)` is unique so a lead can never
+///  * grow two timers for the same turn however many times the job runs.
+model LeadAssignment {
+  companyId      String
+  id             String    @id @default(uuid())
+  leadId         String
+  ownerId        String
+  ownerName      String?
+  fromUserId     String?
+  fromName       String?
+  cycle          Int       @default(0)
+  source         String    @default("round-robin")
+  reason         String?
+  assignedAt     DateTime  @default(now())
+  dueAt          DateTime
+  state          String    @default("waiting")
+  settledAt      DateTime?
+  /// *
+  ///    * Notification outcome for THIS assignment. `notifiedAt` being set is what
+  ///    * stops a second send: the job claims a row before notifying, so a restart
+  ///    * mid-send cannot produce a duplicate email or push.
+  notifiedAt     DateTime?
+  notifyAttempts Int       @default(0)
+  pushResult     String?
+  emailResult    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lead           Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, cycle])
+  @@index([state, dueAt])
+  @@index([leadId, assignedAt])
+  @@index([companyId])
+}
+
+/// *
+///  * The single place the follow-up window is configured.
+///  * One row, like every other settings table here. The timeout is minutes so an
+///  * administrator can move it between 15, 30, 45 and 60 without a deploy, and
+///  * nothing else in the codebase is allowed to hard-code the number.
+model LeadAssignmentSetting {
+  companyId      String
+  id             String   @id @default(uuid())
+  timeoutMinutes Int      @default(30)
+  enabled        Boolean  @default(true)
+  maxCycles      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+/// *
+///  * A scheduled visit to a project.
+///  * The lead already carried siteVisitDate/Status/Note columns, and it still
+///  * does — every existing screen and report reads them. They cannot express a
+///  * lifecycle, though: there is one date and no room for a cancellation, a no
+///  * show, an arrival time or an outcome. This is the record those things live
+///  * on, written alongside the lead's own fields rather than instead of them, so
+///  * nothing that reads the old columns changes.
+///  * The customer's details are copied here at scheduling time on purpose. A
+///  * reminder sent tomorrow should say what was agreed today, and the visit's own
+///  * email must never have to reach back into the lead for an address.
+model SiteVisit {
+  companyId      String
+  id             String                  @id @default(uuid())
+  leadId         String
+  projectId      String?
+  projectName    String?
+  projectAddress String?
+  projectMapLink String?
+  projectContact String?
+  customerName   String?
+  customerEmail  String?
+  customerPhone  String?
+  assignedToId   String?
+  assignedToName String?
+  scheduledAt    DateTime
+  timezone       String?                 @default("Asia/Kolkata")
+  /// *
+  ///    * Scheduled | Confirmed | Rescheduled | In Progress | Completed | Cancelled
+  ///    * | No Show. Kept as a string to match every other status in this schema.
+  status         String                  @default("Scheduled")
+  note           String?
+  customerNote   String?
+  checkInAt      DateTime?
+  checkInBy      String?
+  checkOutAt     DateTime?
+  checkOutBy     String?
+  outcome        String?
+  outcomeNote    String?
+  cancelReason   String?
+  previousAt     DateTime?
+  /// *
+  ///    * Set the moment a visit reaches an end state. The reminder sweep reads
+  ///    * this rather than re-deriving it from the status, so one column stops
+  ///    * every future reminder for the visit.
+  remindersOff   Boolean                 @default(false)
+  createdBy      String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  lead           Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  notifications  SiteVisitNotification[]
+
+  @@index([leadId, scheduledAt])
+  @@index([status, scheduledAt])
+  @@index([remindersOff, scheduledAt])
+  @@index([companyId])
+}
+
+/// *
+///  * One notification, once.
+///  * Every message the visit sends gets a row, claimed before it is sent. The
+///  * unique key is what makes a repeated sweep, a retried request or a second
+///  * server harmless: the second attempt to announce the same event to the same
+///  * person on the same channel cannot create a row, so it cannot send.
+///  * It doubles as the history — who was told what, when, and whether it worked.
+model SiteVisitNotification {
+  companyId      String
+  id             String    @id @default(uuid())
+  siteVisitId    String
+  event          String
+  audience       String
+  channel        String
+  recipientId    String?
+  recipientEmail String?
+  recipientName  String?
+  /// *
+  ///    * Whichever of the two identifies them, normalised — a user id, or a
+  ///    * lowercased address. It is a stored column rather than a derived one
+  ///    * because the unique index below is built on it, and an index cannot be
+  ///    * built on "whichever field happens to be set".
+  recipientKey   String
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  error          String?
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  siteVisit      SiteVisit @relation(fields: [siteVisitId], references: [id], onDelete: Cascade)
+
+  @@unique([siteVisitId, event, audience, channel, recipientKey])
+  @@index([status, attempts])
+  @@index([companyId])
+}
+
+/// *
+///  * Staff masters: Designation, Branch, Location.
+///  * These three were free text on the user record, so the same role arrived as
+///  * "Sales Executive", "sales exec" and "Sr. Sales Executive" and nothing could
+///  * be grouped or reported on. They are lists now, like every other master in
+///  * this schema, and the user record still stores the name — the same way a lead
+///  * stores its status name rather than a status id, so nothing that already
+///  * reads `user.designation` has to change.
+///  * `name` is unique on each: the point of a master is that one thing has one
+///  * spelling.
+model Designation {
+  companyId String
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Branch {
+  companyId String
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Location {
+  companyId String
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+/// *
+///  * What one person may do on one page.
+///  * Assigned per user, not per role. The previous attempt keyed permissions to a
+///  * role and then layered per-user exceptions on top, which meant two concepts
+///  * to reason about and a rule that changed under people when their role moved.
+///  * This is one row per user per page, holding the five flags directly — what an
+///  * administrator sees on screen is exactly what is stored.
+///  * A user with NO rows is unrestricted. That is deliberate: the permission
+///  * system is being added to an application that has run without one, so silence
+///  * has to mean "as before" rather than "denied" — otherwise switching it on
+///  * locks every existing user out of everything at once. Access is removed by
+///  * saving a row with flags off, which is a visible, auditable act.
+model UserPermission {
+  companyId String
+  id        String   @id @default(uuid())
+  userId    String
+  /// Matches a page id from PAGES in backend/utils/pages.js.
+  page      String
+  view      Boolean  @default(false)
+  create    Boolean  @default(false)
+  edit      Boolean  @default(false)
+  delete    Boolean  @default(false)
+  export    Boolean  @default(false)
+  grantedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, page])
+  @@index([userId])
+  @@index([companyId])
+}
+
+/// *
+///  * How the reminder engine behaves. One row, like every other settings table.
+///  *
+///  * Every timing is a column rather than a constant so an administrator changes
+///  * it on the settings screen instead of waiting for a deploy. The defaults are
+///  * the ones asked for: start three hours out, repeat every thirty minutes.
+model ReminderSetting {
+  companyId            String
+  id                   String   @id @default(uuid())
+  enabled              Boolean  @default(true)
+  /// How long before the due time the first reminder goes out.
+  leadMinutes          Int      @default(180)
+  /// How often to repeat after that, up to the due time.
+  repeatMinutes        Int      @default(30)
+  /// A cap per activity, so a long window cannot become a stream. 0 = no cap.
+  maxReminders         Int      @default(0)
+  /// Keep reminding after the due time has passed.
+  overdueEnabled       Boolean  @default(true)
+  overdueRepeatMinutes Int      @default(60)
+  /// How long past due before the owner's manager is told as well. 0 = never.
+  escalateAfterMinutes Int      @default(120)
+  /// Which channels a reminder uses. The bell is the one that always works.
+  channelInApp         Boolean  @default(true)
+  channelPush          Boolean  @default(true)
+  channelEmail         Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+/// *
+///  * One row per reminder actually sent.
+///  *
+///  * This is the duplicate guard, and it works the way SiteVisitNotification
+///  * already does on this codebase: the unique index IS the record, so a reminder
+///  * that has been sent cannot be claimed a second time however often the sweep
+///  * runs or however many processes run it. There is no "reminded" flag on the
+///  * activities themselves — nothing to migrate, and nothing to go stale.
+///  *
+///  * `dueAtKey` is part of the key on purpose. Rescheduling an activity changes
+///  * its due time, which changes the key, which means the moved activity gets a
+///  * fresh set of reminders while the old ones can never fire again. That is
+///  * "cancel the old, create the new" without any cancellation code.
+model ReminderLog {
+  companyId    String
+  id           String   @id @default(uuid())
+  /// Which kind of activity: lead-followup, task, site-visit, and so on.
+  activityType String
+  /// The activity's own id, so a notification can link straight back to it.
+  activityId   String
+  /// The due time this reminder was for, to the minute. See the note above.
+  dueAtKey     String
+  /// Which reminder in the series: "T-180", "T-30", "due", "overdue-60".
+  slot         String
+  /// The recipient, and why they were told.
+  recipientId  String
+  /// owner | manager | admin
+  audience     String
+  /// bell | push | email
+  channel      String
+  sentAt       DateTime @default(now())
+
+  @@unique([activityType, activityId, dueAtKey, slot, recipientId, channel])
+  @@index([activityType, activityId])
+  @@index([sentAt])
+  @@index([companyId])
+}
+
+/// A customer of the platform. Every other table (bar PasswordResetToken,
+/// which hangs off a user) carries companyId, and prismaClient.js scopes every
+/// query to the company of whoever is asking — see utils/tenant.js.
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  status    String   @default("Active") // Active | Suspended
+  plan      String?
+  /// Identifies the company to the public lead endpoints and webhooks.
+  publicKey String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * Platform features
+ * ---------------------------------------------------------------------------
+ */
+
+/// Every email the CRM sends goes through here (utils/mailer.js): tried at
+/// once, and on failure retried with backoff by the background sweep, so a
+/// mail server that is down for a minute no longer loses the message.
+model EmailOutbox {
+  companyId     String
+  id            String    @id @default(uuid())
+  to            String
+  cc            String?
+  bcc           String?
+  subject       String
+  html          String
+  category      String?
+  status        String    @default("queued") // queued | sent | failed
+  attempts      Int       @default(0)
+  lastError     String?
+  nextAttemptAt DateTime  @default(now())
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([status, nextAttemptAt])
+}
+
+/// A unit sold: ties the unit, the opportunity and the buyer together, and
+/// carries the agreed price the payment plan is worked out from.
+model Booking {
+  companyId        String
+  id               String             @id @default(uuid())
+  projectId        String
+  unitId           String
+  opportunityId    String?
+  leadId           String?
+  customerId       String?
+  buyerName        String
+  buyerMobile      String?
+  buyerEmail       String?
+  bookingDate      DateTime           @default(now())
+  agreementValue   Decimal
+  bookingAmount    Decimal?
+  status           String             @default("Booked") // Booked | Agreement | Registered | Cancelled
+  channelPartnerId String?
+  commissionPct    Decimal?
+  notes            String?
+  createdBy        String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  milestones       PaymentMilestone[]
+  payments         Payment[]
+  commission       Commission?
+
+  @@index([companyId])
+  @@index([unitId])
+  @@index([opportunityId])
+}
+
+/// One step of a booking's payment plan, e.g. "On booking 10%", "Plinth 20%".
+model PaymentMilestone {
+  companyId String
+  id        String    @id @default(uuid())
+  bookingId String
+  name      String
+  percent   Decimal?
+  amount    Decimal
+  dueDate   DateTime?
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([bookingId])
+  @@index([dueDate])
+}
+
+/// Money received against a booking.
+model Payment {
+  companyId  String
+  id         String   @id @default(uuid())
+  bookingId  String
+  amount     Decimal
+  paidOn     DateTime @default(now())
+  mode       String? // Cheque | NEFT | UPI | Cash | Loan
+  reference  String?
+  receiptNo  String?
+  notes      String?
+  recordedBy String?
+  createdAt  DateTime @default(now())
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([bookingId])
+}
+
+/// What a channel partner has earned on a booking they brought in.
+model Commission {
+  companyId        String
+  id               String    @id @default(uuid())
+  bookingId        String    @unique
+  channelPartnerId String
+  percent          Decimal
+  amount           Decimal
+  status           String    @default("Pending") // Pending | Approved | Paid
+  paidOn           DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([channelPartnerId])
+}
+
+/// Per-company connection to the WhatsApp Business Cloud API (Meta).
+model WhatsAppSetting {
+  companyId     String   @unique
+  id            String   @id @default(uuid())
+  enabled       Boolean  @default(false)
+  phoneNumberId String   @default("")
+  businessId    String   @default("")
+  accessToken   String   @default("")
+  appSecret     String   @default("")
+  verifyToken   String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([phoneNumberId])
+}
+
+/// A WhatsApp message sent to or received from a lead.
+model WhatsAppMessage {
+  companyId   String
+  id          String   @id @default(uuid())
+  leadId      String?
+  direction   String // in | out
+  phone       String
+  body        String?
+  template    String?
+  waMessageId String?  @unique
+  status      String   @default("sent") // sent | delivered | read | failed | received
+  error       String?
+  sentBy      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([leadId, createdAt])
+  @@index([phone])
+}
+
+/// An automatic lead source: Facebook/Instagram Lead Ads (by page) or a
+/// Google Ads lead form (by webhook key).
+model LeadIntegration {
+  companyId       String
+  id              String    @id @default(uuid())
+  provider        String // facebook | google
+  name            String
+  enabled         Boolean   @default(true)
+  pageId          String?   @unique
+  pageAccessToken String?
+  webhookKey      String?   @unique
+  project         String?
+  primarySource   String?
+  leadsReceived   Int       @default(0)
+  lastLeadAt      DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+}
+
+/// Per-company Exotel account for click-to-call.
+model ExotelSetting {
+  companyId  String   @unique
+  id         String   @id @default(uuid())
+  enabled    Boolean  @default(false)
+  accountSid String   @default("")
+  apiKey     String   @default("")
+  apiToken   String   @default("")
+  subdomain  String   @default("api.exotel.com")
+  callerId   String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/// A phone call placed through Exotel.
+model CallLog {
+  companyId    String
+  id           String    @id @default(uuid())
+  leadId       String?
+  userId       String?
+  direction    String    @default("outbound")
+  fromNumber   String?
+  toNumber     String
+  callSid      String?   @unique
+  status       String    @default("initiated")
+  durationSec  Int?
+  recordingUrl String?
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  notes        String?
+
+  @@index([companyId])
+  @@index([leadId, startedAt])
+}
+
+/// A report emailed on a schedule, e.g. the weekly pipeline to managers.
+model ScheduledReport {
+  companyId  String
+  id         String    @id @default(uuid())
+  name       String
+  type       String    @default("pipeline") // pipeline | collections | activity
+  frequency  String    @default("weekly") // daily | weekly | monthly
+  recipients String[]
+  enabled    Boolean   @default(true)
+  lastSentAt DateTime?
+  nextRunAt  DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([enabled, nextRunAt])
 }

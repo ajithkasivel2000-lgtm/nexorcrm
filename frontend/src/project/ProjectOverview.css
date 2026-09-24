@@ -1,0 +1,168 @@
+/* ===========================================================================
+   The project overview: counted figures, progress and what is still missing.
+   Token-only, so it follows light and dark with the rest of the CRM.
+   =========================================================================== */
+
+.nx-po {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+}
+
+/* ---- headline figures ------------------------------------------------------ */
+.nx-po__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--nx-space-3);
+}
+
+.nx-po__stat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nx-space-3);
+  min-width: 0;
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+}
+
+/* Tone on the edge, not the fill: four filled cards in a row compete with each
+   other and with everything below them. */
+.nx-po__stat.is-danger  { border-left: 3px solid var(--nx-danger); }
+.nx-po__stat.is-warning { border-left: 3px solid var(--nx-warning); }
+.nx-po__stat.is-neutral { border-left: 3px solid var(--nx-border-strong); }
+
+.nx-po__stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-po__stat-text { min-width: 0; }
+
+.nx-po__stat-label {
+  margin: 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-po__stat-value {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  overflow-wrap: anywhere;
+}
+
+.nx-po__stat-sub {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+/* ---- counted totals --------------------------------------------------------- */
+.nx-po__counts {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+}
+
+.nx-po__counts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.nx-po__counts strong {
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  line-height: 1.1;
+}
+
+.nx-po__counts span {
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-po__counts em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--nx-warning);
+}
+
+.nx-po__counts > div.is-empty strong { color: var(--nx-text-muted); }
+
+/* ---- what is missing --------------------------------------------------------- */
+.nx-po__gaps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px var(--nx-space-4);
+  margin: 0;
+  padding: var(--nx-space-3);
+  list-style: none;
+  border: 1px solid var(--nx-warning);
+  border-radius: var(--nx-radius);
+  background: var(--nx-warning-bg);
+}
+
+.nx-po__gaps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-warning);
+}
+
+.nx-po__clear {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* ---- loading ------------------------------------------------------------------ */
+.nx-po__stat.is-skeleton { height: 64px; }
+
+.nx-po .is-skeleton {
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: linear-gradient(90deg, var(--nx-bg-surface), var(--nx-bg-hover), var(--nx-bg-surface));
+  background-size: 200% 100%;
+  animation: nx-po-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes nx-po-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-po .is-skeleton { animation: none; }
+}
+
+/* ---- narrow --------------------------------------------------------------------- */
+@media (max-width: 1100px) {
+  .nx-po__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nx-po__counts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .nx-po__stats,
+  .nx-po__gaps { grid-template-columns: minmax(0, 1fr); }
+  .nx-po__counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

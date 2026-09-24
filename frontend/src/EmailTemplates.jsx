@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Home, Plus, Search, Download, MoreVertical, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Home, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import './EmailTemplates.css';
+import submitOnEnter from './utils/submitOnEnter';
+import { DataTable, Pill, RowActions, Switch } from './ui';
+import { isSystemTemplate } from './utils/emailTemplates';
+
 
 const EmailTemplates = () => {
   const [templates, setTemplates] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [selectedTemplates, setSelectedTemplates] = useState([]);
 
   const [editId, setEditId] = useState(null);
 
@@ -55,6 +55,47 @@ const EmailTemplates = () => {
     }
   };
 
+  const handleDeleteSelected = async (ids, clearSelection) => {
+    // The ones the app sends by key are refused by the API anyway. Saying so
+    // before asking beats a confirmation followed by a partial failure.
+    const chosen = templates.filter(t => ids.includes(t.id));
+    const locked = chosen.filter(t => isSystemTemplate(t.templateKey));
+    const deletable = chosen.filter(t => !isSystemTemplate(t.templateKey));
+
+    if (locked.length > 0) {
+      const names = locked.map(t => t.name || t.templateKey).join(', ');
+      if (deletable.length === 0) {
+        window.appAlert(
+          `${names} ${locked.length === 1 ? 'is' : 'are'} sent by the system and cannot be deleted. `
+          + 'Switch off the Active toggle instead to stop these emails.',
+        );
+        return;
+      }
+      const goOn = await window.appConfirm(
+        `${names} cannot be deleted — ${locked.length === 1 ? 'it is' : 'they are'} sent by the system.\n\n`
+        + `Delete the other ${deletable.length} template(s)?`,
+      );
+      if (!goOn) return;
+    } else if (!await window.appConfirm(`Delete ${deletable.length} selected template(s)?`)) {
+      return;
+    }
+
+    try {
+      const responses = await Promise.all(
+        deletable.map(t => fetch(`/api/settings/email-templates/${t.id}`, { method: 'DELETE' }))
+      );
+      clearSelection();
+      fetchTemplates();
+      const failed = responses.filter(r => !r.ok).length;
+      if (failed > 0) {
+        window.appAlert(`${failed} of ${deletable.length} template(s) could not be deleted.`);
+      }
+    } catch (error) {
+      console.error('Error deleting email templates:', error);
+      window.appAlert('Could not reach the server.');
+    }
+  };
+
   const handleEdit = (template) => {
     setFormData({
       name: template.name || '',
@@ -70,7 +111,7 @@ const EmailTemplates = () => {
   const handleSave = async () => {
     try {
       if (!formData.name) {
-        alert("Template Name is required");
+        window.appAlert("Template Name is required");
         return;
       }
 
@@ -110,95 +151,69 @@ const EmailTemplates = () => {
         });
       } else {
         const data = await response.json();
-        alert('Error saving template: ' + (data.error || data.message));
+        window.appAlert('Error saving template: ' + (data.error || data.message));
       }
     } catch (error) {
       console.error('Error saving template:', error);
     }
   };
 
-  const filteredTemplates = templates.filter(t =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.templateKey.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedTemplates(filteredTemplates.map(t => t.id));
-    } else {
-      setSelectedTemplates([]);
-    }
-  };
-
-  const handleSelectOne = (id) => {
-    if (selectedTemplates.includes(id)) {
-      setSelectedTemplates(selectedTemplates.filter(tId => tId !== id));
-    } else {
-      setSelectedTemplates([...selectedTemplates, id]);
-    }
-  };
-
-  const handleDeleteSelected = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedTemplates.length} templates?`)) return;
-
-    try {
-      await Promise.all(selectedTemplates.map(id =>
-        fetch(`/api/settings/email-templates/${id}`, { method: 'DELETE' })
-      ));
-      setSelectedTemplates([]);
-      fetchTemplates();
-    } catch (error) {
-      console.error('Error deleting templates:', error);
-    }
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF('landscape');
-    doc.text("Email Templates", 14, 15);
-    const tableColumn = ["#", "Name", "Subject", "Template Key", "Type", "Status", "Updated"];
-    const tableRows = [];
-    filteredTemplates.forEach((t, i) => {
-      tableRows.push([
-        (i + 1).toString(),
-        t.name || "-",
-        t.subject || "-",
-        t.templateKey || "-",
-        t.type || "-",
-        t.status ? "Active" : "Inactive",
-        new Date(t.updatedAt).toLocaleString()
-      ]);
-    });
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20,
-    });
-    doc.save(`email_templates_${Date.now()}.pdf`);
-  };
-
-  const exportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID,Name,Subject,Template Key,Type,Status,Updated\n";
-    filteredTemplates.forEach((t, i) => {
-      let row = [
-        i + 1,
-        t.name || "-",
-        t.subject || "-",
-        t.templateKey || "-",
-        t.type || "-",
-        t.status ? "Active" : "Inactive",
-        new Date(t.updatedAt).toLocaleString()
-      ];
-      csvContent += row.map(v => `"${v}"`).join(",") + "\n";
-    });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `email_templates_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const templateColumns = [
+    {
+      key: 'name',
+      label: 'Template Name / Subject',
+      render: t => (
+        <div>
+          <div className="nx-page__strong">{t.name || '—'}</div>
+          {t.subject && <div className="nx-page__muted nx-et__subject">{t.subject}</div>}
+        </div>
+      ),
+      exportValue: t => t.name || '',
+    },
+    {
+      key: 'templateKey',
+      label: 'Template Key',
+      width: '210px',
+      render: t => <span className="nx-page__id">{t.templateKey || '—'}</span>,
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      width: '130px',
+      // The stored type says "Custom" for all of them, including the three the
+      // app sends by key. What matters here is whether the template can be
+      // removed, so that is what the column shows.
+      render: (t) => (isSystemTemplate(t.templateKey)
+        ? (
+          <span title="Sent by the system — cannot be deleted">
+            <Pill tone="neutral">System</Pill>
+          </span>
+        )
+        : <Pill tone="purple">{t.type || 'Custom'}</Pill>),
+      sortValue: t => (isSystemTemplate(t.templateKey) ? 'System' : (t.type || 'Custom')),
+      exportValue: t => (isSystemTemplate(t.templateKey) ? 'System' : (t.type || 'Custom')),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '150px',
+      // The switch is the control, so stop the click reaching the row.
+      render: t => (
+        <span onClick={e => e.stopPropagation()}>
+          <Switch
+            checked={!!t.status}
+            onChange={() => handleToggleStatus(t.id, t.status)}
+            label={t.status ? 'Active' : 'Inactive'}
+          />
+        </span>
+      ),
+      sortValue: t => (t.status ? 1 : 0),
+      exportValue: t => (t.status ? 'Active' : 'Inactive'),
+    },
+    // Created and Updated are left to DataTable, which appends them in that
+    // order and formats them the way every other table does. Defining Updated
+    // here put it *before* the appended Created column, which read backwards.
+  ];
 
   return (
     <div className="email-templates-page">
@@ -214,11 +229,9 @@ const EmailTemplates = () => {
             <span>Email Templates</span>
           </div>
         </div>
-        {false && (
-          <button className="et-btn-add" onClick={() => setShowForm(true)}>
+        <button className="et-btn-add" onClick={() => setShowForm(true)}>
             <Plus size={16} /> Add Template
           </button>
-        )}
       </div>
 
       {/* Create Template Form */}
@@ -241,6 +254,7 @@ const EmailTemplates = () => {
                 placeholder="e.g. Welcome Email"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
+                onKeyDown={submitOnEnter(handleSave)}
               />
             </div>
           </div>
@@ -254,6 +268,7 @@ const EmailTemplates = () => {
                 placeholder="Subject line of the email"
                 value={formData.subject}
                 onChange={e => setFormData({ ...formData, subject: e.target.value })}
+                onKeyDown={submitOnEnter(handleSave)}
               />
             </div>
           </div>
@@ -298,142 +313,25 @@ const EmailTemplates = () => {
         </div>
       )}
 
-      {/* Table Card */}
-      <div className="et-table-card">
-        {/* Toolbar */}
-        <div className="et-toolbar">
-          <div className="et-search-wrapper">
-            <Search className="search-icon" size={14} />
-            <input
-              type="text"
-              className="et-search-input"
-              placeholder="Search template..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {selectedTemplates.length > 0 && (
-              <button
-                onClick={handleDeleteSelected}
-                style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            )}
-            <button className="et-btn-export" style={{ backgroundColor: '#ffe6cc', color: '#a0522d', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }} onClick={exportCSV}>
-              <Download size={14} /> Export CSV
-            </button>
-            <button className="et-btn-export" style={{ backgroundColor: '#ffebee', color: '#b71c1c', display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }} onClick={exportPDF}>
-              <Download size={14} /> Export PDF
-            </button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="et-table-wrapper">
-          <table className="et-table">
-            <thead>
-              <tr>
-                <th style={{ width: '40px', paddingLeft: '24px', display: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={filteredTemplates.length > 0 && selectedTemplates.length === filteredTemplates.length}
-                    onChange={handleSelectAll}
-                    style={{ cursor: 'pointer' }}
-                  />
-                </th>
-                <th style={{ width: '40px' }}>#</th>
-                <th>TEMPLATE NAME / SUBJECT</th>
-                <th>TEMPLATE KEY</th>
-                <th>TYPE</th>
-                <th>STATUS</th>
-                <th>UPDATED</th>
-                <th style={{ width: '60px', textAlign: 'center' }}>ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTemplates.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: '#a0aec0' }}>
-                    No templates found.
-                  </td>
-                </tr>
-              ) : (
-                filteredTemplates.map((template, index) => (
-                  <tr key={template.id}>
-                    <td style={{ paddingLeft: '24px', display: 'none' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedTemplates.includes(template.id)}
-                        onChange={() => handleSelectOne(template.id)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                    </td>
-                    <td>{index + 1}</td>
-                    <td>
-                      <span className="et-td-name">{template.name}</span>
-                      <span className="et-td-subject">{template.subject}</span>
-                    </td>
-                    <td><span className="et-td-key">{template.templateKey}</span></td>
-                    <td>
-                      <span className={`et-badge ${template.type === 'Custom' ? 'custom' : 'default'}`}>
-                        {template.type}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="et-toggle-wrapper">
-                        <label className="et-toggle-switch">
-                          <input
-                            type="checkbox"
-                            checked={template.status}
-                            onChange={() => handleToggleStatus(template.id, template.status)}
-                          />
-                          <span className="et-toggle-slider"></span>
-                        </label>
-                        <span className={`et-toggle-label ${!template.status ? 'inactive' : ''}`}>
-                          {template.status ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ fontSize: '11px', color: '#718096' }}>
-                      {new Date(template.updatedAt).toLocaleString('en-US', {
-                        month: 'numeric', day: 'numeric', year: 'numeric',
-                        hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true
-                      })}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button className="et-btn-action" onClick={() => handleEdit(template)}>
-                        <MoreVertical size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer Pagination */}
-        <div className="et-footer">
-          <div>Showing 1 to {filteredTemplates.length} of {filteredTemplates.length} entries</div>
-          <div className="et-pagination">
-            <button className="et-page-btn"><ChevronLeft size={14} /></button>
-            <button className="et-page-btn active">1</button>
-            <button className="et-page-btn"><ChevronRight size={14} /></button>
-          </div>
-          <div className="et-show-entries">
-            Show
-            <select className="et-select-entries" defaultValue="25">
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-            entries
-          </div>
-        </div>
-      </div>
+      <DataTable
+        columns={templateColumns}
+        rows={templates}
+        selectable
+        exportName="email-templates"
+        filters={['type','status']}
+        tabsFrom="type"
+        persistKey="email-templates"
+        searchPlaceholder="Search template name or key..."
+        emptyMessage="No templates yet"
+        emptyHint="Create a template to start sending branded email."
+        onDeleteSelected={handleDeleteSelected}
+        actions={template => (
+          <RowActions
+            label={template.name || 'template'}
+            onEdit={() => handleEdit(template)}
+          />
+        )}
+      />
     </div>
   );
 };

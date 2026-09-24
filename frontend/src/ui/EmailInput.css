@@ -1,0 +1,48 @@
+/* One email field, styled from tokens like the rest of the design system. */
+
+.nx-email { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+
+.nx-email__control {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  height: 36px;
+  padding: 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  transition: border-color var(--nx-duration-fast) var(--nx-ease),
+              box-shadow var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-email__control:focus-within {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-email.has-error .nx-email__control { border-color: var(--nx-danger); }
+.nx-email.has-error .nx-email__control:focus-within {
+  box-shadow: 0 0 0 3px var(--nx-danger-bg);
+}
+
+.nx-email__icon { flex: none; color: var(--nx-text-muted); }
+.nx-email.has-error .nx-email__icon { color: var(--nx-danger); }
+
+.nx-email__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+.nx-email__input::placeholder { color: var(--nx-text-muted); opacity: 1; }
+.nx-email__input:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.nx-email__error {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-danger);
+}

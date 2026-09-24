@@ -1,24 +1,40 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Backend for PropCRM",
+  "description": "Backend for NexorCRM",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node index.js",
     "dev": "nodemon index.js",
-    "build": "prisma generate && npx esbuild index.js --bundle --platform=node --packages=external --outdir=dist"
+    "build": "prisma generate",
+    "seed:admin": "node seedAdminUser.js",
+    "setup:google": "node scripts/setProvider.js google",
+    "setup:microsoft": "node scripts/setProvider.js microsoft",
+    "seed:defaults": "node scripts/seedDefaults.js",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "test": "node --test \"tests/unit/*.test.js\" \"tests/integration/*.test.js\"",
+    "test:e2e": "node tests/e2e/run.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@aws-sdk/client-s3": "^3.1139.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.9.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
+    "jose": "^6.2.12",
     "nodemailer": "^9.0.3",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "socket.io": "^4.8.3",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14",

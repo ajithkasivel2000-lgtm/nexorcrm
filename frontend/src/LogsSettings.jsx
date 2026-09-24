@@ -1,129 +1,120 @@
-import { useState, useEffect } from 'react';
-import { Home } from 'lucide-react';
-import './LogsSettings.css';
-import { Link } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { Trash2 } from 'lucide-react';
+import { useListData } from './components/Leads';
+import { Button, DataTable, Page, Pill } from './ui';
+
+const formatDate = (isoString) => {
+  if (!isoString) return '—';
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return '—';
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+  return `${dateStr}, ${timeStr}`;
+};
+
+// LOGIN / LOGOFF are the two events the backend records today; anything else
+// falls back to neutral rather than being mis-coloured.
+const toneForEvent = (event) => {
+  const e = String(event || '').toUpperCase();
+  if (e === 'LOGIN') return 'success';
+  if (e === 'LOGOFF' || e === 'LOGOUT') return 'neutral';
+  return 'info';
+};
 
 const LogsSettings = () => {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchLogs = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/logs');
-      if (response.ok) {
-        const data = await response.json();
-        setLogs(data);
-      }
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLogs();
+  const fetchLogsRequest = useCallback(async () => {
+    const response = await fetch('/api/logs');
+    if (!response.ok) throw new Error(`Failed to fetch logs (${response.status})`);
+    return response.json();
   }, []);
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm('Are you sure you want to delete all logs?')) return;
+  const { rows: logs, loading, refresh } = useListData(fetchLogsRequest);
+
+  const purge = async (url, confirmText, failText) => {
+    if (!await window.appConfirm(confirmText)) return;
     try {
-      const response = await fetch('/api/logs/all', { method: 'DELETE' });
-      if (response.ok) {
-        fetchLogs();
+      const response = await fetch(url, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        window.appAlert(data.message || failText);
+        return;
       }
+      refresh();
     } catch (error) {
-      console.error('Error deleting all logs:', error);
+      console.error(failText, error);
+      window.appAlert('Could not reach the server.');
     }
   };
 
-  const handleDeleteOld = async () => {
-    if (!window.confirm('Are you sure you want to delete logs older than 30 days?')) return;
-    try {
-      const response = await fetch('/api/logs/old', { method: 'DELETE' });
-      if (response.ok) {
-        fetchLogs();
-      }
-    } catch (error) {
-      console.error('Error deleting old logs:', error);
-    }
-  };
-
-  const formatDate = (isoString) => {
-    const d = new Date(isoString);
-    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
-    return `${dateStr}, ${timeStr}`;
-  };
+  const columns = useMemo(() => ([
+    {
+      key: 'username',
+      label: 'Username',
+      width: '200px',
+      render: l => <span className="nx-page__strong">{l.username || '—'}</span>,
+    },
+    {
+      key: 'event',
+      label: 'Event',
+      width: '150px',
+      render: l => (l.event ? <Pill tone={toneForEvent(l.event)} dot>{l.event}</Pill> : '—'),
+    },
+    {
+      key: 'createdAt',
+      label: 'Date / Time',
+      width: '230px',
+      render: l => formatDate(l.createdAt),
+      exportValue: l => formatDate(l.createdAt),
+    },
+    {
+      key: 'ipAddress',
+      label: 'IP Address',
+      render: l => <span className="nx-page__id">{l.ipAddress || '—'}</span>,
+    },
+  ]), []);
 
   return (
-    <div className="logs-settings-page">
-      <div className="logs-header-top">
-        <div className="header-left">
-          <h2>Log</h2>
-          <div className="page-breadcrumb">
-            <Link to="/"><Home size={14} /></Link>
-            <span className="slash">/</span>
-            <span>Logs</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="logs-content-wrapper">
-        <div className="logs-table-column">
-          <div className="logs-card">
-            <div className="logs-card-header">
-              <h3>Logs</h3>
-            </div>
-            
-            <div className="table-responsive">
-              <table className="logs-table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Event</th>
-                    <th>Date / Time</th>
-                    <th>IP Address</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>Loading logs...</td>
-                    </tr>
-                  ) : logs.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>No logs found.</td>
-                    </tr>
-                  ) : (
-                    logs.map(log => (
-                      <tr key={log.id}>
-                        <td>{log.username}</td>
-                        <td>{log.event}</td>
-                        <td>{formatDate(log.createdAt)}</td>
-                        <td>{log.ipAddress}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="logs-actions-column">
-          <div className="logs-actions">
-            <button className="btn-action-link" onClick={handleDeleteAll}>
-              Delete All Logs
-            </button>
-            <button className="btn-action-link" onClick={handleDeleteOld}>
-              Delete Logs (&gt; 30 days)
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Page
+      title="Logs"
+      subtitle="Sign-in activity recorded across the system."
+      actions={
+        <>
+          <Button
+            icon={Trash2}
+            onClick={() => purge(
+              '/api/logs/old',
+              'Are you sure you want to delete logs older than 30 days?',
+              'Failed to delete old logs.'
+            )}
+          >
+            Delete logs older than 30 days
+          </Button>
+          <Button
+            variant="danger"
+            icon={Trash2}
+            onClick={() => purge(
+              '/api/logs/all',
+              'Are you sure you want to delete all logs? This cannot be undone.',
+              'Failed to delete all logs.'
+            )}
+          >
+            Delete all logs
+          </Button>
+        </>
+      }
+    >
+      <DataTable
+        columns={columns}
+        rows={logs}
+        loading={loading}
+        exportName="system-logs"
+        filters={['event', 'username']}
+        tabsFrom="event"
+        searchPlaceholder="Search username, event or IP..."
+        emptyMessage="No logs found"
+        emptyHint="Sign-in and sign-out events will appear here."
+      />
+    </Page>
   );
 };
 

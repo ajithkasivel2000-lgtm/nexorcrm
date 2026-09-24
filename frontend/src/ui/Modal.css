@@ -1,0 +1,142 @@
+/* Raised above the field menus (--nx-z-popover), for a dialog opened FROM one
+   of them — the delete confirm inside a DynamicDropdown is the case that broke.
+   Set by Modal via layer="confirm". */
+.nx-modal-overlay--confirm {
+  z-index: var(--nx-z-confirm);
+}
+
+.nx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nx-z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--nx-space-5);
+  background: var(--nx-bg-overlay);
+  backdrop-filter: blur(3px);
+  animation: nx-overlay-in var(--nx-duration) var(--nx-ease);
+  overflow-y: auto;
+}
+
+.nx-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100vh - var(--nx-space-10));
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-xl);
+  box-shadow: var(--nx-overlay-ring);
+  animation: nx-modal-in var(--nx-duration) var(--nx-ease);
+  outline: none;
+}
+
+.nx-modal--sm   { max-width: 420px; }
+.nx-modal--md   { max-width: 560px; }
+.nx-modal--lg   { max-width: 760px; }
+.nx-modal--xl   { max-width: 1000px; }
+.nx-modal--full { max-width: 1280px; }
+
+/* ---- Header -------------------------------------------------------------- */
+/* Sticky so the title and the close control stay reachable once a long
+   form scrolls; opaque for the same reason. */
+.nx-modal__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nx-space-4);
+  padding: var(--nx-space-5) var(--nx-space-6);
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+  border-radius: var(--nx-radius-xl) var(--nx-radius-xl) 0 0;
+  flex: none;
+}
+
+.nx-modal__heading { min-width: 0; }
+
+.nx-modal__title {
+  margin: 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  line-height: var(--nx-leading-tight);
+  color: var(--nx-text);
+}
+
+.nx-modal__description {
+  margin: var(--nx-space-1) 0 0;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-secondary);
+  line-height: var(--nx-leading);
+}
+
+.nx-modal__close { flex: none; margin: -4px -6px 0 0; }
+
+/* ---- Body ---------------------------------------------------------------- */
+.nx-modal__body {
+  padding: var(--nx-space-6);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* ---- Footer -------------------------------------------------------------- */
+.nx-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-4) var(--nx-space-6);
+  border-top: var(--nx-divider);
+  background: transparent;
+  border-radius: 0 0 var(--nx-radius-xl) var(--nx-radius-xl);
+  flex: none;
+}
+
+@keyframes nx-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes nx-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Phone --------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .nx-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .nx-modal {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--nx-radius-xl) var(--nx-radius-xl) 0 0;
+    animation: nx-sheet-in var(--nx-duration) var(--nx-ease);
+  }
+  .nx-modal__header,
+  .nx-modal__body { padding-left: var(--nx-space-4); padding-right: var(--nx-space-4); }
+  .nx-modal__footer {
+    padding-left: var(--nx-space-4);
+    padding-right: var(--nx-space-4);
+    border-radius: 0;
+  }
+  /* Stack actions so they stay tappable on a narrow screen. */
+  .nx-modal__footer .nx-btn { flex: 1 1 auto; }
+}
+
+@keyframes nx-sheet-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-modal-overlay,
+  .nx-modal { animation: none; }
+}

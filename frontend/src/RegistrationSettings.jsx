@@ -1,11 +1,32 @@
 import { useState, useEffect } from 'react';
-import { Home } from 'lucide-react';
+import { HelpCircle, UserPlus } from 'lucide-react';
 import './RegistrationSettings.css';
-import { Link } from 'react-router-dom';
+import {
+  Button, RecordCard, RecordColumn, RecordField, RecordFields, RecordGrid,
+  RecordPage, RecordRadioGroup, RecordRange,
+} from './ui';
+
+const ACTIVATION_OPTIONS = [
+  'Disable Registration',
+  'No Activation (immediate access)',
+  'User Activation (e-mail verification)',
+  'Admin Activation',
+];
+
+const YES_NO = [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }];
+
+const HELP = [
+  ['Account Activation', 'User Activation requires the new user to activate their account by clicking a link sent to their e-mail address. Admin Activation requires an admin to activate the account using the control panel or by a link sent to their e-mail address.'],
+  ['Limit Username Characters', 'Limit the characters allowed in new username registrations.'],
+  ['Username Length', 'Minimum and maximum username length.'],
+  ['Password Length', 'Minimum and maximum password length.'],
+  ['Send Welcome E-mail', 'Whether or not to send a welcome e-mail to all new users upon registration.'],
+  ['Enable Captcha', 'Do I want this?.'],
+  ['Username Lowercase', 'When set to yes, all registered usernames are made lowercase.'],
+];
 
 const RegistrationSettings = () => {
   const [settings, setSettings] = useState(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const characterOptions = [
     'Any Chars',
@@ -32,7 +53,7 @@ const RegistrationSettings = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type } = e.target;
     
     let parsedValue = value;
     if (type === 'number') {
@@ -47,14 +68,6 @@ const RegistrationSettings = () => {
     }));
   };
 
-  const handleDropdownSelect = (option) => {
-    setSettings(prev => ({
-      ...prev,
-      limitUsernameCharacters: option
-    }));
-    setIsDropdownOpen(false);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -64,9 +77,9 @@ const RegistrationSettings = () => {
         body: JSON.stringify(settings)
       });
       if (response.ok) {
-        alert('Settings updated successfully!');
+        window.appAlert('Settings updated successfully!');
       } else {
-        alert('Failed to update settings.');
+        window.appAlert('Failed to update settings.');
       }
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -75,166 +88,94 @@ const RegistrationSettings = () => {
 
   if (!settings) return <div>Loading...</div>;
 
+  const set = (name) => (value) => setSettings((prev) => ({ ...prev, [name]: value }));
+
   return (
-    <div className="registration-settings-page">
-      <div className="reg-header-top">
-        <div className="header-left">
-          <h2>Registration Settings - Change The Settings Regarding Registration To The Site.</h2>
-          <div className="page-breadcrumb">
-            <Link to="/"><Home size={14} /></Link>
-            <span className="slash">/</span>
-            <span>Registration Settings</span>
-          </div>
-        </div>
-      </div>
+    <RecordPage
+      crumbs={[{ label: 'Settings' }]}
+      title="Registration Settings"
+      backTo="/"
+      backLabel="Back to Dashboard"
+    >
+      <RecordGrid cols={3}>
+        <RecordColumn className="nx-rec__col--wide">
+          <RecordCard
+            icon={UserPlus}
+            title="Registration Settings - Change The Settings Regarding Registration To The Site."
+          >
+            <form onSubmit={handleSubmit}>
+              <RecordFields cols={1}>
+                <RecordRadioGroup
+                  label="Account Activation"
+                  name="accountActivation"
+                  options={ACTIVATION_OPTIONS}
+                  value={settings.accountActivation}
+                  onChange={handleInputChange}
+                />
+                <RecordField
+                  label="Limit Username Characters"
+                  options={characterOptions}
+                  value={settings.limitUsernameCharacters}
+                  onChange={set('limitUsernameCharacters')}
+                />
+                <RecordRange
+                  label="Username Length"
+                  required
+                  min={settings.usernameLengthMin}
+                  max={settings.usernameLengthMax}
+                  onMinChange={(e) => set('usernameLengthMin')(e.target.value)}
+                  onMaxChange={(e) => set('usernameLengthMax')(e.target.value)}
+                />
+                <RecordRange
+                  label="Password Length"
+                  required
+                  min={settings.passwordLengthMin}
+                  max={settings.passwordLengthMax}
+                  onMinChange={(e) => set('passwordLengthMin')(e.target.value)}
+                  onMaxChange={(e) => set('passwordLengthMax')(e.target.value)}
+                />
+                <RecordRadioGroup
+                  label="Send Welcome E-mail"
+                  name="sendWelcomeEmail"
+                  options={YES_NO}
+                  value={String(settings.sendWelcomeEmail)}
+                  onChange={handleInputChange}
+                />
+                <RecordRadioGroup
+                  label="Enable Captcha"
+                  name="enableCaptcha"
+                  options={YES_NO}
+                  value={String(settings.enableCaptcha)}
+                  onChange={handleInputChange}
+                />
+                <RecordRadioGroup
+                  label="Username Lowercase"
+                  name="usernameLowercase"
+                  options={YES_NO}
+                  value={String(settings.usernameLowercase)}
+                  onChange={handleInputChange}
+                />
+              </RecordFields>
 
-      <div className="reg-content-wrapper">
-        <div className="reg-form-column">
-          <div className="reg-card">
-            <div className="reg-card-header">
-              <h3>Registration Settings</h3>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="reg-form">
-              <div className="form-group-radio">
-                <label className="group-label">Account Activation</label>
-                <div className="radio-options">
-                  <label className="custom-radio">
-                    <input type="radio" name="accountActivation" value="Disable Registration" checked={settings.accountActivation === 'Disable Registration'} onChange={handleInputChange} />
-                    <span className="radio-mark"></span>
-                    Disable Registration
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="accountActivation" value="No Activation (immediate access)" checked={settings.accountActivation === 'No Activation (immediate access)'} onChange={handleInputChange} />
-                    <span className="radio-mark"></span>
-                    No Activation (immediate access)
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="accountActivation" value="User Activation (e-mail verification)" checked={settings.accountActivation === 'User Activation (e-mail verification)'} onChange={handleInputChange} />
-                    <span className="radio-mark"></span>
-                    User Activation (e-mail verification)
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="accountActivation" value="Admin Activation" checked={settings.accountActivation === 'Admin Activation'} onChange={handleInputChange} />
-                    <span className="radio-mark"></span>
-                    Admin Activation
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-group-dropdown">
-                <label className="group-label">Limit Username Characters</label>
-                <div className={`custom-select-wrapper ${isDropdownOpen ? 'open' : ''}`}>
-                  <div className="custom-select-trigger" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                    {settings.limitUsernameCharacters}
-                  </div>
-                  {isDropdownOpen && (
-                    <div className="custom-select-options">
-                      {characterOptions.map(option => (
-                        <div 
-                          key={option} 
-                          className={`custom-select-option ${settings.limitUsernameCharacters === option ? 'selected' : ''}`}
-                          onClick={() => handleDropdownSelect(option)}
-                        >
-                          {option}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-group-range">
-                <label className="group-label">Username Length <span>*</span></label>
-                <div className="range-inputs">
-                  <input type="number" name="usernameLengthMin" value={settings.usernameLengthMin} onChange={handleInputChange} required />
-                  <span className="to-text">to</span>
-                  <input type="number" name="usernameLengthMax" value={settings.usernameLengthMax} onChange={handleInputChange} required />
-                </div>
-              </div>
-
-              <div className="form-group-range">
-                <label className="group-label">Password Length <span>*</span></label>
-                <div className="range-inputs">
-                  <input type="number" name="passwordLengthMin" value={settings.passwordLengthMin} onChange={handleInputChange} required />
-                  <span className="to-text">to</span>
-                  <input type="number" name="passwordLengthMax" value={settings.passwordLengthMax} onChange={handleInputChange} required />
-                </div>
-              </div>
-
-              <div className="form-group-radio">
-                <label className="group-label">Send Welcome E-mail</label>
-                <div className="radio-options inline">
-                  <label className="custom-radio">
-                    <input type="radio" name="sendWelcomeEmail" value="true" checked={settings.sendWelcomeEmail === true} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> Yes
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="sendWelcomeEmail" value="false" checked={settings.sendWelcomeEmail === false} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> No
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-group-radio">
-                <label className="group-label">Enable Captcha</label>
-                <div className="radio-options inline">
-                  <label className="custom-radio">
-                    <input type="radio" name="enableCaptcha" value="true" checked={settings.enableCaptcha === true} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> Yes
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="enableCaptcha" value="false" checked={settings.enableCaptcha === false} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> No
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-group-radio">
-                <label className="group-label">Username Lowercase</label>
-                <div className="radio-options inline">
-                  <label className="custom-radio">
-                    <input type="radio" name="usernameLowercase" value="true" checked={settings.usernameLowercase === true} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> Yes
-                  </label>
-                  <label className="custom-radio">
-                    <input type="radio" name="usernameLowercase" value="false" checked={settings.usernameLowercase === false} onChange={handleInputChange} />
-                    <span className="radio-mark"></span> No
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button type="submit" className="btn-submit-changes">Submit Changes</button>
+              <div className="nx-rec-card__actions">
+                <Button type="submit" variant="primary">Submit Changes</Button>
               </div>
             </form>
-          </div>
-        </div>
+          </RecordCard>
+        </RecordColumn>
 
-        <div className="reg-help-column">
-          <div className="reg-card help-card">
-            <div className="reg-card-header">
-              <h3>Need Help ?</h3>
-            </div>
-            <div className="help-content">
-              <p><strong>Account Activation -</strong> User Activation requires the new user to activate their account by clicking a link sent to their e-mail address. Admin Activation requires an admin to activate the account using the control panel or by a link sent to their e-mail address.</p>
-              
-              <p><strong>Limit Username Characters -</strong> Limit the characters allowed in new username registrations.</p>
-              
-              <p><strong>Username Length -</strong> Minimum and maximum username length.</p>
-              
-              <p><strong>Password Length -</strong> Minimum and maximum password length.</p>
-              
-              <p><strong>Send Welcome E-mail -</strong> Whether or not to send a welcome e-mail to all new users upon registration.</p>
-              
-              <p><strong>Enable Captcha -</strong> Do I want this?.</p>
-              
-              <p><strong>Username Lowercase -</strong> When set to yes, all registered usernames are made lowercase.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        <RecordColumn className="nx-rec__col--side">
+          <RecordCard icon={HelpCircle} title="Need Help ?">
+            {HELP.map(([term, text]) => (
+              <div className="nx-rec-help" key={term}>
+                <h4>{term}</h4>
+                <p>{text}</p>
+              </div>
+            ))}
+          </RecordCard>
+        </RecordColumn>
+      </RecordGrid>
+    </RecordPage>
   );
 };
 

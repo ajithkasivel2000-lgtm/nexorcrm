@@ -1,0 +1,1414 @@
+/* ===========================================================================
+   The record page kit — layout and field styling for every single-record
+   screen (lead, opportunity, channel partner, project, profile).
+
+   Token-only, so it follows light/dark and the flat-line direction with the
+   rest of the app.
+   =========================================================================== */
+
+.nx-rec {
+  --nx-rec-pad: var(--nx-space-5);
+
+  /* The top bar's height. RecordPage measures the bar and overwrites this on
+     the element itself, so what is here only has to be close enough for the
+     first paint before that runs.
+
+     It is measured rather than written down because the bars differ — a lead's
+     carries a status control, an opportunity's does not — and because pixel
+     rounding at anything other than 100% zoom moves the real height away from
+     any number chosen by eye. */
+  --nx-rec-topbar-h: calc(var(--nx-space-3) * 2 + 34px);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+  padding: var(--nx-rec-pad);
+  background: var(--nx-bg-app);
+  min-height: 100%;
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+  box-sizing: border-box;
+}
+
+/* ---- The sticky header ---------------------------------------------------
+   The record's bar and its tab strip, stuck to the top of the scrolling area
+   as one piece. Together rather than separately: as two, the strip had to be
+   positioned at exactly the bar's height, and any mismatch — a taller bar on
+   one record, pixel rounding at a zoom other than 100% — hid the strip behind
+   the bar.
+
+   Pulled out to the page edges so content passing underneath cannot show
+   through the page's own side padding.
+   -------------------------------------------------------------------------- */
+.nx-rec__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--nx-z-sticky);
+  margin: calc(var(--nx-rec-pad) * -1) calc(var(--nx-rec-pad) * -1) 0;
+  padding-inline: var(--nx-rec-pad);
+  background: var(--nx-bg-app);
+}
+
+/* ---- Tabs ---------------------------------------------------------------- */
+/* Sticky, directly beneath the bar above — which is sticky at the top of the
+   page. Without this the breadcrumb and Back button stayed put while the tabs
+   scrolled away, so switching tab meant scrolling back up to find the strip.
+
+   Pulled out to the page edges the same way the bar is, so content passing
+   underneath cannot show through the page's own side padding. */
+.nx-rec__tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-1);
+  border-bottom: var(--nx-divider);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nx-rec__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Both tab strips on a record page: the main one, and the sub-strip inside
+   the General tab. Listed together so a tab looks the same wherever it is. */
+.nx-rec__tab,
+.nx-rec__subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-rec__tab:hover,
+.nx-rec__subtab:hover {
+  color: var(--nx-text);
+}
+
+.nx-rec__tab.is-active,
+.nx-rec__subtab.is-active {
+  color: var(--nx-accent);
+  border-bottom-color: var(--nx-accent);
+}
+
+/* ---- Layout -------------------------------------------------------------- */
+.nx-rec__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--nx-space-4);
+  align-items: start;
+}
+
+.nx-rec__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1400px) {
+  .nx-rec__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* The summary rail drops under the two data columns rather than squeezing. */
+  .nx-rec__col--side {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .nx-rec__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-rec__col--side {
+    grid-column: auto;
+  }
+
+  .nx-rec {
+    --nx-rec-pad: var(--nx-space-3);
+  }
+}
+
+/* ---- A record with a rail that stays put ----------------------------------
+   The tabbed panels scroll on the left; something that belongs to the whole
+   record — a log, a progress rail — sits on the right and is there whichever
+   tab is open. Sticky rather than scrollable: anything long inside it does its
+   own scrolling, and two nested scrollers fight each other.
+   -------------------------------------------------------------------------- */
+.nx-rec__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--nx-space-4);
+  align-items: start;
+}
+
+.nx-rec__body-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+}
+
+.nx-rec__body-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+  position: sticky;
+  /* Just clear of the sticky header, which now measures the bar and the tab
+     strip together rather than the bar alone. */
+  top: calc(var(--nx-rec-topbar-h) + var(--nx-space-4));
+}
+
+@media (max-width: 1100px) {
+  .nx-rec__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nx-rec__body-side {
+    position: static;
+  }
+}
+
+/* ---- Card ---------------------------------------------------------------- */
+.nx-rec-card {
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  overflow: hidden;
+}
+
+.nx-rec-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-rec-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-rec-card__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-rec-card__title {
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-rec-card__sub {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-card__body {
+  padding: var(--nx-space-4);
+}
+
+/* ---- Field grid ---------------------------------------------------------- */
+.nx-rec-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--nx-space-3) var(--nx-space-4);
+}
+
+.nx-rec-fields--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nx-rec-fields--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nx-rec-fields__full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .nx-rec-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nx-rec-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.nx-rec-field__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.nx-rec-field__req {
+  color: var(--nx-danger);
+}
+
+.nx-rec-field__control {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  height: 36px;
+  padding: 0 var(--nx-space-2) 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  transition: border-color var(--nx-duration-fast) var(--nx-ease),
+    box-shadow var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-rec-field__control:focus-within {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-rec-field__control.is-readonly {
+  background: var(--nx-bg-sunken);
+}
+
+.nx-rec-field__icon {
+  flex: none;
+  color: var(--nx-text-muted);
+  display: flex;
+}
+
+.nx-rec-field__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-rec-field__input::placeholder {
+  color: var(--nx-text-muted);
+  opacity: 1;
+}
+
+.nx-rec-field__input:disabled {
+  cursor: default;
+}
+
+.nx-rec-field__action {
+  display: flex;
+  flex: none;
+  padding: 5px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-rec-field__action:hover {
+  background: var(--nx-bg-hover);
+  color: var(--nx-accent);
+}
+
+.nx-rec-field__action--call {
+  background: var(--nx-success-bg);
+  color: var(--nx-success);
+}
+
+.nx-rec-field__action--call:hover {
+  background: var(--nx-success-bg);
+  color: var(--nx-success);
+}
+
+
+
+/* ---- Hero ---------------------------------------------------------------- */
+.nx-rec-hero {
+  padding: var(--nx-space-4);
+  border-radius: var(--nx-radius-lg);
+  background: linear-gradient(135deg, var(--nx-accent), #8b5cf6);
+  color: #fff;
+}
+
+.nx-rec-hero__top {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  margin-bottom: var(--nx-space-4);
+}
+
+.nx-rec-hero__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-bold);
+}
+
+.nx-rec-hero__name {
+  margin: 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-rec-hero__id {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-sm);
+  opacity: 0.85;
+}
+
+.nx-rec-hero__badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--nx-radius-pill);
+  background: rgba(255, 255, 255, 0.2);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  white-space: nowrap;
+}
+
+.nx-rec-hero__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--nx-space-2);
+}
+
+.nx-rec-hero__tile {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3);
+  border-radius: var(--nx-radius);
+  background: rgba(255, 255, 255, 0.14);
+  min-width: 0;
+}
+
+.nx-rec-hero__tile-icon {
+  flex: none;
+  opacity: 0.9;
+}
+
+.nx-rec-hero__tile-text {
+  min-width: 0;
+}
+
+.nx-rec-hero__tile-value {
+  display: block;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-rec-hero__tile-label {
+  display: block;
+  font-size: var(--nx-text-xs);
+  opacity: 0.85;
+}
+
+/* ---- Progress ------------------------------------------------------------ */
+/* Stages run across the card, left to right.
+
+   Each step is as wide as its own label rather than an equal share of the
+   card: five equal columns in a 300px rail give about 53px each, and
+   "Negotiation" needs more than that, so it overlapped the stages either side.
+   If the whole rail still will not fit, it scrolls rather than overlapping. */
+.nx-rec-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nx-space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nx-rec-steps::-webkit-scrollbar {
+  display: none;
+}
+
+.nx-rec-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  position: relative;
+  text-align: center;
+}
+
+/* The connector runs behind the dots, from each step to the next. 15px is
+   the centre of the 30px dot, so the line meets each one square. */
+/* From this dot across the gap to the next. The extra gap-width covers the
+   case where the next step is narrower; any overshoot disappears behind that
+   dot, which is opaque and sits above the line. */
+.nx-rec-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  width: calc(100% + var(--nx-space-2));
+  height: 1px;
+  background: var(--nx-border);
+}
+
+.nx-rec-step.is-done:not(:last-child)::after {
+  background: var(--nx-accent);
+}
+
+.nx-rec-step__dot {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--nx-border);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-step.is-done .nx-rec-step__dot,
+.nx-rec-step.is-current .nx-rec-step__dot {
+  border-color: var(--nx-accent);
+  color: var(--nx-accent);
+}
+
+.nx-rec-step.is-current .nx-rec-step__dot {
+  background: var(--nx-accent-soft);
+}
+
+/* Allow the label to extend slightly if needed, preventing aggressive word 
+   breaking that clips the text off when it runs out of vertical or horizontal space. */
+.nx-rec-step__label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--nx-text-muted);
+  white-space: nowrap;
+}
+
+.nx-rec-step.is-current .nx-rec-step__label {
+  color: var(--nx-accent);
+  font-weight: var(--nx-weight-semibold);
+}
+
+/* ---- Log ----------------------------------------------------------------- */
+/* A long history scrolls inside the card instead of stretching the column past
+   the viewport — the card keeps a sane height and the list scrolls in place. */
+.nx-rec-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--nx-space-2);
+}
+
+.nx-rec-log__item {
+  display: flex;
+  gap: var(--nx-space-3);
+  position: relative;
+}
+
+/* Timeline spine between entries. */
+.nx-rec-log__item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: calc(var(--nx-space-4) * -1);
+  width: 1px;
+  background: var(--nx-border);
+}
+
+.nx-rec-log__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-rec-log__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-rec-log__title {
+  margin: 0;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-rec-log__meta {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-log__date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-log__empty {
+  margin: 0;
+  padding: var(--nx-space-4) 0;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+/* ---- Placeholder for tabs that have no screen yet ------------------------ */
+.nx-rec-empty-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-12);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+/* ---- Breadcrumb ---------------------------------------------------------- */
+.nx-rec__crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec__crumb button {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nx-rec__crumb button:hover {
+  color: var(--nx-accent);
+  background: var(--nx-bg-hover);
+}
+
+.nx-rec__crumb .is-current {
+  color: var(--nx-text);
+  font-weight: var(--nx-weight-medium);
+}
+
+/* ---- Card head extras ---------------------------------------------------- */
+.nx-rec-card__pill {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+  white-space: nowrap;
+}
+
+.nx-rec-card__filter {
+  flex: none;
+  max-width: 45%;
+  height: 30px;
+  padding: 0 var(--nx-space-2);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  cursor: pointer;
+}
+
+.nx-rec-card__filter:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* ---- Field variants ------------------------------------------------------ */
+/* A textarea grows, so the control has to stop being a fixed-height row. */
+.nx-rec-field__control--area {
+  height: auto;
+  padding: var(--nx-space-2) var(--nx-space-3);
+}
+
+.nx-rec-field__input--area {
+  min-height: 66px;
+  resize: vertical;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.nx-rec-field__control--menu {
+  position: relative;
+}
+
+/* The Lead Owner suggestion list. */
+.nx-rec-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -1px;
+  right: -1px;
+  z-index: var(--nx-z-dropdown, 50);
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  box-shadow: var(--nx-overlay-ring);
+}
+
+.nx-rec-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 7px var(--nx-space-3);
+  border: none;
+  background: none;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-rec-menu__item:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-rec-menu__item.is-active {
+  color: var(--nx-accent);
+  font-weight: var(--nx-weight-medium);
+}
+
+.nx-rec-menu__hint {
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-menu__empty {
+  padding: var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* Fields whose control brings its own chrome (DynamicDropdown, PhoneInput). */
+.nx-rec-field--dynamic .dynamic-dropdown-container {
+  width: 100%;
+}
+
+.nx-rec-phone {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+
+.nx-rec-phone>*:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- Select arrow room --------------------------------------------------- */
+select.nx-rec-field__input {
+  appearance: none;
+  padding-right: var(--nx-space-4);
+  background-image: linear-gradient(45deg, transparent 50%, var(--nx-text-muted) 50%),
+    linear-gradient(135deg, var(--nx-text-muted) 50%, transparent 50%);
+  background-position: right 6px center, right 1px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+/* Inline validation, shown under the control it belongs to. */
+.nx-rec-field__error {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-danger);
+}
+
+.nx-rec-field.has-error .nx-rec-field__control {
+  border-color: var(--nx-danger);
+}
+
+.nx-rec-field.has-error .nx-rec-field__control:focus-within {
+  box-shadow: 0 0 0 3px var(--nx-danger-bg);
+}
+
+.nx-rec-field.has-error .nx-rec-field__icon {
+  color: var(--nx-danger);
+}
+
+/* The log filter keeps its place in the card header; the dropdown itself is
+   styled by the design system. */
+.nx-rec-card__filter-select {
+  flex: none;
+  width: auto;
+  max-width: 45%;
+  min-width: 130px;
+}
+
+/* ---- Sticky top bar ------------------------------------------------------ */
+.nx-rec__topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  /* The header around this one bleeds to the page edges and supplies the side
+     padding, so this only sets its own height. */
+  padding-block: var(--nx-space-3);
+}
+
+.nx-rec__topbar .nx-rec__crumb {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-rec__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 6px var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-rec__back:hover {
+  color: var(--nx-accent);
+  border-color: var(--nx-accent);
+}
+
+.nx-rec__back:focus-visible {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* On a phone the label would crowd the breadcrumb out; the arrow is enough. */
+@media (max-width: 560px) {
+  .nx-rec__back span {
+    display: none;
+  }
+
+  .nx-rec__back {
+    padding: 6px;
+  }
+}
+
+/* Column counts. Three is the record layout with a summary rail; two is a
+   plain edit form; one is a single card or a narrow screen. */
+.nx-rec__grid--3 {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 0.9fr);
+}
+
+.nx-rec__grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nx-rec__grid--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1400px) {
+  .nx-rec__grid--3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+
+  .nx-rec__grid--3,
+  .nx-rec__grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The stage rail's pip, for a step not yet reached. */
+.nx-rec-step__pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Each breadcrumb step keeps its separator glued to its label, so a long
+   record name wraps as one unit rather than stranding a slash. */
+.nx-rec__crumb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  min-width: 0;
+}
+
+.nx-rec__crumb-step .is-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-rec-hero__names {
+  min-width: 0;
+}
+
+/* Document field: the real input is hidden behind the button, so the control
+   keeps the same shape as every other field. */
+.nx-rec-field__file {
+  display: none;
+}
+
+.nx-rec-field__filename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-rec-field__filename.is-empty {
+  color: var(--nx-text-muted);
+}
+
+.nx-rec__loading {
+  padding: var(--nx-space-8);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+/* A help or explanatory block inside a card. */
+.nx-rec-help+.nx-rec-help {
+  margin-top: var(--nx-space-4);
+}
+
+.nx-rec-help h4 {
+  margin: 0 0 3px;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-rec-help p {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  line-height: 1.55;
+  color: var(--nx-text-secondary);
+}
+
+/* A column that should take the space two would, when the rail is narrow. */
+.nx-rec__col--wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+  .nx-rec__col--wide {
+    grid-column: auto;
+  }
+}
+
+/* A card's own action row, for a form that posts on submit. */
+.nx-rec-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nx-space-2);
+  margin-top: var(--nx-space-4);
+  padding-top: var(--nx-space-4);
+  border-top: var(--nx-divider);
+}
+
+/* A row of preset chips under a field — "15 min / 30 min / 45 min / 60 min". */
+.nx-rec-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+}
+
+/* A settings form whose fields read better at a fixed measure — a number
+   input stretched across a full-width card puts its value and its "Minutes"
+   suffix a thousand pixels apart. */
+.nx-rec-form--narrow {
+  max-width: 560px;
+}
+
+/* A row of checkboxes or switches under a card's fields. */
+.nx-rec-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-4);
+  margin-top: var(--nx-space-4);
+}
+
+/* A unit label inside the control — "Minutes", "Days", "%". */
+.nx-rec-field__suffix {
+  flex: none;
+  padding-left: var(--nx-space-2);
+  border-left: 1px solid var(--nx-border);
+  margin-left: var(--nx-space-1);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  white-space: nowrap;
+}
+
+/* ---- Radio group --------------------------------------------------------- */
+.nx-rec-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nx-rec-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  cursor: pointer;
+}
+
+.nx-rec-radio input {
+  accent-color: var(--nx-accent);
+  margin: 0;
+  cursor: pointer;
+}
+
+/* ---- Min/max pair -------------------------------------------------------- */
+.nx-rec-range {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+
+.nx-rec-range .nx-rec-field__control {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-rec-range__sep {
+  flex: none;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* Explanatory copy sitting between fields. */
+.nx-rec-note p {
+  margin: 0 0 var(--nx-space-2);
+  font-size: var(--nx-text-sm);
+  line-height: 1.6;
+  color: var(--nx-text-secondary);
+}
+
+.nx-rec-note p:last-child {
+  margin-bottom: 0;
+}
+
+.nx-rec-note strong {
+  color: var(--nx-text);
+  font-weight: var(--nx-weight-semibold);
+}
+
+/* ---- Panels for screens restyled in place -------------------------------- */
+
+/* A row of page-level action buttons under the sticky bar. */
+.nx-rec-actionbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+}
+
+.nx-rec-actionbar:empty {
+  display: none;
+}
+
+/* Two cards side by side, stacking when narrow. */
+.nx-rec-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--nx-space-4);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .nx-rec-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A card holding a wide table: the table scrolls, the card does not stretch. */
+.nx-rec-tablewrap {
+  overflow-x: auto;
+}
+
+.nx-rec-tablewrap table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nx-rec-tablewrap th,
+.nx-rec-tablewrap td {
+  padding: var(--nx-space-3);
+  border-bottom: var(--nx-divider);
+  font-size: var(--nx-text-base);
+  text-align: left;
+}
+
+.nx-rec-tablewrap th {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text-secondary);
+  white-space: nowrap;
+}
+
+.nx-rec-tablewrap tr:last-child td {
+  border-bottom: none;
+}
+
+/* A card header that already carries its own heading markup. */
+.nx-rec-card__head--plain {
+  display: block;
+}
+
+.nx-rec-card__head--plain h3 {
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-rec-card__head--plain p {
+  margin: 2px 0 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* A hint under a control. Shown only when there is no error, so the two never
+   stack and shift the layout. */
+.nx-rec-field__hint {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+}
+
+.nx-rec-field__hint.is-muted {
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-field__hint.is-success {
+  color: var(--nx-success);
+}
+
+/* ---- Profile picture ----------------------------------------------------- */
+.nx-rec-avatar {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+}
+
+.nx-rec-avatar__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: 50%;
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-avatar__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nx-rec-avatar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+}
+
+.nx-rec-avatar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+
+.nx-rec-avatar__btn:hover {
+  color: var(--nx-accent);
+  border-color: var(--nx-accent);
+}
+
+.nx-rec-avatar__btn.is-plain {
+  border-color: transparent;
+  background: none;
+}
+
+.nx-rec-avatar__btn.is-plain:hover {
+  color: var(--nx-danger);
+  border-color: var(--nx-danger);
+}
+
+/* The read-only profile card shows the picture at a larger size. */
+.nx-rec-avatar__preview--lg {
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--nx-space-3);
+}
+
+/* ---- Role actions --------------------------------------------------------
+   The row of buttons that change or revoke someone's access. They sit on one
+   scale — an outlined default, a warning tone for ban, a danger tone for
+   delete — so the destructive ones are the only ones that carry weight. */
+.nx-roleaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease),
+    background-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-roleaction:hover {
+  color: var(--nx-accent);
+  border-color: var(--nx-accent);
+}
+
+.nx-roleaction:focus-visible {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-roleaction__role {
+  flex: none;
+  color: var(--nx-text-muted);
+}
+
+.nx-roleaction:hover .nx-roleaction__role {
+  color: inherit;
+}
+
+/* The direction arrow. It repeats what the label already says, so it is a
+   confirmation rather than the only signal. */
+.nx-roleaction__dir {
+  flex: none;
+}
+
+.nx-roleaction__dir.is-up {
+  color: var(--nx-success);
+}
+
+.nx-roleaction__dir.is-down {
+  color: var(--nx-warning);
+}
+
+/* The level the user already holds: shown, but not offered. */
+.nx-roleaction.is-current,
+.nx-roleaction:disabled {
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-muted);
+  border-color: var(--nx-border);
+  cursor: default;
+}
+
+.nx-roleaction.is-current:hover {
+  color: var(--nx-text-muted);
+  border-color: var(--nx-border);
+}
+
+/* Ban blocks access; delete destroys the record. Two different weights. */
+.nx-roleaction.is-warning {
+  color: var(--nx-warning);
+  border-color: var(--nx-warning);
+}
+
+.nx-roleaction.is-warning:hover {
+  background: var(--nx-warning-bg);
+  color: var(--nx-warning);
+  border-color: var(--nx-warning);
+}
+
+.nx-roleaction.is-danger {
+  color: var(--nx-danger);
+  border-color: var(--nx-danger);
+}
+
+.nx-roleaction.is-danger:hover {
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+  border-color: var(--nx-danger);
+}
+
+.nx-roleaction.is-restore {
+  color: var(--nx-success);
+  border-color: var(--nx-success);
+}
+
+.nx-roleaction.is-restore:hover {
+  background: var(--nx-success-bg);
+  color: var(--nx-success);
+  border-color: var(--nx-success);
+}
+/* ---------------------------------------------------------------------------
+   Confirm / discard on an edited field.
+
+   Nothing in the record kit saves on blur, so an edit is confirmed with Enter
+   or with these. They only exist while a field is dirty, which keeps a settled
+   record looking exactly as it did before.
+   --------------------------------------------------------------------------- */
+.nx-rec-field__commit {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+}
+
+.nx-rec-field__commit-btn {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  cursor: pointer;
+  color: var(--nx-text-muted);
+}
+
+.nx-rec-field__commit-btn.is-save { color: var(--nx-success); }
+.nx-rec-field__commit-btn.is-cancel { color: var(--nx-text-muted); }
+
+.nx-rec-field__commit-btn:hover { background: var(--nx-bg-hover); }
+
+.nx-rec-field__commit-btn:focus-visible {
+  outline: 2px solid var(--nx-focus-ring);
+  outline-offset: 1px;
+}
+
+/* A dropdown/picker sits in its own row so the buttons can follow it without
+   disturbing the control's own width. */
+.nx-rec-field__pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nx-rec-field__pick > :first-child { flex: 1 1 auto; min-width: 0; }
+
+/* ---- autofill ------------------------------------------------------------
+   A browser repaints an autofilled field with its own background and near-black
+   text, which on a record page turned remembered values — a name, an email —
+   into pale rectangles inside an otherwise themed control, and made them
+   unreadable in dark mode. Same remedy as ui/Form.css: `background-color` is
+   ignored on those fields, so the surface is repainted with an opaque inset
+   shadow and the text with -webkit-text-fill-color, which does take. Both read
+   the same tokens as the normal state, so a field looks identical whether the
+   value was typed or remembered. */
+.nx-rec-field__input:-webkit-autofill,
+.nx-rec-field__input:-webkit-autofill:hover,
+.nx-rec-field__input:-webkit-autofill:focus,
+.nx-rec-field__input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--nx-text);
+  caret-color: var(--nx-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--nx-bg-surface) inset;
+  box-shadow: 0 0 0 1000px var(--nx-bg-surface) inset;
+  /* Long enough that the browser never gets to paint its own colour first. */
+  transition: background-color 600000s 0s, color 600000s 0s;
+  font-size: var(--nx-text-base);
+}
+
+/* Firefox flags the field rather than repainting it, and honours real colours. */
+.nx-rec-field__input:autofill {
+  background: transparent;
+  color: var(--nx-text);
+}

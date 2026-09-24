@@ -1,0 +1,278 @@
+/* ===========================================================================
+   Project inventory: buildings and units.
+   Token-only, so it follows light and dark with the rest of the CRM.
+   =========================================================================== */
+
+.nx-pi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+}
+
+/* ---- panels ---------------------------------------------------------------- */
+.nx-pi__panel {
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+  padding: var(--nx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-3);
+}
+
+.nx-pi__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-3);
+  flex-wrap: wrap;
+}
+
+.nx-pi__panel-head h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-pi__panel-actions {
+  display: flex;
+  gap: var(--nx-space-2);
+  flex-wrap: wrap;
+}
+
+.nx-pi__count {
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-muted);
+  border: var(--nx-divider);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.nx-pi__muted {
+  margin: 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-pi__warn {
+  margin: var(--nx-space-2) 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-danger);
+}
+
+.nx-pi__empty {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-secondary, var(--nx-text-muted));
+  line-height: 1.5;
+}
+
+/* ---- headline figures ------------------------------------------------------ */
+.nx-pi__stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--nx-space-3);
+}
+
+.nx-pi__stat {
+  min-width: 0;
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+}
+
+/* Tone on the edge, not the fill — five filled cards in a row shout over each
+   other and over the table below. */
+.nx-pi__stat.is-success { border-left: 3px solid var(--nx-success); }
+.nx-pi__stat.is-info    { border-left: 3px solid var(--nx-info); }
+
+.nx-pi__stat-label {
+  margin: 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-pi__stat-value {
+  margin: 2px 0 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  line-height: 1.2;
+}
+
+.nx-pi__stat-sub {
+  margin: 2px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+/* ---- the split across states ----------------------------------------------- */
+.nx-pi__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+}
+
+.nx-pi__split-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  /* A 2px gap between segments keeps two adjacent states from reading as one. */
+  gap: 2px;
+  padding: 0;
+}
+
+.nx-pi__split-seg {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+}
+
+.nx-pi__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-pi__legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nx-pi__legend strong {
+  color: var(--nx-text);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-pi__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+
+/* The one place these colours are defined; both the bar and its legend read
+   from it, so a segment and its label can never disagree. */
+.nx-pi__split-seg.is-success, .nx-pi__dot.is-success { background: var(--nx-success); }
+.nx-pi__split-seg.is-warning, .nx-pi__dot.is-warning { background: var(--nx-warning); }
+.nx-pi__split-seg.is-accent,  .nx-pi__dot.is-accent  { background: var(--nx-accent); }
+.nx-pi__split-seg.is-info,    .nx-pi__dot.is-info    { background: var(--nx-info); }
+.nx-pi__split-seg.is-purple,  .nx-pi__dot.is-purple  { background: var(--nx-purple); }
+.nx-pi__split-seg.is-neutral, .nx-pi__dot.is-neutral { background: var(--nx-border-strong); }
+.nx-pi__split-seg.is-danger,  .nx-pi__dot.is-danger  { background: var(--nx-danger); }
+
+/* ---- buildings -------------------------------------------------------------- */
+.nx-pi__buildings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--nx-space-3);
+}
+
+.nx-pi__building {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+  min-width: 0;
+}
+
+.nx-pi__building-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nx-space-2);
+  min-width: 0;
+}
+
+.nx-pi__building-top h4 {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  word-break: break-word;
+}
+
+.nx-pi__building-acts {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+.nx-pi__building-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-pi__building-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-pi__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--nx-bg-subtle, var(--nx-bg-surface));
+  border: var(--nx-divider);
+  overflow: hidden;
+}
+
+.nx-pi__bar i {
+  display: block;
+  height: 100%;
+  background: var(--nx-accent);
+}
+
+/* Nothing recorded is hatched, never a bar sitting at zero — "not tracked" and
+   "no progress" are different facts. */
+.nx-pi__bar.is-unknown {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--nx-border) 0, var(--nx-border) 3px,
+    transparent 3px, transparent 7px
+  );
+}
+
+/* ---- bulk-add preview -------------------------------------------------------- */
+.nx-pi__preview {
+  margin-top: var(--nx-space-3);
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+}
+
+/* ---- narrow screens ---------------------------------------------------------- */
+@media (max-width: 1100px) {
+  .nx-pi__stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .nx-pi__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nx-pi__buildings { grid-template-columns: 1fr; }
+  .nx-pi__panel-head { align-items: flex-start; flex-direction: column; }
+}

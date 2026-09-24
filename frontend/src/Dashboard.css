@@ -1,37 +1,3 @@
-:root {
-  --bg-main: #f3f4f7;
-  --bg-sidebar: #0f172a;
-  --bg-card: #fff;
-  --bg-header: #fff;
-  --text-main: #333;
-  --text-muted: #64748b;
-  --border-color: #edf2f9;
-  --sidebar-text: #94a3b8;
-  --sidebar-hover: rgba(255, 255, 255, 0.05);
-  --header-icon-bg-hover: #f1f5f9;
-  --header-icon-color: #64748b;
-  --stat-card-border: #edf2f9;
-  --table-header-bg: #1e293b;
-  --table-header-color: #fff;
-}
-
-.dashboard-layout.dark-mode {
-  --bg-main: #0f172a;
-  --bg-sidebar: #1e293b;
-  --bg-card: #1e293b;
-  --bg-header: #1e293b;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --border-color: #334155;
-  --sidebar-text: #94a3b8;
-  --sidebar-hover: rgba(255, 255, 255, 0.1);
-  --header-icon-bg-hover: #334155;
-  --header-icon-color: #94a3b8;
-  --stat-card-border: #334155;
-  --table-header-bg: #0f172a;
-  --table-header-color: #f1f5f9;
-}
-
 .dashboard-layout {
   display: flex;
   height: 100vh;
@@ -47,13 +13,23 @@
 .sidebar {
   width: 250px;
   background-color: var(--bg-sidebar);
-  color: #fff;
+  /* The sidebar's own scale: it stays dark in both themes, so the accent's
+     contrast colour would be near-black on it in dark mode. */
+  color: var(--nx-sidebar-text);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* The sidebar itself no longer scrolls — only the menu inside it does, so
+     the logo stays put instead of scrolling away with a long menu. */
+  overflow: hidden;
   transition: width 0.3s ease, background-color 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.dark-mode .sidebar {
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+  border-right: 1px solid var(--border-color)
 }
 
 .dashboard-layout.sidebar-collapsed .sidebar {
@@ -83,7 +59,7 @@
 }
 
 .sidebar-toggle:hover {
-  color: #fff;
+  color: var(--nx-sidebar-text-active);
   background-color: var(--sidebar-hover);
 }
 
@@ -122,7 +98,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  color: #fff;
+  color: var(--nx-sidebar-text-active);
 }
 
 .dashboard-logo-text-main {
@@ -142,29 +118,48 @@
 }
 
 
-/* .sidebar-content {
-  padding: 20px 0;
-} */
-
-/* .sidebar-section {
-  margin-bottom: 25px;
-} */
-
-.sidebar-section .section-title {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  margin: 20px 20px 15px;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+.sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Room at the end so the last item is not flush against the bottom edge,
+     and a little at the top so the first section clears the logo. */
+  padding: var(--nx-space-2) 0 var(--nx-space-6);
+  scrollbar-width: thin;
+  scrollbar-color: var(--nx-sidebar-border) transparent;
 }
 
+.sidebar-content::-webkit-scrollbar {
+  width: 8px;
+}
 
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--nx-sidebar-border);
+  border: 2px solid var(--bg-sidebar);
+  border-radius: var(--nx-radius-pill);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-hover);
+}
+
+/* The logo is fixed furniture now, not part of the scrolling list. */
+.sidebar-logo {
+  flex: none;
+}
+
+/* The section labels used to separate these groups; a hairline and some
+   breathing room do the same job now without the badge. */
+.sidebar-section+.sidebar-section {
+  margin-top: var(--nx-space-4);
+  padding-top: var(--nx-space-4);
+  border-top: 1px solid var(--nx-sidebar-border);
+}
 
 .sidebar-section ul {
   list-style: none;
@@ -190,11 +185,11 @@
 
 .sidebar-item:hover {
   background-color: var(--sidebar-hover);
-  color: #fff;
+  color: var(--nx-sidebar-text-active);
 }
 
 .sidebar-item-container.active>.sidebar-item {
-  background-color: #000000;
+  background-color: var(--nx-sidebar-active);
   /* Solid blue background */
   border-right: 4px solid orange;
   color: orange;
@@ -249,7 +244,7 @@
 }
 
 .sub-menu-item:hover {
-  color: #fff;
+  color: var(--nx-sidebar-text-active);
 }
 
 .sub-menu-item::before {
@@ -275,11 +270,7 @@
 }
 
 .sub-menu-item:hover .tree-dot {
-  background-color: #fff;
-}
-
-.dashboard-layout.sidebar-collapsed .sidebar-section .section-title {
-  display: none;
+  background-color: var(--bg-card);
 }
 
 .dashboard-layout.sidebar-collapsed .sidebar-section li {
@@ -324,6 +315,10 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* Breathing room before the footer rule. It sits here rather than on the
+     footer because the footer's `margin-top: auto` is what pushes it to the
+     bottom on a short page — a margin of its own would cancel that. */
+  /* padding-bottom: 20px; */
 }
 
 .dashboard-header {
@@ -335,6 +330,8 @@
   padding: 0 30px;
   border-bottom: 1px solid var(--border-color);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  z-index: var(--nx-z-overlay, 1100);
 }
 
 .breadcrumb {
@@ -349,7 +346,7 @@
 }
 
 .breadcrumb .current {
-  color: #4a72ff;
+  color: var(--nx-accent);
   font-weight: 500;
 }
 
@@ -371,6 +368,8 @@
   padding: 8px;
   border-radius: 50%;
   transition: background 0.2s;
+  /* The unread badge is positioned against the button, not the row it sits in. */
+  position: relative;
 }
 
 .icon-btn:hover,
@@ -379,49 +378,85 @@
   color: var(--text-main);
 }
 
-/* Search Bar */
-.search-bar-container {
+/* Header Left Group */
+.header-left-group {
   display: flex;
   align-items: center;
-  background-color: var(--bg-main);
-  border-radius: 20px;
-  padding: 5px 15px;
-  border: 1px solid var(--border-color);
-  animation: slideIn 0.3s ease;
+  gap: 20px;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.search-bar-container input {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-main);
-  font-size: 13px;
-  width: 150px;
-}
-
-.search-bar-container input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-bar-container button {
-  background: none;
-  border: none;
-  color: var(--text-muted);
+.header-greeting-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   cursor: pointer;
+}
+
+.greeting-avatar {
   display: flex;
   align-items: center;
+}
+
+.greeting-avatar img,
+.greeting-avatar>div {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.greeting-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.greeting-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.greeting-role {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.greeting-chevron {
+  color: var(--text-muted);
+  margin-left: 5px;
+}
+
+/* Permanent Search */
+.online-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--nx-success-bg);
+  color: var(--nx-success);
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dark-mode .online-badge {
+  background-color: rgba(11, 155, 110, 0.2);
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
+  margin: 0 10px;
 }
 
 /* Dropdowns */
@@ -435,7 +470,7 @@
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   min-width: 200px;
-  z-index: 100;
+  z-index: var(--nx-z-dropdown, 1000);
   overflow: hidden;
 }
 
@@ -471,7 +506,7 @@
 }
 
 .dropdown-item.text-danger {
-  color: #ff3d60;
+  color: var(--nx-danger);
 }
 
 .dropdown-empty {
@@ -509,6 +544,7 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .dashboard-body {
@@ -569,59 +605,107 @@
   margin-top: auto;
 }
 
-/* Stats Grid */
+/* Stats Grid - Advanced UI */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
 }
 
 .stat-card {
-  border: 1px solid var(--stat-card-border);
-  border-bottom-width: 3px;
-  border-radius: 6px;
-  padding: 15px;
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 1;
 }
 
-.stat-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+  border-color: var(--nx-accent);
+}
+
+.stat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.stat-icon-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 15px;
+  transition: transform 0.3s ease;
 }
 
-.stat-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+.stat-card:hover .stat-icon-wrapper {
+  transform: scale(1.1) rotate(-5deg);
 }
 
-.stat-name {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.stat-count {
-  font-size: 18px;
-  font-weight: 700;
+.stat-count-large {
+  font-size: 26px;
+  font-weight: 800;
   color: var(--text-main);
+  line-height: 1;
 }
 
-.stat-footer {
-  font-size: 9px;
+.stat-name-label {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
-  border-top: 1px solid var(--border-color);
-  padding-top: 10px;
+  margin-bottom: 2px;
   text-transform: uppercase;
+}
+
+.stat-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--nx-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+  transition: all 0.3s ease;
   margin-top: auto;
+}
+
+.arrow {
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover .stat-footer-link {
+  opacity: 1;
+  gap: 6px;
+}
+
+.stat-card:hover .arrow {
+  transform: translateX(3px);
+}
+
+.stat-hover-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover .stat-hover-bar {
+  width: 100%;
 }
 
 /* Bottom Grid */
@@ -629,6 +713,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr 2fr;
   gap: 25px;
+  align-items: stretch;
+}
+
+.bottom-grid .dashboard-card {
+  height: 420px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-card {
@@ -639,6 +730,7 @@
   position: relative;
   margin-top: 15px;
   margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .chart-center-text {
@@ -662,10 +754,12 @@
 
 .chart-legend {
   list-style: none;
-  padding: 0;
+  padding: 0 5px;
   margin: 0;
   font-size: 11px;
   color: var(--text-muted);
+  flex: 1;
+  overflow-y: auto;
 }
 
 .chart-legend li {
@@ -681,8 +775,10 @@
 
 /* Table */
 .table-responsive {
+  flex: 1;
+  overflow-y: auto;
   overflow-x: auto;
-  margin-top: 15px;
+  margin-top: 5px;
 }
 
 .table-card {
@@ -692,7 +788,9 @@
 }
 
 .table-card h3 {
-  padding: 20px 20px 0 20px;
+  padding: 20px 20px 5px 20px;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 table {
@@ -707,13 +805,16 @@ thead th {
   font-weight: 500;
   text-align: left;
   padding: 12px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 tbody td {
   padding: 12px 20px;
   font-size: 13px;
   color: var(--text-main);
-  border-bottom: 1px dashed var(--stat-card-border);
+  border-bottom: 1px solid var(--stat-card-border);
 }
 
 tbody tr:last-child td {
@@ -741,7 +842,7 @@ tbody tr:last-child td {
 
   .sidebar {
     position: fixed;
-    z-index: 10;
+    z-index: var(--nx-z-modal, 1110);
     transform: translateX(-100%);
   }
 
@@ -755,13 +856,13 @@ tbody tr:last-child td {
   position: relative;
 }
 
-/* The toggle button — dashed border, plain background */
+/* The toggle button — outlined, plain background */
 .project-dropdown-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
   background: transparent;
-  border: 1px dashed #b0bec5;
+  border: 1px solid var(--nx-border);
   padding: 6px 14px;
   border-radius: 4px;
   cursor: pointer;
@@ -775,7 +876,7 @@ tbody tr:last-child td {
 
 .project-dropdown-toggle:hover,
 .project-dropdown-toggle.open {
-  border-color: #1a66cc;
+  border-color: var(--nx-info);
   background: rgba(26, 102, 204, 0.04);
 }
 
@@ -786,8 +887,8 @@ tbody tr:last-child td {
   right: 0;
   /* right-aligned with the button */
   min-width: 220px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 200;
@@ -802,23 +903,23 @@ tbody tr:last-child td {
   padding: 10px 16px;
   cursor: pointer;
   font-size: 13px;
-  color: #333333;
+  color: var(--nx-text);
   transition: background 0.15s;
   user-select: none;
 }
 
 .project-dropdown-menu li:hover {
-  background-color: #f1f5f9;
+  background-color: var(--nx-bg-hover);
 }
 
 /* Selected / active item — solid blue like in the screenshot */
 .project-dropdown-menu li.active {
-  background-color: #1a66cc;
-  color: #ffffff;
+  background-color: var(--nx-info);
+  color: var(--nx-accent-contrast);
 }
 
 .project-dropdown-menu li.active:hover {
-  background-color: #1558b0;
+  background-color: var(--nx-info);
 }
 
 /* Loading placeholder */
@@ -834,8 +935,8 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
-  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, var(--nx-accent-soft), var(--nx-accent-soft));
+  border: 1px solid var(--nx-accent);
   border-radius: 10px;
   padding: 12px 18px;
   margin-bottom: 20px;
@@ -851,8 +952,8 @@ tbody tr:last-child td {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4a72ff, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--nx-accent), var(--nx-accent));
+  color: var(--nx-accent-contrast);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -870,33 +971,33 @@ tbody tr:last-child td {
 .specific-user-banner-name {
   font-size: 15px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-main);
 }
 
 .specific-user-banner-meta {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .specific-user-banner-clear {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #fff;
-  border: 1px solid #c7d2fe;
+  background: var(--bg-card);
+  border: 1px solid var(--nx-accent);
   border-radius: 6px;
   padding: 7px 14px;
   font-size: 12px;
   font-weight: 600;
-  color: #4a72ff;
+  color: var(--nx-accent);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .specific-user-banner-clear:hover {
-  background: #4a72ff;
-  color: #fff;
-  border-color: #4a72ff;
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  border-color: var(--nx-accent);
 }
 
 /* ─── User Search Bar on Dashboard ─────────────────────────── */
@@ -909,47 +1010,11 @@ tbody tr:last-child td {
   display: none;
 }
 
-.dashboard-user-search-input-wrapper {
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 8px 12px;
-  gap: 8px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.dashboard-user-search-input-wrapper:focus-within {
-  border-color: #4a72ff;
-  box-shadow: 0 0 0 3px rgba(74, 114, 255, 0.12);
-}
-
-.dashboard-user-search-icon {
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.dashboard-user-search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 13px;
-  color: #1e293b;
-  background: transparent;
-  font-family: 'Inter', sans-serif;
-}
-
-.dashboard-user-search-input::placeholder {
-  color: #94a3b8;
-}
-
 .dashboard-user-search-spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #e2e8f0;
-  border-top-color: #4a72ff;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--nx-accent);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   flex-shrink: 0;
@@ -961,31 +1026,13 @@ tbody tr:last-child td {
   }
 }
 
-.dashboard-user-search-clear {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-  flex-shrink: 0;
-}
-
-.dashboard-user-search-clear:hover {
-  color: #64748b;
-  background: #f1f5f9;
-}
-
 .dashboard-user-search-results {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -6px rgba(0, 0, 0, 0.05);
   z-index: 200;
@@ -999,11 +1046,11 @@ tbody tr:last-child td {
   padding: 20px 16px;
   text-align: center;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--nx-text-muted);
 }
 
 .dashboard-user-search-error {
-  color: #ef4444;
+  color: var(--nx-danger);
 }
 
 .dashboard-user-search-result-item {
@@ -1016,15 +1063,15 @@ tbody tr:last-child td {
 }
 
 .dashboard-user-search-result-item:hover {
-  background: #f8fafc;
+  background: var(--nx-bg-sunken);
 }
 
 .dashboard-user-search-result-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4a72ff, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--nx-accent), var(--nx-accent));
+  color: var(--nx-accent-contrast);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1043,7 +1090,7 @@ tbody tr:last-child td {
 .dashboard-user-search-result-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1051,8 +1098,120 @@ tbody tr:last-child td {
 
 .dashboard-user-search-result-meta {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--nx-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Layout only — the field itself is the shared SearchInput. */
+.search-bar-permanent {
+  width: 250px;
+  flex-shrink: 1;
+}
+
+/* The header avatar, when the user has a profile picture. */
+.greeting-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---- Role-view scope note ------------------------------------------------
+   Shown on the Admin / Manager / Employee views to say whose figures are on
+   screen, since those views aggregate a whole role until you pick a person. */
+.dashboard-scope-note {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  margin-bottom: var(--nx-space-3);
+  padding: var(--nx-space-2) var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-secondary);
+}
+
+.dashboard-scope-note svg {
+  flex: none;
+  color: var(--nx-accent);
+}
+
+.dashboard-scope-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nx-space-3);
+  min-height: 40vh;
+  color: var(--nx-text-muted);
+}
+
+.dashboard-scope-empty p {
+  margin: 0;
+  font-size: var(--nx-text-md);
+}
+
+/* ---- Sidebar footer ------------------------------------------------------
+   A branded card below the navigation. Pinned outside .sidebar-content so it
+   holds its place while a long menu scrolls past it. */
+.sidebar-promo {
+  position: relative;
+  flex: none;
+  margin: var(--nx-space-3);
+  padding: var(--nx-space-4) var(--nx-space-3);
+  border: 1px solid var(--nx-sidebar-border);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-sidebar-active, rgba(255, 255, 255, 0.04));
+  overflow: hidden;
+  text-align: center;
+}
+
+/* The sweep behind the card, drawn rather than shipped as an image so it
+   stays crisp at any width and follows the accent colour. */
+.sidebar-promo__wave {
+  position: absolute;
+  inset: auto -20% -55% -20%;
+  height: 130%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 100%,
+      color-mix(in srgb, var(--nx-accent) 55%, transparent) 0%,
+      color-mix(in srgb, var(--nx-accent) 18%, transparent) 45%,
+      transparent 70%);
+  pointer-events: none;
+}
+
+.sidebar-promo__logo {
+  position: relative;
+  display: block;
+  width: 118px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto var(--nx-space-2);
+  object-fit: contain;
+}
+
+.sidebar-promo__tagline {
+  position: relative;
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  line-height: 1.45;
+  color: var(--sidebar-text);
+  opacity: 0.85;
+}
+
+/* At 76px wide there is nothing useful it can say. */
+.dashboard-layout.sidebar-collapsed .sidebar-promo {
+  display: none;
+}
+
+/* On a short viewport the menu needs the room more than the card does. */
+@media (max-height: 720px) {
+  .sidebar-promo {
+    display: none;
+  }
 }

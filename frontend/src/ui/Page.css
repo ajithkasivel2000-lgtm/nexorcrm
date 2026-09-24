@@ -1,0 +1,204 @@
+.nx-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-5);
+  padding: var(--nx-space-6);
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+  background: var(--nx-bg-app);
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.nx-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nx-space-4);
+  flex-wrap: wrap;
+}
+
+.nx-page__heading {
+  min-width: 0;
+}
+
+.nx-page__title {
+  margin: 0;
+  font-size: var(--nx-text-2xl);
+  font-weight: var(--nx-weight-bold);
+  letter-spacing: -0.02em;
+  line-height: var(--nx-leading-tight);
+}
+
+.nx-page__subtitle {
+  margin: var(--nx-space-1) 0 0;
+  font-size: var(--nx-text-md);
+  color: var(--nx-text-secondary);
+  line-height: var(--nx-leading);
+}
+
+.nx-page__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  flex-wrap: wrap;
+}
+
+/* Monospace keeps generated ids column-aligned and scannable. */
+.nx-page__id {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-page__strong {
+  font-weight: var(--nx-weight-medium);
+}
+
+/* Row action cluster, right-aligned in the actions column. */
+.nx-page__row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-1);
+  justify-content: flex-end;
+}
+
+.nx-page__delete:hover:not(:disabled) {
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+}
+
+/* Muted secondary text inside a table cell (email, phone). */
+.nx-page__muted {
+  color: var(--nx-text-secondary);
+}
+
+/* Long free text in a cell: two lines, then ellipsis. Full text stays in the
+   title attribute so nothing is actually lost. */
+.nx-page__clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 340px;
+}
+
+/* ---- Opportunity log (shown in a modal) ---------------------------------- */
+.nx-opp-log {
+  padding: var(--nx-space-4);
+  background: transparent;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+}
+
+.nx-opp-log__title {
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-opp-log__subtitle {
+  margin: var(--nx-space-1) 0 0;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-secondary);
+}
+
+.nx-opp-log__date {
+  margin: var(--nx-space-2) 0 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* ---- Tabs ---------------------------------------------------------------- */
+.nx-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-1);
+  padding: var(--nx-space-1);
+  background: transparent;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-pill);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nx-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nx-tabs__tab {
+  padding: 7px var(--nx-space-4);
+  border: none;
+  border-radius: var(--nx-radius-pill);
+  background: transparent;
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-tabs__tab:hover {
+  color: var(--nx-text);
+}
+
+.nx-tabs__tab.is-active {
+  background: var(--nx-bg-surface);
+  color: var(--nx-accent);
+  box-shadow: var(--nx-shadow-xs);
+}
+
+.nx-tabs__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+@media (max-width: 640px) {
+  .nx-page {
+    padding: var(--nx-space-4);
+    gap: var(--nx-space-4);
+  }
+
+  .nx-page__title {
+    font-size: var(--nx-text-xl);
+  }
+
+  .nx-page__actions {
+    width: 100%;
+  }
+
+  .nx-page__actions .nx-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- Row actions --------------------------------------------------------- */
+.nx-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+/* Count badge on a page-level tab, matching the table tabs. */
+.nx-tabs__count {
+  min-width: 20px;
+  margin-left: var(--nx-space-2);
+  padding: 1px 6px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-hover);
+  color: var(--nx-text-secondary);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-tabs__tab.is-active .nx-tabs__count {
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}

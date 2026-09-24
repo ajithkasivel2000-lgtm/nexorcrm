@@ -1,0 +1,205 @@
+/* ============================================================================
+   Shared styling for the hand-built .modal-* dialogs that predate src/ui/Modal.
+
+   These rules used to live inside RRQ.css / ProjectsList.css / UserAdmin.css /
+   UserGroupList.css. LeadProfile imports none of those, so its nine dialogs
+   were only styled if you happened to visit one of those lazy-loaded routes
+   first — the same dialog looked correct or unstyled depending on where you
+   had been. Loading them once, globally, removes that.
+
+   Expressed on design tokens so they match the rest of the app and follow dark
+   mode. New dialogs should use <Modal> from src/ui instead.
+   ========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nx-z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--nx-space-5);
+  background-color: var(--nx-bg-overlay);
+  backdrop-filter: blur(3px);
+  overflow-y: auto;
+}
+
+.modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - var(--nx-space-10));
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-xl);
+  box-shadow: var(--nx-overlay-ring);
+  overflow: hidden;
+}
+
+/* Sticky, so the title and close button stay reachable in a long form. */
+.modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-4);
+  flex: none;
+  padding: var(--nx-space-4) var(--nx-space-6);
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+}
+
+.modal-header h2,
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.modal-header .btn-close,
+.modal-header .modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.modal-header .btn-close:hover,
+.modal-header .modal-close:hover {
+  background: var(--nx-bg-hover);
+  color: var(--nx-text);
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--nx-space-6);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--nx-space-3);
+  flex: none;
+  padding: var(--nx-space-4) var(--nx-space-6);
+  border-top: var(--nx-divider);
+}
+
+/* Form rows inside these dialogs. */
+.modal-body .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+  margin-bottom: var(--nx-space-4);
+}
+
+.modal-body .form-group > label {
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.modal-body .form-group input:not([type='checkbox']):not([type='radio']),
+.modal-body .form-group select,
+.modal-body .form-group textarea {
+  width: 100%;
+  height: 38px;
+  padding: 0 var(--nx-space-3);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  background: var(--nx-bg-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  box-sizing: border-box;
+}
+.modal-body .form-group textarea { height: auto; min-height: 84px; padding: var(--nx-space-3); }
+
+.modal-body .form-group input:focus,
+.modal-body .form-group select:focus,
+.modal-body .form-group textarea:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+@media (max-width: 640px) {
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal-content {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--nx-radius-xl) var(--nx-radius-xl) 0 0;
+  }
+  .modal-header,
+  .modal-body,
+  .modal-footer { padding-left: var(--nx-space-4); padding-right: var(--nx-space-4); }
+}
+
+/* ---------------------------------------------------------------------------
+   Field and button classes the legacy modals use.
+   These lived only in RRQ.css and CreateChannelPartner.css, so a screen that
+   imported neither (LeadProfile) rendered its modals with bare inputs
+   depending on which page had been visited first. Global, so it can't happen.
+   ------------------------------------------------------------------------- */
+.modal-body .form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.modal-body .modal-input,
+.modal-body .modal-select,
+.modal-body .form-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  outline: none;
+}
+
+.modal-body .form-textarea { resize: vertical; min-height: 80px; }
+
+.modal-body .modal-input:focus,
+.modal-body .modal-select:focus,
+.modal-body .form-textarea:focus {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.btn-submit-modal {
+  padding: 8px 20px;
+  border: 1px solid var(--nx-accent);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+.btn-submit-modal:hover { background: var(--nx-accent-hover); border-color: var(--nx-accent-hover); }

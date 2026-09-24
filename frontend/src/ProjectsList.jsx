@@ -1,329 +1,221 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Home, Edit2, Trash2, X } from 'lucide-react';
-import AdvancedTable from './components/AdvancedTable/AdvancedTable';
-import './ProjectsList.css';
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { useListData } from './components/Leads';
+import invalidateLeadCache from './utils/invalidateLeadCache';
+import { Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, RowActions, toneForStatus } from './ui';
+import usePagePermissions from './hooks/usePagePermissions';
+import DynamicDropdown from './components/DynamicDropdown';
 
-const CustomSelect = ({ label, options, value, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div className="form-group custom-select-container" ref={dropdownRef}>
-      <label>{label}</label>
-      <div
-        className={`custom-select-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span>{value || ''}</span>
-      </div>
-      {isOpen && (
-        <div className="custom-select-dropdown">
-          {options.map((option, index) => (
-            <div
-              key={index}
-              className={`custom-select-option ${value === option ? 'selected' : ''}`}
-              onClick={() => {
-                onChange(option);
-                setIsOpen(false);
-              }}
-            >
-              {option}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+const EMPTY_FORM = {
+  projectName: '',
+  projectLocation: '',
+  projectType: '',
+  projectStatus: '',
 };
 
 const ProjectsList = () => {
   const navigate = useNavigate();
-  const context = useOutletContext();
-  const loggedInUser = localStorage.getItem('loggedInUser') || '';
-  const pagePerm = context?.permissionsList?.find(p => p.page === 'projects');
-  const hasExportPermission = loggedInUser === 'admin' ? true : (pagePerm ? !!pagePerm.export : true);
+  // Gated by this user's own permissions. See usePagePermissions.
+  const { canCreate, canEdit, canDelete, canExport } = usePagePermissions('projects');
 
-  const [projects, setProjects] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    projectName: '',
-    projectLocation: '',
-    projectType: 'Farm Land',
-    projectStatus: 'Pre Launch'
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
-  const projectTypes = ['Farm Land', 'Apartment', 'villa'];
-  const projectStatuses = ['Pre Launch', 'Launch', 'Under Construction', 'Ready to Move'];
-
-  useEffect(() => {
-    fetchProjects();
+  const fetchProjectsRequest = useCallback(async () => {
+    const response = await fetch('/api/projects');
+    if (!response.ok) throw new Error(`Failed to fetch projects (${response.status})`);
+    return response.json();
   }, []);
 
-  const fetchProjects = async () => {
-    try {
-      const response = await fetch('/api/projects');
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    }
-  };
+  const { rows: projects, loading, refresh } = useListData(fetchProjectsRequest);
 
-  const sortedProjects = [...projects].sort((a, b) => {
-    const aDate = new Date(a.updatedAt || a.createdAt).getTime();
-    const bDate = new Date(b.updatedAt || b.createdAt).getTime();
-    return bDate - aDate;
-  });
+  // Newest activity first. DataTable keeps this order until the viewer sorts.
+  const sortedProjects = useMemo(() => (
+    [...projects].sort((a, b) => {
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate;
+    })
+  ), [projects]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const openCreate = () => {
+    setFormData(EMPTY_FORM);
+    setError('');
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
     try {
       const response = await fetch('/api/projects', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       if (response.ok) {
         setIsModalOpen(false);
-        setFormData({
-          projectName: '',
-          projectLocation: '',
-          projectType: 'Farm Land',
-          projectStatus: 'Pre Launch'
-        });
-        fetchProjects();
+        setFormData(EMPTY_FORM);
+        refresh();
+        // Leads reference projects (dropdowns, filters, lead.project), so a
+        // project create/delete must refresh every lead view too.
+        invalidateLeadCache();
       } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Failed to create project');
+        const data = await response.json().catch(() => ({}));
+        setError(data.message || 'Failed to create project.');
       }
-    } catch (error) {
-      console.error('Error creating project:', error);
-      alert('An error occurred while creating the project.');
+    } catch (err) {
+      console.error('Error creating project:', err);
+      setError('Could not reach the server.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      try {
-        const response = await fetch(`/api/projects/${id}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          fetchProjects();
-        }
-      } catch (error) {
-        console.error('Error deleting project:', error);
+
+
+  const handleDeleteSelected = async (ids, clearSelection) => {
+    if (!await window.appConfirm(`Delete ${ids.length} selected project(s)?`)) return;
+    try {
+      const responses = await Promise.all(
+        ids.map(id => fetch(`/api/projects/${id}`, { method: 'DELETE' }))
+      );
+      clearSelection();
+      refresh();
+      invalidateLeadCache();
+      const failed = responses.filter(r => !r.ok).length;
+      if (failed > 0) {
+        window.appAlert(`${failed} of ${ids.length} project(s) could not be deleted.`);
       }
+    } catch (err) {
+      console.error('Error deleting projects:', err);
+      window.appAlert('Could not reach the server.');
     }
   };
 
-  const exportCSV = () => {
-    const headers = ["Sl", "Project Name", "Project Location", "Project Type", "Project Status"];
-    const rows = sortedProjects.map((project, index) => [
-      index + 1,
-      project.projectName || "",
-      project.projectLocation || "",
-      project.projectType || "",
-      project.projectStatus || ""
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "projects.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Projects List", 14, 15);
-    const tableColumn = ["Sl", "Project Name", "Project Location", "Project Type", "Project Status"];
-    const tableRows = [];
-    projects.forEach((project, index) => {
-      tableRows.push([
-        index + 1,
-        project.projectName || "-",
-        project.projectLocation || "-",
-        project.projectType || "-",
-        project.projectStatus || "-"
-      ]);
-    });
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 20,
-    });
-    doc.save(`projects_${Date.now()}.pdf`);
-  };
-
-  const tableColumns = [
-    { key: 'projectName', header: 'Project Name', sortable: true },
-    { key: 'projectLocation', header: 'Project Location', sortable: true },
-    { key: 'projectType', header: 'Project Type', sortable: true },
-    { key: 'projectStatus', header: 'Project Status', sortable: true },
+  const columns = useMemo(() => ([
     {
-      key: 'actions', header: 'Actions', sortable: false,
-      renderCell: (row) => (
-        <div className="actions-cell">
-          <button
-            className="btn-icon edit"
-            title="Edit"
-            onClick={() => navigate(`/projects/edit/${row.id}`)}
-          >
-            <Edit2 size={16} />
-          </button>
-          <button
-            className="btn-icon delete"
-            title="Delete"
-            onClick={() => handleDelete(row.id)}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      )
-    }
-  ];
+      key: 'projectName',
+      label: 'Project Name',
+      render: r => <span className="nx-page__strong">{r.projectName || '—'}</span>,
+    },
+    { key: 'projectLocation', label: 'Project Location' },
+    { key: 'projectType', label: 'Project Type', width: '170px' },
+    {
+      key: 'projectStatus',
+      label: 'Project Status',
+      width: '180px',
+      render: r => (r.projectStatus
+        ? <Pill tone={toneForStatus(r.projectStatus)} dot>{r.projectStatus}</Pill>
+        : '—'),
+    },
+  ]), []);
 
   return (
-    <div className="projects-page">
-      <div className="projects-header-top">
-        <div className="header-left">
-          <h2>Projects</h2>
-          <div className="page-breadcrumb">
-            <Home size={14} style={{ cursor: 'pointer' }} onClick={() => navigate('/')} />
-            <span className="slash">/</span>
-            <span>Projects List</span>
-          </div>
-        </div>
-        <button className="btn-create-project" onClick={() => setIsModalOpen(true)}>
-          Create Projects
-        </button>
-      </div>
-
-      <div className="projects-card">
-        <div className="projects-card-header">
-          <h3>Projects List</h3>
-          <p>Projects - Create, view and edit Projects. Assign users to Projects.</p>
-        </div>
-
-        {hasExportPermission && (
-          <div style={{ padding: '20px 20px 15px 20px', display: 'flex', gap: '8px' }}>
-            <button
-              onClick={exportCSV}
-              style={{ padding: '6px 12px', border: 'none', borderRadius: '4px', color: '#fff', fontSize: '13px', cursor: 'pointer', backgroundColor: '#7b68ee', transition: 'opacity 0.2s' }}
-              onMouseEnter={(e) => e.target.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.target.style.opacity = '1'}
-            >
-              Export CSV
-            </button>
-            <button
-              onClick={exportPDF}
-              style={{ padding: '6px 12px', border: 'none', borderRadius: '4px', color: '#fff', fontSize: '13px', cursor: 'pointer', backgroundColor: '#ef4444', transition: 'opacity 0.2s' }}
-              onMouseEnter={(e) => e.target.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.target.style.opacity = '1'}
-            >
-              Export PDF
-            </button>
-          </div>
+    <Page
+      title="Projects"
+      subtitle="Create, view and edit Projects. Assign users to Projects."
+      actions={canCreate ? (
+        <Button variant="primary" icon={Plus} onClick={openCreate}>
+          Create Project
+        </Button>
+      ) : null}
+    >
+      <DataTable
+        columns={columns}
+        rows={sortedProjects}
+        loading={loading}
+        selectable
+        exportName={canExport ? 'projects' : undefined}
+        filters={['projectType', 'projectStatus', 'projectLocation']}
+        tabsFrom="projectStatus"
+        searchPlaceholder="Search project, location or type..."
+        emptyMessage="No projects yet"
+        emptyHint="Create your first project to get started."
+        onDeleteSelected={canDelete ? handleDeleteSelected : undefined}
+        actions={row => (
+          <RowActions
+            label={row.projectName || 'project'}
+            onEdit={canEdit ? () => navigate(`/projects/edit/${row.id}`) : undefined}
+          />
         )}
+      />
 
-        <AdvancedTable
-          columns={tableColumns}
-          data={sortedProjects}
-          sortConfig={{}}
-          selectedIds={[]}
-          onSelectAll={() => { }}
-          onSelectRow={() => { }}
-          currentPage={1}
-          itemsPerPage={sortedProjects.length > 0 ? sortedProjects.length : 1}
-          totalItems={sortedProjects.length}
-          enableSelection={false}
-        />
-      </div>
-
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content project-modal">
-            <div className="modal-header">
-              <h3>Create a New Projects</h3>
-              <button className="btn-close" onClick={() => setIsModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Project Name :</label>
-                <input
-                  type="text"
-                  name="projectName"
-                  placeholder="Project Name"
-                  value={formData.projectName}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Project Location :</label>
-                <input
-                  type="text"
-                  name="projectLocation"
-                  placeholder="Project Location"
-                  value={formData.projectLocation}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <CustomSelect
-                label="Project Type :"
-                options={projectTypes}
+      <Modal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        size="md"
+        title="Create a new project"
+        description="Projects are referenced by leads, dropdowns and filters."
+        footer={
+          <>
+            <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" form="nx-project-form" loading={isSubmitting}>
+              Create Project
+            </Button>
+          </>
+        }
+      >
+        <form id="nx-project-form" onSubmit={handleSubmit}>
+          <FormGrid columns={2}>
+            <Field label="Project Name" required error={error} className="nx-field--full">
+              <Input
+                name="projectName"
+                placeholder="Project Name"
+                value={formData.projectName}
+                onChange={handleInputChange}
+                required
+                data-autofocus
+              />
+            </Field>
+            <Field label="Project Location" className="nx-field--full">
+              <Input
+                name="projectLocation"
+                placeholder="Project Location"
+                value={formData.projectLocation}
+                onChange={handleInputChange}
+              />
+            </Field>
+            {/* Backed by the Project Type and Project Status masters, so a
+                missing one can be added here instead of abandoning the form
+                to go and create it. */}
+            <Field label="Project Type">
+              <DynamicDropdown
+                name="projectType"
+                placeholder="Select Project Type"
+                apiUrl="/api/project-types"
+                displayKey="typeName"
+                valueKey="typeName"
+                postPayloadKey="typeName"
                 value={formData.projectType}
-                onChange={(val) => setFormData(prev => ({ ...prev, projectType: val }))}
+                onChange={handleInputChange}
               />
-
-              <CustomSelect
-                label="Status :"
-                options={projectStatuses}
+            </Field>
+            <Field label="Status">
+              <DynamicDropdown
+                name="projectStatus"
+                placeholder="Select Status"
+                apiUrl="/api/project-statuses"
+                displayKey="statusName"
+                valueKey="statusName"
+                postPayloadKey="statusName"
                 value={formData.projectStatus}
-                onChange={(val) => setFormData(prev => ({ ...prev, projectStatus: val }))}
+                onChange={handleInputChange}
               />
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn-submit-project" onClick={handleSubmit}>
-                Create Projects
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </Field>
+          </FormGrid>
+        </form>
+      </Modal>
+    </Page>
   );
 };
 

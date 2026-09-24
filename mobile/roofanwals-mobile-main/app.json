@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "NexorCRM",
+    "slug": "nexorcrm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0F14"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nexorcrm.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0F14"
+      },
+      "package": "com.nexorcrm.app",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sharing"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "nexorcrm"
+      },
+      "apiUrl": "https://os.nexorcrm.com/api"
+    }
+  }
+}

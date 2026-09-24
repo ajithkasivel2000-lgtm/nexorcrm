@@ -1,0 +1,252 @@
+.nx-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  flex: none;
+  background: var(--nx-sidebar-bg);
+  color: var(--nx-sidebar-text);
+  font-family: var(--nx-font);
+  border-right: 1px solid var(--nx-sidebar-border);
+  transition: width var(--nx-duration) var(--nx-ease);
+  overflow: hidden;
+  position: relative;
+  z-index: 40;
+}
+
+.nx-sidebar.is-open      { width: var(--nx-sidebar-width); }
+.nx-sidebar.is-collapsed { width: var(--nx-sidebar-width-collapsed); }
+
+/* ---- Brand --------------------------------------------------------------- */
+.nx-sidebar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-2);
+  height: var(--nx-topbar-height);
+  padding: 0 var(--nx-space-4);
+  border-bottom: 1px solid var(--nx-sidebar-border);
+  flex: none;
+}
+
+.nx-sidebar__logo {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.nx-sidebar__logo img { max-height: 34px; object-fit: contain; }
+
+.nx-sidebar__pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: transparent;
+  color: var(--nx-sidebar-text);
+  cursor: pointer;
+  transition: all var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-sidebar__pin:hover {
+  background: var(--nx-sidebar-hover);
+  color: var(--nx-sidebar-text-active);
+}
+.nx-sidebar.is-collapsed .nx-sidebar__pin { display: none; }
+
+/* ---- Search -------------------------------------------------------------- */
+/* ---- Nav ----------------------------------------------------------------- */
+.nx-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--nx-space-2) var(--nx-space-3) var(--nx-space-4);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+.nx-sidebar__nav::-webkit-scrollbar { width: 6px; }
+.nx-sidebar__nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+}
+
+.nx-sidebar__no-results {
+  padding: var(--nx-space-4) var(--nx-space-2);
+  font-size: var(--nx-text-base);
+  color: var(--nx-sidebar-text);
+  text-align: center;
+}
+
+.nx-sidebar__section { margin-bottom: var(--nx-space-5); }
+
+.nx-sidebar__section-title {
+  margin: 0 0 var(--nx-space-2);
+  padding: 0 var(--nx-space-2);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--nx-sidebar-text);
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.nx-sidebar__list,
+.nx-sidebar__sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---- Item ---------------------------------------------------------------- */
+.nx-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  width: 100%;
+  padding: 9px var(--nx-space-3);
+  margin-bottom: 2px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: transparent;
+  color: var(--nx-sidebar-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-sidebar__item:hover {
+  background: var(--nx-sidebar-hover);
+  color: var(--nx-sidebar-text-active);
+}
+
+.nx-sidebar__item.is-active {
+  background: var(--nx-sidebar-active);
+  color: var(--nx-sidebar-text-active);
+}
+
+/* Active marker on the left edge — reads clearly even in the collapsed rail. */
+.nx-sidebar__item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--nx-accent);
+}
+
+.nx-sidebar__item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nx-accent);
+}
+
+.nx-sidebar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex: none;
+}
+
+.nx-sidebar__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-sidebar__chevron {
+  flex: none;
+  opacity: 0.7;
+  transition: transform var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-sidebar__chevron.is-open { transform: rotate(180deg); }
+
+/* Collapsed rail: icons only, centred. */
+.nx-sidebar.is-collapsed .nx-sidebar__label,
+.nx-sidebar.is-collapsed .nx-sidebar__chevron { display: none; }
+.nx-sidebar.is-collapsed .nx-sidebar__item { justify-content: center; padding: 9px 0; }
+.nx-sidebar.is-collapsed .nx-sidebar__section { margin-bottom: var(--nx-space-3); }
+
+/* ---- Sub items ----------------------------------------------------------- */
+.nx-sidebar__sublist {
+  margin: 2px 0 var(--nx-space-2) 26px;
+  padding-left: var(--nx-space-3);
+  border-left: 1px solid var(--nx-sidebar-border);
+  animation: nx-sub-in var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-sidebar__subitem {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 7px var(--nx-space-2);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: transparent;
+  color: var(--nx-sidebar-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-sidebar__subitem:hover {
+  background: var(--nx-sidebar-hover);
+  color: var(--nx-sidebar-text-active);
+}
+.nx-sidebar__subitem.is-active {
+  color: var(--nx-sidebar-text-active);
+  font-weight: var(--nx-weight-medium);
+}
+.nx-sidebar__subitem.is-active .nx-sidebar__dot { background: var(--nx-accent); }
+
+.nx-sidebar__dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+.nx-sidebar__subitem.is-active .nx-sidebar__dot { opacity: 1; }
+
+@keyframes nx-sub-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Footer -------------------------------------------------------------- */
+.nx-sidebar__footer {
+  flex: none;
+  padding: var(--nx-space-3);
+  border-top: 1px solid var(--nx-sidebar-border);
+}
+
+/* Needed for the active ::before marker to anchor to the item. */
+.nx-sidebar__list li { position: relative; }
+
+/* ---- Phone: slide over the content instead of squeezing it --------------- */
+@media (max-width: 900px) {
+  .nx-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    box-shadow: var(--nx-overlay-ring);
+  }
+  .nx-sidebar.is-collapsed { width: 0; border-right: none; }
+}
+
+/* Layout only — the field itself is the shared SearchInput (inverse tone). */
+.nx-sidebar__search {
+  margin: var(--nx-space-3) var(--nx-space-3) var(--nx-space-1);
+  flex: none;
+}

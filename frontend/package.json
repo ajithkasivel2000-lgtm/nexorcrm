@@ -1,5 +1,5 @@
 {
-  "name": "propcrm",
+  "name": "NexorCRM",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,16 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.21.0",
     "axios": "^1.18.1",
     "core-js": "^3.49.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.23.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.80.0",
     "react-router-dom": "^7.18.1",
     "recharts": "^3.9.1",
+    "socket.io-client": "^4.8.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

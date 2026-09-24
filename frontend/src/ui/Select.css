@@ -1,0 +1,137 @@
+/* The themed replacement for a native <select>. Everything is drawn from
+   tokens, so the option list follows light/dark with the rest of the app. */
+
+.nx-select2 { position: relative; width: 100%; min-width: 0; }
+
+.nx-select2__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--nx-space-2) 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--nx-duration-fast) var(--nx-ease),
+              box-shadow var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-select2--sm .nx-select2__trigger { height: 30px; font-size: var(--nx-text-sm); }
+.nx-select2--lg .nx-select2__trigger { height: 42px; }
+
+.nx-select2__trigger:hover:not(:disabled) { border-color: var(--nx-text-muted); }
+
+.nx-select2__trigger:focus-visible,
+.nx-select2__trigger.is-open {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-select2.is-disabled .nx-select2__trigger,
+.nx-select2__trigger:disabled {
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-muted);
+  cursor: not-allowed;
+}
+
+.nx-select2__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nx-select2__value.is-placeholder { color: var(--nx-text-muted); }
+
+.nx-select2__chevron {
+  flex: none;
+  color: var(--nx-text-muted);
+  transition: transform var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-select2__trigger.is-open .nx-select2__chevron { transform: rotate(180deg); }
+
+/* The hidden twin that carries the value for FormData and `required`.
+   Not display:none — a hidden control cannot be validated by the browser. */
+.nx-select2__shadow {
+  position: absolute;
+  left: var(--nx-space-3);
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- the list ----------------------------------------------------------- */
+.nx-select2__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--nx-space-1);
+  outline: none;
+}
+
+.nx-select2__option {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 7px var(--nx-space-2) 7px var(--nx-space-3);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-select2__option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keyboard and pointer share one highlight, so arrowing and hovering look the
+   same rather than fighting each other. */
+.nx-select2__option.is-active { background: var(--nx-bg-hover); }
+
+.nx-select2__option.is-selected {
+  color: var(--nx-accent);
+  font-weight: var(--nx-weight-medium);
+}
+
+.nx-select2__option:disabled {
+  color: var(--nx-text-muted);
+  cursor: not-allowed;
+  background: none;
+}
+
+.nx-select2__empty {
+  margin: 0;
+  padding: var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+.nx-select2__icon { flex: none; color: var(--nx-text-muted); }
+
+/* Error styling when the Select is the control inside a Field or lp-field. */
+.nx-field.has-error .nx-select2__trigger,
+.nx-rec-field.has-error .nx-select2__trigger { border-color: var(--nx-danger); }
+.nx-field.has-error .nx-select2__icon,
+.nx-rec-field.has-error .nx-select2__icon { color: var(--nx-danger); }

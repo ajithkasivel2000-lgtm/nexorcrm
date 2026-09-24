@@ -1,11 +1,13 @@
 const prisma = require('../prismaClient');
+const { sendError } = require('../utils/apiError');
+const { publicSession, idsForHandles } = require('../utils/sessionHandle');
 
 exports.getSessions = async (req, res) => {
   try {
     const sessions = await prisma.session.findMany({ orderBy: { lastActive: 'desc' } });
-    res.status(200).json(sessions);
+    res.status(200).json(sessions.map((s) => publicSession(s, req.sessionId)));
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching sessions', error: error.message });
+    sendError(res, error, 'Error fetching sessions', 500);
   }
 };
 
@@ -14,7 +16,7 @@ exports.clearAllSessions = async (req, res) => {
     await prisma.session.deleteMany({});
     res.status(200).json({ message: 'All sessions cleared' });
   } catch (error) {
-    res.status(500).json({ message: 'Error clearing sessions', error: error.message });
+    sendError(res, error, 'Error clearing sessions', 500);
   }
 };
 
@@ -25,9 +27,9 @@ exports.getSessionsByUser = async (req, res) => {
       where: { username },
       orderBy: { lastActive: 'desc' }
     });
-    res.status(200).json(sessions);
+    res.status(200).json(sessions.map((s) => publicSession(s, req.sessionId)));
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching user sessions', error: error.message });
+    sendError(res, error, 'Error fetching user sessions', 500);
   }
 };
 
@@ -37,11 +39,13 @@ exports.deleteBulkSessions = async (req, res) => {
     if (!sessionIds || !Array.isArray(sessionIds)) {
       return res.status(400).json({ message: 'sessionIds array is required' });
     }
+    // The list hands out handles, so that is what comes back to name a session.
+    const ids = await idsForHandles(sessionIds);
     await prisma.session.deleteMany({
-      where: { id: { in: sessionIds } }
+      where: { id: { in: ids } }
     });
     res.status(200).json({ message: 'Selected sessions deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting sessions', error: error.message });
+    sendError(res, error, 'Error deleting sessions', 500);
   }
 };

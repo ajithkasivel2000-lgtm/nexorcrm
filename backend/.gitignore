@@ -1,5 +1,11 @@
 node_modules
-# Keep environment variables out of version control
+
+# Environment variables stay out of version control
 .env
 
+# Build output (npm run build) and Prisma's generated client
+dist
 /generated/prisma
+
+# Runtime uploads: team-chat photos written by the app itself
+uploads/

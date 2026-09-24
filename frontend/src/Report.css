@@ -1,42 +1,7 @@
-.report-page {
-  padding: 20px 30px;
-  background-color: #f8f9fa;
-  min-height: calc(100vh - 60px);
-  flex: 1;
-  overflow-y: auto;
-}
-
-.report-header {
-  margin-bottom: 20px;
-}
-
-.report-header h2 {
-  font-size: 20px;
-  color: #333;
-  margin: 0 0 5px 0;
-  font-weight: 600;
-}
-
-.page-breadcrumb {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #6c757d;
-  gap: 8px;
-}
-
-.page-breadcrumb .current {
-  color: #556ee6;
-}
-
-.page-breadcrumb .slash {
-  margin: 0 4px;
-}
-
 .report-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   padding: 20px;
 }
 
@@ -44,7 +9,7 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
-  border-bottom: 1px dashed #eee;
+  border-bottom: 1px solid var(--nx-border);
   padding-bottom: 20px;
   margin-bottom: 20px;
 }
@@ -57,7 +22,7 @@
 
 .filter-label {
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
   font-weight: 500;
   width: 120px;
 }
@@ -70,15 +35,15 @@
   width: 100%;
   max-width: 600px;
   padding: 8px 12px;
-  border: 1px dashed #ccc;
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
   font-size: 13px;
   outline: none;
-  color: #333;
+  color: var(--text-main);
 }
 
 .filter-select:focus {
-  border-color: #7b68ee;
+  border-color: var(--nx-accent);
 }
 
 .checkbox-group {
@@ -92,192 +57,6 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
   cursor: pointer;
-}
-
-.submit-btn-row {
-  display: flex;
-  justify-content: flex-end;
-  max-width: 760px;
-  margin-top: 5px;
-}
-
-.btn-submit {
-  background-color: #7b68ee;
-  color: #fff;
-  border: none;
-  padding: 8px 25px;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.btn-submit:hover {
-  opacity: 0.9;
-}
-
-.report-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.toolbar-left {
-  display: flex;
-  gap: 5px;
-}
-
-.btn-export {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  background-color: #7b68ee;
-  transition: opacity 0.2s;
-}
-
-.btn-export:hover {
-  opacity: 0.9;
-}
-
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.search-label {
-  font-size: 14px;
-  color: #555;
-}
-
-.search-input {
-  border: 1px dashed #ccc;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 14px;
-  outline: none;
-  width: 200px;
-}
-
-.search-input:focus {
-  border-color: #7b68ee;
-}
-
-.report-table-wrapper {
-  overflow-x: auto;
-}
-
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.report-table th, 
-.report-table td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px dashed #eee;
-  color: #495057;
-}
-
-.report-table th {
-  background-color: #2a2a2a;
-  color: #fff;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.table-arrows {
-  margin-left: 5px;
-  color: #888;
-  vertical-align: middle;
-}
-
-.report-table tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-.rl-actions-cell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.rl-action-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 4px;
-  color: #2ecc71;
-  transition: all 0.2s;
-}
-
-.rl-action-btn:hover {
-  background-color: rgba(46, 204, 113, 0.1);
-}
-
-.rl-action-btn.rl-delete-btn {
-  color: #e74c3c;
-}
-
-.rl-action-btn.rl-delete-btn:hover {
-  background-color: rgba(231, 76, 60, 0.1);
-}
-
-.report-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
-  font-size: 13px;
-  color: #6c757d;
-}
-
-.pagination {
-  display: flex;
-  gap: 5px;
-}
-
-.page-btn {
-  padding: 5px 10px;
-  border: 1px solid #dee2e6;
-  background-color: #fff;
-  color: #007bff;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.page-btn.active {
-  background-color: #7b68ee;
-  color: #fff;
-  border-color: #7b68ee;
-}
-
-.page-btn.disabled {
-  color: #6c757d;
-  background-color: #f8f9fa;
-  cursor: not-allowed;
-}
-
-.text-center {
-  text-align: center !important;
-}
-
-.call-remarks-icon {
-  color: #7b68ee;
-  background: #f0ecfc;
-  padding: 4px;
-  border-radius: 4px;
-  display: inline-flex;
 }

@@ -1,0 +1,594 @@
+/* ===========================================================================
+   Team chat — a room list beside a conversation.
+
+   Token-only, so it follows light and dark with the rest of the CRM. On a
+   phone the two panes become one: the list, until a chat is opened.
+   =========================================================================== */
+
+.nx-tc {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: var(--nx-space-4);
+  height: calc(100vh - 150px);
+  min-height: 460px;
+  padding: var(--nx-space-4);
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+}
+
+.nx-tc__signin {
+  padding: var(--nx-space-8);
+  text-align: center;
+  color: var(--nx-text-muted);
+}
+
+/* ---- the room list -------------------------------------------------------- */
+.nx-tc__list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+}
+
+.nx-tc__list-head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-tc__heading {
+  flex: 1;
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-tc__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--nx-space-3);
+  border: 1px solid var(--nx-accent);
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-accent);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+
+.nx-tc__new:hover { background: var(--nx-accent-soft); }
+
+.nx-tc__search {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  margin: var(--nx-space-3);
+  padding: 0 var(--nx-space-3);
+  height: 34px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__search:focus-within {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-tc__search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text);
+}
+
+.nx-tc__rooms {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.nx-tc__empty {
+  margin: 0;
+  padding: var(--nx-space-5) var(--nx-space-4);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+.nx-tc__room {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  width: 100%;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border: none;
+  border-bottom: var(--nx-divider);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-tc__room:hover { background: var(--nx-bg-hover); }
+.nx-tc__room.is-active { background: var(--nx-accent-soft); }
+
+.nx-tc__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nx-bg-sunken);
+  border: var(--nx-divider);
+  color: var(--nx-text-secondary);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-tc__avatar.is-group {
+  background: var(--nx-accent-soft);
+  border-color: transparent;
+  color: var(--nx-accent);
+}
+
+.nx-tc__room-text { flex: 1; min-width: 0; }
+
+.nx-tc__room-top,
+.nx-tc__room-bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+
+.nx-tc__room-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+}
+
+.nx-tc__room-when {
+  flex: none;
+  font-size: 10px;
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__room-last {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* Unread count. Carries a number, not just a dot, because "how many" is the
+   thing you want to know before opening it. */
+.nx-tc__badge {
+  flex: none;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  font-size: 10px;
+  font-weight: var(--nx-weight-semibold);
+  text-align: center;
+}
+
+/* ---- the conversation ----------------------------------------------------- */
+.nx-tc__thread-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+}
+
+.nx-tc__placeholder {
+  margin: auto;
+  padding: var(--nx-space-8);
+  text-align: center;
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__placeholder-title {
+  margin: var(--nx-space-3) 0 4px;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-tc__placeholder-text {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  max-width: 320px;
+}
+
+.nx-tc__thread-head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex: none;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-tc__back { display: none; }
+
+.nx-tc__thread-who {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nx-tc__thread-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-tc__thread-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-tc__icon:hover { background: var(--nx-bg-hover); color: var(--nx-accent); }
+
+/* Destructive actions in the thread header — delete group. */
+.nx-tc__icon--danger:hover {
+  background: var(--nx-danger-bg, #fee2e2);
+  color: var(--nx-danger, #dc2626);
+}
+
+.nx-tc__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nx-space-2);
+  flex: none;
+  padding: var(--nx-space-2) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+  background: var(--nx-bg-sunken);
+}
+
+.nx-tc__member {
+  padding: 2px 10px;
+  border-radius: var(--nx-radius-pill);
+  border: var(--nx-divider);
+  background: var(--nx-bg-surface);
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-secondary);
+}
+
+.nx-tc__member em { color: var(--nx-text-muted); font-style: normal; }
+
+.nx-tc__thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--nx-space-4);
+  background: var(--nx-bg-sunken);
+  scrollbar-width: thin;
+}
+
+.nx-tc__day {
+  display: flex;
+  justify-content: center;
+  margin: var(--nx-space-3) 0;
+}
+
+.nx-tc__day span {
+  padding: 2px 10px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+/* Somebody joined or left: a note, not a message from a person. */
+.nx-tc__system {
+  margin: var(--nx-space-2) 0;
+  text-align: center;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--nx-space-2);
+}
+
+.nx-tc__row.is-mine { justify-content: flex-end; }
+
+.nx-tc__bubble {
+  max-width: 72%;
+  padding: var(--nx-space-2) var(--nx-space-3);
+  border-radius: var(--nx-radius);
+  border-bottom-left-radius: 4px;
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  font-size: var(--nx-text-sm);
+  line-height: 1.5;
+}
+
+.nx-tc__bubble.is-mine {
+  border-bottom-left-radius: var(--nx-radius);
+  border-bottom-right-radius: 4px;
+  background: var(--nx-accent-soft);
+  border-color: transparent;
+}
+
+.nx-tc__bubble.is-failed { border-color: var(--nx-danger); }
+
+/* In a group, who is speaking — shown only when the speaker changes. */
+.nx-tc__sender {
+  margin: 0 0 2px;
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-accent);
+}
+
+.nx-tc__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.nx-tc__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__tick { color: var(--nx-text-muted); }
+.nx-tc__tick.is-sent { color: var(--nx-accent); }
+.nx-tc__tick.is-failed { color: var(--nx-danger); }
+
+/* ---- composer ------------------------------------------------------------- */
+.nx-tc__composer {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  flex: none;
+  padding: var(--nx-space-3);
+  border-top: var(--nx-divider);
+}
+
+.nx-tc__input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-app);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-tc__input:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-tc__send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  cursor: pointer;
+}
+
+.nx-tc__send:disabled { background: var(--nx-bg-hover); color: var(--nx-text-muted); cursor: default; }
+.nx-tc__send:not(:disabled):hover { background: var(--nx-accent-hover); }
+
+/* ---- start a chat --------------------------------------------------------- */
+.nx-tc__modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nx-z-modal, 200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--nx-space-4);
+  background: var(--nx-bg-overlay);
+}
+
+.nx-tc__modal-box {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  max-height: min(620px, 90vh);
+  overflow: hidden;
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+}
+
+.nx-tc__modal-head {
+  display: flex;
+  align-items: center;
+  padding: var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-tc__modal-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-tc__modal-hint {
+  margin: 0;
+  padding: var(--nx-space-3) var(--nx-space-4) 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-tc__picklist {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--nx-space-3) var(--nx-space-2);
+}
+
+.nx-tc__pick {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-2) var(--nx-space-3);
+  border-radius: var(--nx-radius-sm);
+  cursor: pointer;
+}
+
+.nx-tc__pick:hover { background: var(--nx-bg-hover); }
+.nx-tc__pick input { accent-color: var(--nx-accent); cursor: pointer; }
+
+.nx-tc__pick-text { min-width: 0; }
+.nx-tc__pick-name { display: block; font-size: var(--nx-text-base); font-weight: var(--nx-weight-medium); }
+.nx-tc__pick-sub { display: block; font-size: var(--nx-text-xs); color: var(--nx-text-muted); }
+
+.nx-tc__groupname {
+  margin: 0 var(--nx-space-4) var(--nx-space-3);
+  height: 36px;
+  padding: 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-app);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-tc__groupname:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-tc__modal-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-top: var(--nx-divider);
+}
+
+.nx-tc__picked { flex: 1; font-size: var(--nx-text-sm); color: var(--nx-text-muted); }
+
+.nx-tc__start {
+  padding: 7px var(--nx-space-4);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+
+.nx-tc__start:disabled { background: var(--nx-bg-hover); color: var(--nx-text-muted); cursor: default; }
+
+/* ---- errors --------------------------------------------------------------- */
+.nx-tc__error {
+  position: fixed;
+  left: 50%;
+  bottom: var(--nx-space-5);
+  transform: translateX(-50%);
+  z-index: var(--nx-z-modal, 200);
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  max-width: min(520px, calc(100vw - 32px));
+  margin: 0;
+  padding: var(--nx-space-2) var(--nx-space-4);
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+  font-size: var(--nx-text-sm);
+}
+
+.nx-tc__error button {
+  display: flex;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ---- one pane at a time on a phone ---------------------------------------- */
+@media (max-width: 860px) {
+  .nx-tc {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100vh - 120px);
+    padding: var(--nx-space-3);
+  }
+
+  .nx-tc__thread-wrap { display: none; }
+  .nx-tc.has-open-room .nx-tc__list { display: none; }
+  .nx-tc.has-open-room .nx-tc__thread-wrap { display: flex; }
+  .nx-tc__back { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border: none; border-radius: var(--nx-radius-sm); background: none; color: var(--nx-text-secondary); cursor: pointer; }
+  .nx-tc__bubble { max-width: 85%; }
+}

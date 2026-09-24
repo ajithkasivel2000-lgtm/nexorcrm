@@ -1,0 +1,51 @@
+/* The Leads document, shown rather than saved. */
+
+.nx-docpreview {
+  /* Tall enough that a page of A4 is readable without scrolling the modal
+     itself, and capped so the footer buttons stay on screen. */
+  height: min(68vh, 760px);
+  display: flex;
+  flex-direction: column;
+}
+
+.nx-docpreview__frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius);
+  /* The viewer draws its own grey surround; white behind it stops a flash of
+     the page colour while the PDF loads. */
+  background: #ffffff;
+}
+
+.nx-docpreview__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nx-space-2);
+  height: 100%;
+  margin: 0;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-muted);
+}
+
+.nx-docpreview__note--error {
+  color: var(--nx-danger);
+}
+
+.nx-docpreview__spin {
+  animation: nx-docpreview-spin 900ms linear infinite;
+}
+
+@keyframes nx-docpreview-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-docpreview__spin {
+    animation: none;
+  }
+}

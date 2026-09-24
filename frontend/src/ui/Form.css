@@ -1,0 +1,422 @@
+/* ---- Field --------------------------------------------------------------- */
+.nx-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+  font-family: var(--nx-font);
+  min-width: 0;
+}
+
+.nx-field__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+  line-height: 1.3;
+}
+
+.nx-field__required {
+  color: var(--nx-danger);
+}
+
+.nx-field__hint,
+.nx-field__error {
+  margin: 0;
+  font-size: var(--nx-text-sm);
+  line-height: 1.4;
+}
+
+.nx-field__hint {
+  color: var(--nx-text-muted);
+}
+
+.nx-field__error {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-1);
+  color: var(--nx-danger);
+}
+
+/* ---- Input / textarea / select ------------------------------------------- */
+.nx-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.nx-input {
+  width: 100%;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  background: var(--nx-bg-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  padding: 0 var(--nx-space-3);
+  box-sizing: border-box;
+  transition:
+    border-color var(--nx-duration-fast) var(--nx-ease),
+    box-shadow var(--nx-duration-fast) var(--nx-ease),
+    background var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-input-wrap--sm .nx-input {
+  height: 32px;
+}
+
+.nx-input-wrap--md .nx-input {
+  height: 38px;
+}
+
+.nx-input-wrap--lg .nx-input {
+  height: 44px;
+  font-size: var(--nx-text-md);
+}
+
+.nx-input::placeholder {
+  color: var(--nx-text-muted);
+}
+
+.nx-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--nx-text-muted);
+}
+
+.nx-input:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* ---- Autofill -------------------------------------------------------------
+   Chrome paints a remembered value with its own pale blue background and black
+   text, which ignores every token and is unreadable in dark mode. It refuses
+   `background-color` on an autofilled field, so the surface is repainted with
+   an opaque inset shadow and the text with -webkit-text-fill-color, which does
+   take. Both read from the same tokens as the normal state, so the field looks
+   identical whether the value was typed or remembered — in either theme. */
+.nx-input:-webkit-autofill,
+.nx-input:-webkit-autofill:hover,
+.nx-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--nx-text);
+  caret-color: var(--nx-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--nx-bg-surface) inset;
+  box-shadow: 0 0 0 1000px var(--nx-bg-surface) inset;
+  /* Long enough that Chrome never gets to paint its own colour first. */
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+
+/* The fill is a box-shadow, and so is the focus ring — listed together here so
+   focusing an autofilled field does not drop one of them. */
+.nx-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--nx-text);
+  -webkit-box-shadow: 0 0 0 3px var(--nx-focus-ring), 0 0 0 1000px var(--nx-bg-surface) inset;
+  box-shadow: 0 0 0 3px var(--nx-focus-ring), 0 0 0 1000px var(--nx-bg-surface) inset;
+}
+
+/* Firefox flags the field rather than repainting it, and honours real colours. */
+.nx-input:autofill {
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+}
+
+.nx-input:disabled,
+.nx-input[readonly] {
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-muted);
+  cursor: not-allowed;
+}
+
+.nx-field.has-error .nx-input {
+  border-color: var(--nx-danger);
+}
+
+.nx-field.has-error .nx-input:focus {
+  box-shadow: 0 0 0 3px var(--nx-danger-bg);
+}
+
+/* Leading icon */
+.nx-input__icon {
+  position: absolute;
+  left: var(--nx-space-3);
+  color: var(--nx-text-muted);
+  pointer-events: none;
+}
+
+.nx-input-wrap.has-prefix .nx-input {
+  padding-left: 36px !important;
+}
+
+/* Textarea overrides the fixed height. */
+.nx-textarea {
+  height: auto !important;
+  min-height: 84px;
+  padding: var(--nx-space-3);
+  line-height: var(--nx-leading);
+  resize: vertical;
+}
+
+/* Select */
+.nx-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+.nx-select__chevron {
+  position: absolute;
+  right: var(--nx-space-3);
+  color: var(--nx-text-muted);
+  pointer-events: none;
+}
+
+/* The native dropdown list is drawn by the OS, so force readable colours in
+   dark mode where it would otherwise inherit white-on-white. */
+.nx-select option {
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+}
+
+/* ---- Checkbox ------------------------------------------------------------ */
+.nx-checkbox,
+.nx-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nx-checkbox__input,
+.nx-switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.nx-checkbox__box {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  border: 1.5px solid var(--nx-border-strong);
+  border-radius: 5px;
+  background: var(--nx-bg-surface);
+  position: relative;
+  transition: all var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-checkbox__input:checked+.nx-checkbox__box {
+  background: var(--nx-accent);
+  border-color: var(--nx-accent);
+}
+
+/* Checkmark drawn with a rotated border — no icon dependency. */
+.nx-checkbox__input:checked+.nx-checkbox__box::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1.5px;
+  width: 4px;
+  height: 9px;
+  border: solid var(--nx-accent-contrast);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.nx-checkbox__input:focus-visible+.nx-checkbox__box {
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-checkbox__input:disabled+.nx-checkbox__box {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Switch -------------------------------------------------------------- */
+.nx-switch__track {
+  width: 36px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-border-strong);
+  padding: 2px;
+  transition: background var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-switch__thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--nx-bg-surface);
+  box-shadow: var(--nx-shadow-sm);
+  transition: transform var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-switch__input:checked+.nx-switch__track {
+  background: var(--nx-accent);
+}
+
+.nx-switch__input:checked+.nx-switch__track .nx-switch__thumb {
+  transform: translateX(16px);
+}
+
+.nx-switch__input:focus-visible+.nx-switch__track {
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-switch__input:disabled+.nx-switch__track {
+  opacity: 0.5;
+}
+
+/* ---- Grid ---------------------------------------------------------------- */
+.nx-form-grid {
+  display: grid;
+  gap: var(--nx-space-4) var(--nx-space-5);
+}
+
+.nx-form-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.nx-form-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nx-form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nx-form-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Span helper for a field that needs the full row. */
+.nx-form-grid .nx-field--full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+
+  .nx-form-grid--3,
+  .nx-form-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .nx-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ---- Password field with a reveal toggle --------------------------------- */
+.nx-password {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.nx-password .nx-input {
+  padding-right: 38px;
+}
+
+.nx-password__toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  padding: 5px;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-password__toggle:hover {
+  color: var(--nx-text);
+  background: var(--nx-bg-hover);
+}
+
+/* ---- Avatar upload ------------------------------------------------------- */
+.nx-avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-4);
+}
+
+.nx-avatar-upload__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: 50%;
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-muted);
+}
+
+.nx-avatar-upload__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nx-avatar-upload input[type='file'] {
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-secondary);
+}
+
+/* Inline validation message for the legacy EditableField controls that sit
+   outside <Field>. Global so both screens using them pick it up. */
+.nx-inline-error {
+  margin: 4px 0 0;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-danger);
+}
+
+/* Native multi-select list boxes. These are not dropdowns — they show every
+   option at once and the handler reads target.options[i].selected — so the
+   themed Select cannot replace them. Styled from tokens so they still follow
+   the theme. */
+select[multiple] {
+  width: 100%;
+  min-height: 150px;
+  padding: var(--nx-space-2);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  outline: none;
+}
+
+select[multiple]:focus {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+select[multiple] option {
+  padding: 5px var(--nx-space-2);
+  border-radius: var(--nx-radius-sm);
+  color: var(--nx-text);
+}
+
+select[multiple] option:checked {
+  background: var(--nx-accent) linear-gradient(0deg, var(--nx-accent) 0%, var(--nx-accent) 100%);
+  color: var(--nx-accent-contrast);
+}

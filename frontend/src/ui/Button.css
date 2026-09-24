@@ -1,0 +1,138 @@
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nx-space-2);
+  font-family: var(--nx-font);
+  font-weight: var(--nx-weight-medium);
+  border-radius: var(--nx-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition:
+    background var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease),
+    box-shadow var(--nx-duration-fast) var(--nx-ease),
+    transform var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-btn:active:not(:disabled) { transform: translateY(1px); }
+
+.nx-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- Sizes --------------------------------------------------------------- */
+.nx-btn--sm { height: 30px; padding: 0 var(--nx-space-3); font-size: var(--nx-text-sm); }
+.nx-btn--md { height: 38px; padding: 0 var(--nx-space-4); font-size: var(--nx-text-base); }
+.nx-btn--lg { height: 44px; padding: 0 var(--nx-space-5); font-size: var(--nx-text-md); }
+
+.nx-btn--icon-only.nx-btn--sm { width: 30px; padding: 0; }
+.nx-btn--icon-only.nx-btn--md { width: 38px; padding: 0; }
+.nx-btn--icon-only.nx-btn--lg { width: 44px; padding: 0; }
+
+.nx-btn--block { width: 100%; }
+
+/* ---- Variants ------------------------------------------------------------ */
+/* Outlined, not filled. Primary keeps its weight through a stronger accent
+   border and label rather than a solid block of colour. */
+.nx-btn--primary {
+  background: transparent;
+  color: var(--nx-accent);
+  border-color: var(--nx-accent);
+  font-weight: var(--nx-weight-semibold);
+}
+.nx-btn--primary:hover:not(:disabled) {
+  background: var(--nx-accent-soft);
+  border-color: var(--nx-accent-hover);
+  color: var(--nx-accent-hover);
+}
+
+.nx-btn--secondary {
+  background: transparent;
+  color: var(--nx-text);
+  border-color: var(--nx-border-strong);
+}
+.nx-btn--secondary:hover:not(:disabled) {
+  background: var(--nx-bg-hover);
+  border-color: var(--nx-text-muted);
+}
+
+.nx-btn--ghost {
+  background: transparent;
+  color: var(--nx-text-secondary);
+}
+.nx-btn--ghost:hover:not(:disabled) {
+  background: var(--nx-bg-hover);
+  color: var(--nx-text);
+}
+
+.nx-btn--subtle {
+  background: transparent;
+  color: var(--nx-accent);
+  border-color: var(--nx-border);
+}
+.nx-btn--subtle:hover:not(:disabled) { background: var(--nx-accent-soft); }
+
+.nx-btn--danger {
+  background: transparent;
+  color: var(--nx-danger);
+  border-color: var(--nx-danger);
+}
+.nx-btn--danger:hover:not(:disabled) { background: var(--nx-danger-bg); }
+
+/* ---- Loading spinner ----------------------------------------------------- */
+.nx-btn__spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.8;
+  animation: nx-btn-spin 0.6s linear infinite;
+}
+
+@keyframes nx-btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-btn__spinner { animation-duration: 1.5s; }
+  .nx-btn:active:not(:disabled) { transform: none; }
+}
+
+/* Outline variants — used by the selection bar, where a solid red/blue button
+   would shout over the row of neutral toolbar controls beside it. */
+.nx-btn--danger-outline {
+  background: var(--nx-bg-surface);
+  color: var(--nx-danger);
+  border-color: var(--nx-danger);
+}
+.nx-btn--danger-outline:hover:not(:disabled) {
+  background: var(--nx-danger-bg);
+}
+
+.nx-btn--primary-outline {
+  background: var(--nx-bg-surface);
+  color: var(--nx-accent);
+  border-color: var(--nx-accent);
+}
+.nx-btn--primary-outline:hover:not(:disabled) {
+  background: var(--nx-accent-soft);
+}
+
+/* danger-outline / primary-outline predate the flat direction; the base
+   variants are already outlined, so these simply alias them. */
+.nx-btn--danger-outline { background: transparent; color: var(--nx-danger); border-color: var(--nx-danger); }
+.nx-btn--danger-outline:hover:not(:disabled) { background: var(--nx-danger-bg); }
+.nx-btn--primary-outline { background: transparent; color: var(--nx-accent); border-color: var(--nx-accent); }
+.nx-btn--primary-outline:hover:not(:disabled) { background: var(--nx-accent-soft); }

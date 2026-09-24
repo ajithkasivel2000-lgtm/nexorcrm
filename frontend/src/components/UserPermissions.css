@@ -1,0 +1,132 @@
+/* Per-user permission grid. Built from the record-kit tokens so it sits inside
+   a card without looking like a different application. */
+
+.nx-perm__msg {
+  font-size: 13px;
+  color: var(--nx-text-muted);
+  margin: 0;
+}
+
+.nx-perm__banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  border: 1px solid var(--nx-border);
+  border-left-width: 3px;
+  border-radius: var(--nx-radius-sm);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--nx-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Unrestricted is the state people misread, so it is the one that is tinted. */
+.nx-perm__banner.is-warn {
+  border-left-color: var(--nx-warning);
+  background: var(--nx-warning-bg);
+}
+
+.nx-perm__banner.is-on {
+  border-left-color: var(--nx-success);
+  background: var(--nx-bg-sunken);
+}
+
+.nx-perm__banner.is-info {
+  border-left-color: var(--nx-accent);
+  background: var(--nx-accent-soft);
+}
+
+.nx-perm__group { margin-bottom: 18px; }
+
+.nx-perm__group-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nx-text-muted);
+}
+
+.nx-perm__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  margin-bottom: 6px;
+}
+
+.nx-perm__page { min-width: 0; }
+
+.nx-perm__page-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--nx-text);
+}
+
+.nx-perm__page-note {
+  display: block;
+  font-size: 11.5px;
+  color: var(--nx-text-muted);
+}
+
+.nx-perm__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* The checkbox itself is hidden; the chip is the control. Hidden with opacity
+   rather than display:none so it still takes focus and the keyboard works. */
+.nx-perm__chip input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.nx-perm__chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border: 1px solid var(--nx-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nx-text-muted);
+  user-select: none;
+}
+
+.nx-perm__chip.is-editable { cursor: pointer; }
+.nx-perm__chip.is-editable:hover { border-color: var(--nx-accent); }
+
+.nx-perm__chip.is-on {
+  border-color: var(--nx-success);
+  color: var(--nx-success);
+  background: var(--nx-bg-sunken);
+}
+
+.nx-perm__chip:has(input:focus-visible) {
+  outline: 2px solid var(--nx-focus-ring);
+  outline-offset: 2px;
+}
+
+.nx-perm__bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--nx-border);
+}
+
+@media (max-width: 640px) {
+  .nx-perm__row { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .nx-perm__chip { padding: 4px 9px; font-size: 11.5px; }
+}

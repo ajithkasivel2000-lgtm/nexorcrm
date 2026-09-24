@@ -1,12 +1,12 @@
 .il-container {
   padding: 20px;
-  background-color: #f5f6fa;
+  background-color: var(--nx-bg-app);
   flex: 1;
   overflow-y: auto;
 }
 
 .il-header-block {
-  background: white;
+  background: var(--bg-card);
   padding: 25px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -16,7 +16,7 @@
 .il-title {
   margin: 0 0 5px 0;
   font-size: 24px;
-  color: #2c3e50;
+  color: var(--nx-text);
   font-weight: 600;
 }
 
@@ -24,7 +24,7 @@
   display: flex;
   align-items: center;
   font-size: 12px;
-  color: #8c6cf5;
+  color: var(--nx-accent);
   gap: 5px;
   margin-top: 15px;
 }
@@ -32,11 +32,11 @@
 .il-breadcrumbs .il-home-icon {
   width: 14px;
   height: 14px;
-  color: #8c6cf5;
+  color: var(--nx-accent);
 }
 
 .il-breadcrumbs .il-separator {
-  color: #bdc3c7;
+  color: var(--nx-text-muted);
   margin: 0 4px;
 }
 
@@ -50,7 +50,7 @@
 
 /* Form Card */
 .il-form-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 25px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -58,14 +58,14 @@
 
 .il-card-title {
   font-size: 18px;
-  color: #2c3e50;
+  color: var(--nx-text);
   font-weight: 600;
   margin: 0 0 5px 0;
 }
 
 .il-card-subtitle {
   font-size: 12px;
-  color: #7f8fa4;
+  color: var(--nx-text-muted);
   margin: 0 0 25px 0;
 }
 
@@ -76,7 +76,7 @@
 .il-form-label {
   display: block;
   font-size: 12px;
-  color: #2c3e50;
+  color: var(--nx-text);
   margin-bottom: 5px;
   font-weight: 500;
 }
@@ -84,24 +84,24 @@
 .il-form-control {
   width: 100%;
   padding: 10px 15px;
-  border: 1px dotted #ccc;
+  border: 1px dotted var(--nx-border);
   border-radius: 6px;
   font-size: 13px;
-  color: #4a5568;
+  color: var(--text-muted);
   outline: none;
-  background-color: white;
+  background-color: var(--bg-card);
   appearance: none;
 }
 
 .il-form-control:focus {
   border-style: solid;
-  border-color: #8c6cf5;
+  border-color: var(--nx-accent);
 }
 
 .il-file-upload-container {
   display: flex;
   align-items: center;
-  border: 1px dotted #ccc;
+  border: 1px dotted var(--nx-border);
   border-radius: 6px;
   padding: 5px;
   gap: 10px;
@@ -119,24 +119,24 @@
 }
 
 .il-file-btn {
-  background-color: #f4f6fa;
-  border: 1px solid #e1e5ea;
+  background-color: var(--nx-bg-sunken);
+  border: 1px solid var(--nx-border);
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 12px;
-  color: #4a5568;
+  color: var(--text-muted);
   pointer-events: none;
 }
 
 .il-file-name {
   font-size: 13px;
-  color: #7f8fa4;
+  color: var(--nx-text-muted);
   pointer-events: none;
 }
 
 .il-file-upload-container:focus-within {
   border-style: solid;
-  border-color: #8c6cf5;
+  border-color: var(--nx-accent);
 }
 
 .il-help-text {
@@ -144,14 +144,14 @@
   justify-content: flex-end;
   align-items: center;
   font-size: 11px;
-  color: #a0aec0;
+  color: var(--nx-text-muted);
   margin-top: 10px;
   margin-bottom: 30px;
   gap: 5px;
 }
 
 .il-download-link {
-  color: #8c6cf5;
+  color: var(--nx-accent);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -164,13 +164,13 @@
 
 .il-divider {
   border: 0;
-  border-top: 1px dotted #e1e5ea;
+  border-top: 1px dotted var(--nx-border);
   margin: 30px 0;
 }
 
 .il-submit-btn {
-  background-color: #8c6cf5;
-  color: white;
+  background-color: var(--nx-accent);
+  color: var(--nx-accent-contrast);
   border: none;
   border-radius: 4px;
   padding: 10px 30px;
@@ -183,12 +183,12 @@
 }
 
 .il-submit-btn:hover {
-  background-color: #7265e3;
+  background-color: var(--nx-accent);
 }
 
 /* Help Card */
 .il-help-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 25px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -207,19 +207,19 @@
 .il-help-item {
   font-size: 11px;
   line-height: 1.6;
-  color: #4a5568;
+  color: var(--text-muted);
   margin-bottom: 15px;
 }
 
 .il-help-item strong {
-  color: #2c3e50;
+  color: var(--nx-text);
   font-weight: 600;
 }
 
 /* Custom invalid state styling like in the screenshot */
 input:invalid:not(:focus):not(:placeholder-shown),
 select:invalid:not(:focus) {
-  border-color: #e53e3e;
+  border-color: var(--nx-danger);
 }
 
 /* Ensure focus states look uniform */

@@ -1,0 +1,122 @@
+/* The response-time pill in the lead topbar.
+
+   Built from the same tokens as Pill so it sits with the status control rather
+   than beside it, and it is absent entirely when no window is open. */
+
+.nx-followup {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.nx-followup__cycle {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+/* Plenty of time: present, not shouting. */
+.nx-followup.is-ok {
+  background: var(--nx-bg-sunken);
+  border-color: var(--nx-border);
+  color: var(--nx-text-muted);
+}
+
+/* Under five minutes. */
+.nx-followup.is-urgent {
+  background: var(--nx-warning-bg);
+  border-color: var(--nx-warning);
+  color: var(--nx-warning);
+}
+
+/* The window has passed; the sweep will move it on its next run. */
+.nx-followup.is-overdue {
+  background: var(--nx-danger-bg);
+  border-color: var(--nx-danger);
+  color: var(--nx-danger);
+}
+
+@media (max-width: 640px) {
+  /* On a narrow topbar the icon and the clock carry the meaning. */
+  .nx-followup__label { font-size: 11px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion.
+
+   Two things move, and both mean something: the icon pulses only once the
+   window is nearly gone, and the bar underneath drains as it goes. Nothing
+   animates while there is plenty of time — a pill that pulses for thirty
+   minutes is wallpaper, and stops being noticed exactly when it matters.
+   --------------------------------------------------------------------------- */
+
+.nx-followup__icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* No pulsing, no glow.
+
+   These used to throb amber under five minutes and flash red once overdue.
+   Removed: the colour and the number already say how long is left, and a row
+   that beats once a second pulls the eye away from the rest of the table the
+   whole time it is on screen. The only thing that still moves is the bar
+   below, which creeps rather than flashes. */
+
+/* ---- The draining bar -----------------------------------------------------
+   Sits along the bottom edge of the pill. Width is set inline from the elapsed
+   proportion of the window, so it is the real remaining time rather than a
+   fixed-length animation that would lie after a reload. */
+.nx-followup {
+  position: relative;
+  overflow: hidden;
+}
+
+.nx-followup__bar {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.14;
+}
+
+.nx-followup__bar-fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  /* Matches the tick, so it creeps rather than stepping once a second. */
+  transition: width 1s linear;
+}
+
+/* ---- Compact: the table cell ---------------------------------------------
+   Just the clock. A table row has no space for a sentence, and the column
+   header already says what the number is. */
+.nx-followup.is-compact {
+  padding: 2px 7px;
+  font-size: 11.5px;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;   /* digits stop jittering as they tick */
+}
+
+.nx-followup.is-compact .nx-followup__bar { height: 1.5px; }
+
+/* ---- Off, when asked ------------------------------------------------------
+   The number still counts down; only the decoration stops. The information is
+   in the digits, so nothing is lost by holding still. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-followup,
+  .nx-followup .nx-followup__icon {
+    animation: none;
+  }
+
+  .nx-followup__bar-fill {
+    transition: none;
+  }
+}

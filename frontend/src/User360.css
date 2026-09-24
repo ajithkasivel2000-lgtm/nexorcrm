@@ -1,0 +1,966 @@
+/**
+ * User 360° — styles for the enterprise user administration centre.
+ *
+ * Colour discipline: tokens only, colour reserved for status (success /
+ * warning / danger / info), everything else neutral surfaces. Dark mode is
+ * inherited from body.dark-mode through the same variables every other screen
+ * uses, so no .dark-mode rules live here.
+ */
+
+/* ---- Layout -------------------------------------------------------------- */
+
+.u360 {
+  --u360-gap: 14px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ---- Sticky profile header ------------------------------------------------ */
+
+.u360-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--nx-bg-card, var(--bg-card));
+  border-bottom: 1px solid var(--nx-border);
+  padding: 14px 22px 0 22px;
+}
+
+.u360-header__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.u360-header__info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.u360-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nx-accent-soft, rgba(128, 128, 128, 0.12));
+  color: var(--nx-accent);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.u360-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.u360-avatar--sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.u360-id {}
+
+.u360-id__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nx-text);
+  line-height: 1.2;
+}
+
+.u360-id__meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--nx-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.u360-id__meta .sep {
+  opacity: 0.5;
+}
+
+.u360-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--nx-text-muted);
+}
+
+.u360-presence__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nx-text-muted);
+}
+
+.u360-presence__dot.is-online {
+  background: var(--nx-success);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.u360-presence__dot.is-offline {
+  background: var(--nx-text-muted);
+}
+
+/* Facts strip: employee id, last login, created, sessions — quick identity
+   facts an admin scans before acting. */
+.u360-facts {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 8px 0 10px 0;
+  border-top: 1px dashed var(--nx-border);
+  margin-top: 10px;
+}
+
+.u360-fact {
+  min-width: 90px;
+}
+
+.u360-fact__label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nx-text-muted);
+}
+
+.u360-fact__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nx-text);
+  margin-top: 1px;
+}
+
+.u360-header__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ---- Tab strip (reuses nx-rec__tab visuals via RecordPage) ---------------- */
+
+.u360-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px 60px 22px;
+}
+
+/* ---- KPI cards ------------------------------------------------------------ */
+
+.u360-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--u360-gap);
+  margin-bottom: var(--u360-gap);
+}
+
+.u360-kpi {
+  background: var(--nx-bg-card, var(--bg-card));
+  border: 1px solid var(--nx-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-height: 86px;
+}
+
+.u360-kpi__label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--nx-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.u360-kpi__value {
+  margin-top: 7px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--nx-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.u360-kpi__sub {
+  font-size: 11.5px;
+  color: var(--nx-text-muted);
+  margin-top: 3px;
+}
+
+.u360-kpi.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.u360-kpi.is-clickable:hover {
+  border-color: var(--nx-accent);
+  transform: translateY(-1px);
+}
+
+/* ---- Two-column section grid ---------------------------------------------- */
+
+.u360-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  gap: var(--u360-gap);
+  align-items: start;
+}
+
+.u360-grid--full {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 900px) {
+  .u360-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Security score -------------------------------------------------------- */
+
+.u360-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.u360-score__ring {
+  --p: 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(closest-side, var(--nx-bg-card, var(--bg-card)) 78%, transparent 79% 100%),
+    conic-gradient(var(--nx-success) calc(var(--p) * 1%), var(--nx-border) 0);
+}
+
+.u360-score__num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--nx-text);
+}
+
+.u360-score__checks {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.u360-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--nx-text);
+}
+
+.u360-check.is-warn {
+  color: var(--nx-warning);
+}
+
+.u360-check.is-fail {
+  color: var(--nx-danger);
+}
+
+.u360-check.is-na {
+  color: var(--nx-text-muted);
+}
+
+/* ---- Org chart ------------------------------------------------------------- */
+
+.u360-org {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.u360-org__node {
+  width: min(320px, 100%);
+  background: var(--nx-bg-card, var(--bg-card));
+  border: 1px solid var(--nx-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.u360-org__node.is-self {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 1px var(--nx-accent);
+}
+
+.u360-org__connector {
+  width: 2px;
+  height: 22px;
+  background: var(--nx-border);
+}
+
+.u360-org__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--nx-text);
+}
+
+.u360-org__sub {
+  font-size: 12px;
+  color: var(--nx-text-muted);
+}
+
+.u360-org__reports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ---- Audit / timeline ------------------------------------------------------- */
+
+.u360-audit {
+  display: flex;
+  flex-direction: column;
+}
+
+.u360-audit__item {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.u360-audit__item:last-child {
+  border-bottom: none;
+}
+
+.u360-audit__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nx-accent-soft, rgba(128, 128, 128, 0.12));
+  color: var(--nx-accent);
+}
+
+.u360-audit__icon.is-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--nx-danger);
+}
+
+.u360-audit__icon.is-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--nx-success);
+}
+
+.u360-audit__icon.is-warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--nx-warning);
+}
+
+.u360-audit__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--nx-text);
+}
+
+.u360-audit__diff {
+  font-size: 12.5px;
+  color: var(--nx-text-muted);
+  margin-top: 2px;
+}
+
+.u360-audit__diff code {
+  font-family: inherit;
+  background: var(--nx-accent-soft, rgba(128, 128, 128, 0.1));
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.u360-audit__diff .arrow {
+  margin: 0 4px;
+  opacity: 0.6;
+}
+
+.u360-audit__when {
+  font-size: 11.5px;
+  color: var(--nx-text-muted);
+  white-space: nowrap;
+}
+
+/* ---- Permission matrix ------------------------------------------------------ */
+
+.u360-permcat {
+  border: 1px solid var(--nx-border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.u360-permcat__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--nx-text);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.u360-permcat__head:hover {
+  background: var(--nx-accent-soft, rgba(128, 128, 128, 0.06));
+}
+
+.u360-permcat__count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--nx-text-muted);
+  font-weight: 500;
+}
+
+.u360-permcat__body {
+  padding: 4px 14px 12px 14px;
+}
+
+.u360-permrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px dashed var(--nx-border);
+  flex-wrap: wrap;
+}
+
+.u360-permrow__name {
+  font-size: 13.5px;
+  color: var(--nx-text);
+}
+
+.u360-permtoggles {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.u360-permtoggle {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--nx-border);
+  color: var(--nx-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.u360-permtoggle.is-on {
+  border-color: var(--nx-success);
+  color: var(--nx-success);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+/* ---- Session / login tables -------------------------------------------------- */
+
+.u360-session {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--nx-border);
+  flex-wrap: wrap;
+}
+
+.u360-session:last-child {
+  border-bottom: none;
+}
+
+.u360-session.is-current {
+  background: rgba(34, 197, 94, 0.05);
+  border-radius: 10px;
+}
+
+.u360-session__device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.u360-session__meta {
+  font-size: 12px;
+  color: var(--nx-text-muted);
+}
+
+.u360-session__meta strong {
+  color: var(--nx-text);
+  font-weight: 600;
+}
+
+/* ---- Notification preference rows ------------------------------------------- */
+
+.u360-notifrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--nx-border);
+  flex-wrap: wrap;
+}
+
+.u360-notifrow:last-child {
+  border-bottom: none;
+}
+
+.u360-notifrow__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--nx-text);
+}
+
+.u360-notifrow__desc {
+  font-size: 12.5px;
+  color: var(--nx-text-muted);
+  margin-top: 1px;
+}
+
+.u360-seg {
+  display: inline-flex;
+  border: 1px solid var(--nx-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.u360-seg button {
+  border: none;
+  background: none;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--nx-text-muted);
+}
+
+.u360-seg button.is-on {
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+}
+
+.u360-seg button.is-off {
+  background: transparent;
+}
+
+.u360-seg button+button {
+  border-left: 1px solid var(--nx-border);
+}
+
+/* ---- Danger zone -------------------------------------------------------------- */
+
+.u360-danger {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.u360-danger__head {
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.07);
+  color: var(--nx-danger);
+  font-weight: 700;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.u360-danger__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--nx-border);
+  flex-wrap: wrap;
+}
+
+.u360-danger__name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--nx-text);
+}
+
+.u360-danger__desc {
+  font-size: 12.5px;
+  color: var(--nx-text-muted);
+  margin-top: 1px;
+  max-width: 560px;
+}
+
+/* ---- Empty / loading states ----------------------------------------------------- */
+
+.u360-empty {
+  text-align: center;
+  padding: 34px 16px;
+  color: var(--nx-text-muted);
+}
+
+.u360-empty svg {
+  opacity: 0.5;
+  margin-bottom: 8px;
+}
+
+.u360-skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--nx-border) 25%, var(--nx-accent-soft, rgba(128, 128, 128, 0.12)) 50%, var(--nx-border) 75%);
+  background-size: 200% 100%;
+  animation: u360-shimmer 1.3s infinite;
+  height: 14px;
+  margin: 8px 0;
+}
+
+@keyframes u360-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Responsive header ------------------------------------------------------------ */
+
+@media (max-width: 720px) {
+  .u360-header {
+    padding: 12px 14px 0 14px;
+  }
+
+  .u360-header__actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .u360-header__actions .nx-btn {
+    flex: 1 1 auto;
+  }
+
+  .u360-body {
+    padding: 14px 14px 80px 14px;
+  }
+
+  .u360-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .u360-facts {
+    gap: 16px;
+  }
+
+  .u360-id__name {
+    font-size: 17px;
+  }
+}
+
+/* The neutral tone for the history icon. The other three (is-danger,
+   is-success, is-warning) were already here but nothing used them — the slot
+   was being handed a Pill instead, which overflowed its 26px column. */
+.u360-audit__icon.is-info {
+  background: var(--nx-accent-soft, rgba(128, 128, 128, 0.12));
+  color: var(--nx-accent);
+}
+
+/* The icon is a fixed square and must not be squeezed by a long IP or event
+   name beside it. */
+.u360-audit__icon {
+  flex: none;
+}
+
+/* `min-width: 0` is what lets a long value wrap or ellipsize instead of
+   forcing the grid column wider than the card — the failure that put the
+   pill outside the panel in the first place. */
+.u360-audit__body {
+  min-width: 0;
+}
+
+.u360-audit__title,
+.u360-audit__diff {
+  overflow-wrap: anywhere;
+}
+
+/* ---- New Premium Hero Header ---------------------------------------------- */
+.u360-hero-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  /* background: var(--nx-bg-surface, #f9fafc);
+  padding: 0 32px 12px 32px; */
+}
+
+.u360-hero {
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 300px), linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
+  border: 1px solid var(--nx-border);
+  border-radius: 12px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  flex-wrap: nowrap;
+}
+
+.u360-hero__profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.u360-hero__avatar-box {
+  position: relative;
+}
+
+.u360-hero__avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u360-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.u360-hero__status-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  background: var(--nx-text-muted);
+}
+
+.u360-hero__status-dot.is-online {
+  background: var(--nx-success);
+}
+
+.u360-hero__id {
+  display: flex;
+  flex-direction: column;
+}
+
+.u360-hero__name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+.u360-hero__handle {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.u360-hero__badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.nx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+}
+
+/* One badge, tinted by the role it is actually showing. The single
+   .nx-badge--manager rule was the only one that existed, which is part of why
+   the markup hard-coded "Manager". */
+.nx-badge--role {
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text-secondary);
+}
+
+.nx-badge--role.is-admin,
+.nx-badge--role.is-superadmin {
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-badge--role.is-manager {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.nx-badge--role.is-employee {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.nx-badge--role.is-banned,
+.nx-badge--role.is-suspended,
+.nx-badge--role.is-locked {
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+}
+
+.nx-badge--online {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.nx-badge--offline {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.nx-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.u360-hero__stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: nowrap;
+}
+
+.u360-hero-stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.u360-hero-stat__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u360-hero-stat__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.u360-hero-stat__label {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.u360-hero-stat__val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.u360-hero-stat__sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.u360-hero-tabs {
+  display: flex;
+  gap: 4px;
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--nx-border);
+  overflow-x: auto;
+}
+
+.u360-hero-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.u360-hero-tab:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.u360-hero-tab.is-active {
+  background: #4f46e5;
+  color: #ffffff;
+}

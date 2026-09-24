@@ -1,0 +1,212 @@
+.dynamic-dropdown-container {
+    position: relative;
+    width: 100%;
+}
+
+.dynamic-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dynamic-dropdown-header:focus,
+.dynamic-dropdown-header:focus-visible,
+.dynamic-dropdown-header.open {
+    border-color: var(--nx-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.dropdown-icon {
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.dynamic-dropdown-header.open .dropdown-icon {
+    transform: rotate(180deg);
+}
+
+/* Positioned from JS and portalled onto <body>, so no scrolling ancestor can
+   clip it. Inside a modal the "Add new..." row used to be cut clean off.
+   --nx-z-popover sits above the modal layer so it is not trapped inside a
+   dialog, and below --nx-z-confirm so a confirm opened from this menu (the
+   delete-option prompt) appears in front of it rather than behind. */
+.dynamic-dropdown-menu {
+    position: fixed;
+    background-color: var(--nx-bg-raised, var(--bg-card));
+    border: 1px solid var(--nx-border);
+    border-radius: 6px;
+    box-shadow: var(--nx-overlay-ring);
+    z-index: var(--nx-z-popover);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* The list is the only part that scrolls, so the footer holding
+   "Add new..." stays pinned and reachable however many options there are. */
+.dynamic-dropdown-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.dynamic-dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dynamic-dropdown-item:hover {
+    background-color: var(--nx-bg-sunken);
+}
+
+.dynamic-dropdown-item.selected {
+    background-color: var(--nx-bg-hover);
+    font-weight: 500;
+    color: var(--nx-accent);
+}
+
+.dynamic-dropdown-item.placeholder {
+    color: var(--text-muted);
+}
+
+.btn-delete-opt {
+    background: none;
+    border: none;
+    color: var(--nx-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0;
+}
+
+.dynamic-dropdown-item:hover .btn-delete-opt {
+    opacity: 1;
+}
+
+.btn-delete-opt:hover {
+    color: var(--nx-danger);
+    background-color: var(--nx-danger-bg);
+}
+
+/* flex: none keeps "Add new..." pinned while the option list scrolls. */
+.dynamic-dropdown-footer {
+    flex: none;
+    border-top: 1px solid var(--nx-border);
+    padding: 8px 10px;
+    background-color: var(--nx-bg-sunken);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.btn-add-new {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--nx-accent);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 4px;
+    width: 100%;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.btn-add-new:hover {
+    background-color: var(--nx-accent-soft);
+}
+
+.dynamic-dropdown-add-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.dynamic-dropdown-add-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--nx-border);
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+}
+
+.dynamic-dropdown-add-form input:focus {
+    border-color: var(--nx-accent);
+}
+
+/* Outlined, to match the flat line direction. */
+.btn-save-new {
+    background-color: transparent;
+    color: var(--nx-accent);
+    border: 1px solid var(--nx-accent);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-save-new:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-cancel-new {
+    background-color: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--nx-border);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-cancel-new:hover {
+    background-color: var(--nx-bg-hover);
+}
+
+/* Placeholder text — was an inline colour that ignored dark mode. */
+.dynamic-dropdown-header .is-placeholder {
+    color: var(--nx-text-muted);
+}
+
+.dynamic-dropdown-empty {
+    margin: 0;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--nx-text-muted);
+    text-align: center;
+}
+
+.dynamic-dropdown-error {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--nx-danger);
+    background: var(--nx-danger-bg);
+}

@@ -1,0 +1,146 @@
+.nx-phone {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  font-family: var(--nx-font);
+  overflow: hidden;
+  transition:
+    border-color var(--nx-duration-fast) var(--nx-ease),
+    box-shadow var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-phone:focus-within {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-phone.is-disabled {
+  background: var(--nx-bg-sunken);
+  opacity: 0.7;
+}
+
+/* The error state comes from the surrounding Field. */
+.nx-field.has-error .nx-phone { border-color: var(--nx-danger); }
+.nx-field.has-error .nx-phone:focus-within { box-shadow: 0 0 0 3px var(--nx-danger-bg); }
+
+.nx-phone__anchor { display: flex; }
+
+/* ---- Country trigger ------------------------------------------------------ */
+.nx-phone__country {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 var(--nx-space-2) 0 var(--nx-space-3);
+  border: none;
+  border-right: 1px solid var(--nx-border);
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--nx-duration-fast) var(--nx-ease);
+}
+.nx-phone__country:hover:not(:disabled) { background: var(--nx-bg-hover); }
+.nx-phone__country:disabled { cursor: not-allowed; }
+.nx-phone__country img {
+  display: block;
+  border-radius: 2px;
+  /* A 1px ring keeps a white flag (Japan) visible on a light ground. */
+  box-shadow: 0 0 0 1px var(--nx-border);
+}
+
+.nx-phone__dial { font-variant-numeric: tabular-nums; }
+
+/* ---- Number ---------------------------------------------------------------- */
+.nx-phone__number {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--nx-space-3);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  letter-spacing: 0.02em;
+}
+.nx-phone__number::placeholder { color: var(--nx-text-muted); opacity: 1; }
+.nx-phone__number:disabled { cursor: not-allowed; }
+
+/* ---- Country list (inside a Popover) --------------------------------------- */
+.nx-phone__search {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: 0 var(--nx-space-2) var(--nx-space-2);
+  border-bottom: var(--nx-divider);
+  color: var(--nx-text-muted);
+}
+.nx-phone__search input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-phone__list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--nx-space-1);
+  overflow-y: auto;
+}
+
+.nx-phone__option {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 7px var(--nx-space-2);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+.nx-phone__option:hover { background: var(--nx-bg-hover); }
+.nx-phone__option.is-active { background: var(--nx-accent-soft); color: var(--nx-accent); }
+.nx-phone__option img {
+  flex: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--nx-border);
+}
+
+.nx-phone__option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nx-phone__option-dial {
+  flex: none;
+  color: var(--nx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.nx-phone__empty {
+  margin: 0;
+  padding: var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  text-align: center;
+}

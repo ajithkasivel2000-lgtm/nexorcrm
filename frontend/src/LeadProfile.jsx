@@ -1,331 +1,148 @@
-import { useState, useEffect } from 'react';
+﻿import { useRef, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Home, Edit, Check, RefreshCcw, ChevronDown, X, AlertTriangle } from 'lucide-react';
+import { useRecordTitle } from './hooks/usePageMeta';
+import {
+  Check, X, AlertTriangle, ArrowLeft,
+  User, Mail, Building2, Briefcase, Calendar, Hash, Link2, Globe,
+  Flame, Snowflake, Thermometer, Clock, MessageSquare, Activity,
+  CheckCircle2, Circle, Users, Tag, Video, MapPin, PhoneCall, Send, MessageCircle, Paperclip,
+} from 'lucide-react';
+import useLiveRefresh from './utils/useLiveRefresh';
+import { boundsFor } from './utils/dateBounds';
 import './LeadProfile.css';
 import './Leads.css';
+import invalidateLeadCache from './utils/invalidateLeadCache';
+import { assignableUsers } from './utils/currentUser';
+import LeadStatusCell from './components/LeadStatusCell';
+import FollowUpCountdown from './components/FollowUpCountdown';
+import { LeadConversations, RecordDocuments } from './features/LeadComms';
+import {
+  DEFAULT_DIAL, Select, emailError, normalizeEmail,
+  RecordField, RecordLookupField, RecordPhoneField, RecordUserField,
+  RecordViewOnly, recordStamp,
+} from './ui';
 
-const EditableField = ({ label, initialValue, isSelect = false, options = [], inputType = "text", onSave, readOnly = false, numericOnly = false }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(initialValue);
+/* ---------------------------------------------------------------------------
+   Page-level constants.
+   ------------------------------------------------------------------------- */
 
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+const LEAD_TABS = [
+  { key: 'General', icon: User },
+  { key: 'Follow-up', icon: Clock },
+  { key: 'Notes', icon: MessageSquare },
+  // WhatsApp and click-to-call (features/LeadComms.jsx).
+  { key: 'Conversations', icon: MessageCircle },
+  { key: 'Documents', icon: Paperclip },
+];
 
-  return (
-    <div className="editable-field">
-      <label>{label}</label>
-      <div className="field-content">
-        {isEditing ? (
-          isSelect ? (
-            <select value={value} onChange={(e) => setValue(e.target.value)} autoFocus>
-              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          ) : (
-            <input
-              type={inputType}
-              value={value}
-              onChange={(e) => {
-                let val = e.target.value;
-                if (numericOnly) {
-                  val = val.replace(/[^0-9+\s-]/g, '');
-                }
-                setValue(val);
-              }}
-              autoFocus
-            />
-          )
-        ) : (
-          <div className="value-display">
-            {inputType === 'datetime-local' && value
-              ? new Date(value).toLocaleString()
-              : (value || '---')}
-          </div>
-        )}
-        {!readOnly && (
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            <button
-              className="btn-edit-inline"
-              onClick={() => {
-                if (isEditing) {
-                  if (onSave && value !== initialValue) {
-                    onSave(value);
-                  }
-                  setIsEditing(false);
-                } else {
-                  setIsEditing(true);
-                }
-              }}
-            >
-              {isEditing ? <Check size={12} color="green" /> : <Edit size={12} />}
-            </button>
-            {isEditing && (
-              <button
-                className="btn-edit-inline"
-                onClick={() => {
-                  setValue(initialValue);
-                  setIsEditing(false);
-                }}
-              >
-                <X size={12} color="red" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+/**
+ * Whether this lead has anything to show under Attempted.
+ *
+ * True while the status says so, and afterwards for as long as a call was
+ * actually recorded — a number dialled at "Attempted" is still worth reading
+ * once the lead has moved on to Site Visit, and hiding it would strand it.
+ *
+ * Interested counts as well: "Mark as Interested" records a follow-up date and
+ * remarks, which is what this tab shows. Keyed on the status rather than on
+ * followUpDate, because plenty of leads carry a follow-up date without any
+ * call behind it and those do not belong here.
+ */
+const hasAttemptDetails = (lead) => Boolean(
+  lead && (
+    lead.status === 'Attempted'
+    || lead.status === 'Interested'
+    || lead.openReason
+    || lead.callStatus
+    || lead.callRemarks
+  ),
+);
+
+
+
+/**
+ * Whether this lead has anything to show under Site Visit Details.
+ *
+ * True at that status, and afterwards for as long as a visit was actually
+ * recorded. A lead that has become an Opportunity still went on the visit
+ * that got it there, and the dates and notes are worth reading.
+ */
+const hasSiteVisitDetails = (lead) => Boolean(
+  lead && (
+    lead.status === 'Site Visit'
+    || lead.siteVisitStatus
+    || lead.siteVisitDate
+    || lead.siteVisitConfirmedDate
+    || lead.siteVisitDoneDate
+    || lead.siteVisitNote
+    || lead.siteVisitConfirmedNote
+    || lead.siteVisitDoneNote
+  ),
+);
+
+/**
+ * The sub-tab a status is about, for the statuses that have one.
+ *
+ * Opening the profile lands on it: the status is the reason the record is
+ * being looked at, so its details should not take a click to reach.
+ */
+const TAB_FOR_STATUS = {
+  Attempted: 'Attempted',
+  Interested: 'Attempted',
+  'Site Visit': 'Site Visit Details',
 };
 
-const UserAutoSuggestField = ({ label, initialValue, onSave, users = [] }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(initialValue);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+/** The five stages shown in the progress rail, in order. */
+const PROGRESS_STAGES = ['New Lead', 'Contacted', 'Site Visit', 'Negotiation', 'Closed'];
 
-  const filteredUsers = users.filter(u => 
-    (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (u.firstName && u.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  return (
-    <div className="editable-field" style={{ position: 'relative' }}>
-      <label>{label}</label>
-      <div className="field-content">
-        {isEditing ? (
-          <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Type username to search..."
-              autoFocus
-              style={{ flex: 1, padding: '4px', border: '1px dashed #8c6cf5', borderRadius: '4px' }}
-            />
-            {searchTerm && (
-              <div className="custom-dropdown-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, maxHeight: '150px', overflowY: 'auto', background: '#fff', border: '1px solid #ddd', borderRadius: '4px' }}>
-                {filteredUsers.length > 0 ? filteredUsers.map(u => {
-                  const displayName = u.username || u.firstName || u.name || 'User';
-                  const fullLabel = `${displayName}${u.firstName ? ' (' + u.firstName + ' ' + (u.lastName || '') + ')' : ''}`;
-                  return (
-                    <div
-                      key={u.id}
-                      className="custom-dropdown-item"
-                      onClick={() => {
-                        const selectedUsername = u.username || u.id;
-                        setValue(selectedUsername);
-                        setSearchTerm('');
-                        setIsEditing(false);
-                        if (onSave && selectedUsername !== initialValue) {
-                          onSave(selectedUsername);
-                        }
-                      }}
-                    >
-                      {fullLabel}
-                    </div>
-                  );
-                }) : (
-                  <div className="custom-dropdown-item" style={{ color: '#888' }}>No users found</div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="value-display">{value || '---'}</div>
-        )}
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {!isEditing && (
-            <button
-              className="btn-edit-inline"
-              onClick={() => {
-                setSearchTerm('');
-                setIsEditing(true);
-              }}
-            >
-              <Edit size={12} />
-            </button>
-          )}
-          {isEditing && (
-            <button
-              className="btn-edit-inline"
-              onClick={() => {
-                setSearchTerm('');
-                setIsEditing(false);
-              }}
-            >
-              <X size={12} color="red" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+/**
+ * Maps the many statuses the CRM stores onto the five display stages.
+ * Anything unrecognised sits at "Contacted" — the lead has clearly moved past
+ * New Lead, but we have no evidence of a later stage.
+ */
+const stageIndexFor = (status) => {
+  switch (status) {
+    case 'New Lead': case '': case undefined: case null: return 0;
+    case 'Site Visit': return 2;
+    case 'Opportunity': case 'Negotiation': return 3;
+    case 'Closed': case 'Booked': case 'Rejected': return 4;
+    default: return 1;
+  }
 };
 
-const FormBoxField = ({ label, value, isTextarea = false, onSave }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(value);
+/**
+ * How a lead's id should read on screen.
+ *
+ * Ids used to be uuids, so the page dressed them up: an `ENQ_` prefix, cut to
+ * eight characters to keep them short. Ids are now readable in their own right
+ * — LED-2026-012 — and that dressing corrupts them, turning the id into
+ * "ENQ_LED-2026-012" in one place and the truncated "ENQ_LED-2026" in another.
+ *
+ * A modern id is shown exactly as stored. Anything older keeps the old
+ * treatment, since a bare uuid on screen helps nobody.
+ */
+const RECORD_ID = /^[A-Z]{3}-\d{4}-\d+$/;
 
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const handleSave = () => {
-    if (isEditing) {
-      if (onSave && localValue !== value) {
-        onSave(localValue);
-      }
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  return (
-    <div className="form-box-field" style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginBottom: '15px' }}>
-      <label style={{ flex: '0 0 160px', fontSize: '12px', color: '#555', fontWeight: '600', paddingTop: isTextarea ? '8px' : '0', alignSelf: isTextarea ? 'flex-start' : 'center' }}>
-        {label}
-      </label>
-      <div style={{ flex: '1', display: 'flex', gap: '10px' }}>
-        {isTextarea ? (
-          <textarea
-            readOnly={!isEditing}
-            value={localValue || ''}
-            onChange={(e) => setLocalValue(e.target.value)}
-            style={{ flex: 1, minHeight: '80px', border: isEditing ? '1px dashed #8c6cf5' : '1px dashed #ccc', borderRadius: '4px', padding: '8px 12px', resize: 'vertical', background: '#fdfdfd', color: '#555', fontSize: '13px' }}
-          />
-        ) : (
-          <input
-            type="text"
-            readOnly={!isEditing}
-            value={localValue || ''}
-            onChange={(e) => setLocalValue(e.target.value)}
-            style={{ flex: 1, height: '36px', border: isEditing ? '1px dashed #8c6cf5' : '1px dashed #ccc', borderRadius: '4px', padding: '0 12px', background: '#fdfdfd', color: '#555', fontSize: '13px' }}
-          />
-        )}
-        {isEditing ? (
-          <>
-            <button onClick={handleSave} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
-              <Check size={14} color="green" />
-            </button>
-            <button onClick={() => { setLocalValue(value); setIsEditing(false); }} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
-              <X size={14} color="red" />
-            </button>
-          </>
-        ) : (
-          <button onClick={() => setIsEditing(true)} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
-            <Edit size={14} color="#666" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
+const displayLeadId = (id, { short = false } = {}) => {
+  const value = String(id || '');
+  if (!value) return '';
+  if (RECORD_ID.test(value) || value.startsWith('ENQ')) return value;
+  return `ENQ_${short ? value.slice(0, 8) : value}`;
 };
 
-const FormBoxDropdown = ({ label, initialValue, options, onSave, onChange, directSelect = false }) => {
-  const [isEditing, setIsEditing] = useState(directSelect ? true : false);
-  const [value, setValue] = useState(initialValue || '');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+const RATINGS = [
+  { key: 'hot', label: 'Hot', icon: Flame },
+  { key: 'warm', label: 'Warm', icon: Thermometer },
+  { key: 'cold', label: 'Cold', icon: Snowflake },
+];
 
-  useEffect(() => {
-    setValue(initialValue || '');
-  }, [initialValue]);
-
-  const handleSave = () => {
-    if (isEditing) {
-      if (value !== initialValue) {
-        onSave(value);
-      }
-      setIsEditing(false);
-      setDropdownOpen(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  const handleSelect = (opt) => {
-    setValue(opt);
-    setDropdownOpen(false);
-    if (directSelect) {
-      onSave(opt);
-    }
-    if (onChange) onChange(opt);
-  };
-
-  return (
-    <div className="form-box-field" style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', marginBottom: '15px' }}>
-      <label style={{ flex: '0 0 160px', fontSize: '12px', color: '#555', fontWeight: '600', alignSelf: 'center' }}>
-        {label}
-      </label>
-      <div style={{ flex: '1', display: 'flex', gap: '10px' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <div
-            onClick={() => (directSelect || isEditing) && setDropdownOpen(!dropdownOpen)}
-            style={{ height: '36px', border: (directSelect || isEditing) ? '1px dashed #8c6cf5' : '1px dashed #ccc', borderRadius: '4px', padding: '0 12px', background: '#fdfdfd', color: '#555', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: (directSelect || isEditing) ? 'pointer' : 'default' }}
-          >
-            <span>{value || 'Select'}</span>
-            {(directSelect || isEditing) && <ChevronDown size={14} style={{ color: '#888' }} />}
-          </div>
-          {dropdownOpen && (directSelect || isEditing) && (
-            <div className="custom-dropdown-list" style={{ position: 'absolute', top: '100%', left: 0, width: '100%', zIndex: 10 }}>
-              {options.map(opt => (
-                <div
-                  key={opt}
-                  className={`custom-dropdown-item ${value === opt ? 'selected' : ''}`}
-                  onClick={() => handleSelect(opt)}
-                >
-                  {opt}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {!directSelect && (
-          isEditing ? (
-            <>
-              <button
-                onClick={handleSave}
-                style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
-              >
-                <Check size={14} color="green" />
-              </button>
-              <button
-                onClick={() => {
-                  setValue(initialValue || '');
-                  setIsEditing(false);
-                  setDropdownOpen(false);
-                }}
-                style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
-              >
-                <X size={14} color="red" />
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
-            >
-              <Edit size={14} color="#666" />
-            </button>
-          )
-        )}
-      </div>
-    </div>
-  );
-};
 
 export default function LeadProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Source Information');
-  const [activeLogTab, setActiveLogTab] = useState('Lead Log');
+  const [mainTab, setMainTab] = useState('General');
+  const [logFilter, setLogFilter] = useState('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ visible: false, type: '', message: '' });
-  const [leadStatusOptions, setLeadStatusOptions] = useState([]);
 
   const showToast = (type, message) => {
     setToast({ visible: true, type, message });
@@ -335,45 +152,19 @@ export default function LeadProfile() {
   const [savedRating, setSavedRating] = useState('warm');
   const [selectedRating, setSelectedRating] = useState('warm');
   const [lead, setLead] = useState(null);
+
+  // The tab says which record is open, not just which kind.
+  useRecordTitle(lead?.name);
   const [logs, setLogs] = useState([]);
   const [usersList, setUsersList] = useState([]);
-
-  const [isStatusEditing, setIsStatusEditing] = useState(false);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const [attemptedModalOpen, setAttemptedModalOpen] = useState(false);
+  // The Attempted dropdowns are master lists, editable in the status dialog.
+  const [openReasons, setOpenReasons] = useState([]);
+  const [callStatuses, setCallStatuses] = useState([]);
   const [rejectedModalOpen, setRejectedModalOpen] = useState(false);
-  const [siteVisitModalOpen, setSiteVisitModalOpen] = useState(false);
-  const [interestedModalOpen, setInterestedModalOpen] = useState(false);
   const [rejectedModalSource, setRejectedModalSource] = useState(null);
-
-  const [enquiryStatus, setEnquiryStatus] = useState('New Lead');
-
-  const [attemptedFormData, setAttemptedFormData] = useState({
-    openReason: '',
-    callStatus: '',
-    followUpDate: '',
-    callRemarks: ''
-  });
 
   const [rejectedFormData, setRejectedFormData] = useState({
     rejectedReason: ''
-  });
-
-  const [siteVisitFormData, setSiteVisitFormData] = useState({
-    siteVisitDate: '',
-    siteVisitNote: ''
-  });
-
-  const [interestedFormData, setInterestedFormData] = useState({
-    followUpDate: '',
-    callRemarks: ''
-  });
-
-  const [allocateModalOpen, setAllocateModalOpen] = useState(false);
-  const [allocateFormData, setAllocateFormData] = useState({
-    allocateTo: '',
-    targetDate: '',
-    allocationNotes: ''
   });
 
   const [reScheduledModalOpen, setReScheduledModalOpen] = useState(false);
@@ -401,11 +192,58 @@ export default function LeadProfile() {
     bookingStatus: ''
   });
 
+  const [siteVisitTab, setSiteVisitTab] = useState('Scheduled');
+  const [generalTab, setGeneralTab] = useState('Contact Details');
+
+  /* The tab strip follows the recorded site-visit status when a record is
+     opened, so a lead whose visit is already confirmed or done lands on the
+     matching tab rather than always defaulting to "Scheduled". Once the
+     viewer picks a tab by hand, their choice wins until the next record. */
+  const siteVisitTabTouchedRef = useRef(false);
+  const siteVisitTabForStatus = (siteVisitStatus) => {
+    switch (siteVisitStatus) {
+      case 'Site Visit Confirmed': return 'Confirmed';
+      case 'Site Visit Done':
+      case 'Opportunity':
+      case 'Rejected': return 'Done';
+      default: return 'Scheduled';
+    }
+  };
+
   useEffect(() => {
+    siteVisitTabTouchedRef.current = false;
     fetchLead();
     fetchUsers();
-    fetchLeadStatuses();
+    fetchMaster('/api/open-reasons', 'reasonName', setOpenReasons);
+    fetchMaster('/api/call-statuses', 'statusName', setCallStatuses);
+    // The record id decides what to load; the fetchers close over it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  /* This record is edited field by field and each field saves on its own, so
+     there is no half-typed form here to protect — the risk runs the other way,
+     of showing a status or an owner that somebody changed elsewhere. */
+  useLiveRefresh(['leads', 'users', 'open-reasons', 'call-statuses'], () => {
+    fetchLead();
+    fetchUsers();
+  });
+
+  /**
+   * Loads a master list, as plain names for the dropdowns.
+   *
+   * A failure leaves the list empty rather than throwing: RecordField still
+   * shows the value already on the lead, so nothing on screen is lost.
+   */
+  const fetchMaster = async (url, field, apply) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return;
+      const rows = await response.json();
+      apply(Array.isArray(rows) ? rows.map((r) => r[field]).filter(Boolean) : []);
+    } catch (error) {
+      console.error(`Failed to fetch ${url}:`, error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -419,30 +257,17 @@ export default function LeadProfile() {
     }
   };
 
-  const fetchLeadStatuses = async () => {
-    try {
-      const response = await fetch('/api/lead-statuses');
-      if (response.ok) {
-        const data = await response.json();
-        setLeadStatusOptions(Array.isArray(data) ? data.map(s => s.statusName) : []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch lead statuses:', error);
-    }
-  };
-
   const fetchLead = async () => {
     try {
       const response = await fetch(`/api/leads/${id}`);
       if (response.ok) {
         const data = await response.json();
         setLead(data);
-        setEnquiryStatus(data.status || 'New Lead');
         setSavedRating(data.rating || 'warm');
         setSelectedRating(data.rating || 'warm');
         setLogs(data.logs || []);
-        if (data.status === 'Site Visit') {
-          setActiveTab('Site Visit Details');
+        if (!siteVisitTabTouchedRef.current) {
+          setSiteVisitTab(siteVisitTabForStatus(data.siteVisitStatus));
         }
       }
     } catch (error) {
@@ -450,19 +275,16 @@ export default function LeadProfile() {
     }
   };
 
-  const handleFieldSave = async (field, value) => {
-    try {
-      const response = await fetch(`/api/leads/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value })
-      });
-      if (response.ok) {
-        fetchLead(); // refresh data
-      }
-    } catch (error) {
-      console.error(`Failed to update ${field}:`, error);
-    }
+  /**
+   * After a successful lead mutation, notify every other lead-aware component
+   * (list pages, tabs, dashboard) to reload from the API. The calling handler
+   * is still responsible for refreshing this detail view via fetchLead().
+   *
+   * Keeping the broadcast separate from fetchLead() avoids redundant requests
+   * when a handler already refetches the current record as part of its flow.
+   */
+  const afterLeadMutation = () => {
+    invalidateLeadCache();
   };
 
   const formatDateForInput = (dateString) => {
@@ -473,134 +295,81 @@ export default function LeadProfile() {
     return (new Date(date.getTime() - offset)).toISOString().slice(0, 16);
   };
 
+  /* A lead can leave the Attempted tab behind — its status is cleared, or the
+     call details are emptied. Without this the page would sit on a tab that is
+     no longer in the strip, showing nothing at all.
+
+     Above the early return below, because a hook cannot run conditionally. */
+  const attemptTabShown = hasAttemptDetails(lead);
+  const siteVisitTabShown = hasSiteVisitDetails(lead);
+  useEffect(() => {
+    if (!attemptTabShown && generalTab === 'Attempted') setGeneralTab('Contact Details');
+    if (!siteVisitTabShown && generalTab === 'Site Visit Details') setGeneralTab('Contact Details');
+    // Source Information was merged into Lead Information; a saved or stale
+    // selection would otherwise show an empty panel.
+    if (generalTab === 'Source Information') setGeneralTab('Lead Information');
+  }, [attemptTabShown, siteVisitTabShown, generalTab]);
+
+  /* A lead opens on the tab its status is about. Once per lead only —
+     re-applying it on every render would make the other tabs impossible to
+     stay on. */
+  const openedTabFor = useRef(null);
+  useEffect(() => {
+    if (!lead || openedTabFor.current === lead.id) return;
+    openedTabFor.current = lead.id;
+    const tab = TAB_FOR_STATUS[lead.status];
+    if (tab) {
+      setMainTab('General');
+      setGeneralTab(tab);
+    }
+  }, [lead]);
+
   if (!lead) return <div>Loading...</div>;
 
   const leadName = lead.name || 'Lead User';
 
-  const formatCurrentDate = () => {
-    const d = new Date();
-    const day = String(d.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const strHours = String(hours).padStart(2, '0');
+  /* Converted leads are read-only. The opportunity is where the work happens
+     from here, and it was created from these values — editing them afterwards
+     would leave the two telling different stories about the same customer. */
+  const isConverted = lead.status === 'Opportunity';
 
-    return `on ${day}-${month}-${year} ${strHours}:${minutes}:${seconds} ${ampm}`;
-  };
+  /* Allocating a lead hands the work over. The allocator keeps it in sight —
+     they are still answerable for it — but the owner is the one working it,
+     and two people editing one record from opposite sides is how a follow-up
+     date gets overwritten by somebody who is no longer making the calls.
 
-  const handleUpdateRating = () => {
-    if (savedRating === selectedRating) return;
+     The API decides this and sends the answer, rather than the rule being
+     written out a second time here: blockAllocatorEdits enforces it on every
+     lead write, and a copy in the browser could only drift from it. Note the
+     lead's own `allocator` cannot be used for this — it is now the person who
+     allocated the lead to whoever is READING it, which is a different
+     question from who allocated it away. */
+  const allocatorOnly = Boolean(lead.readOnlyForViewer);
 
-    const newLog = {
-      id: Date.now(),
-      title: 'Rating Changed',
-      subtitle: `from ${savedRating} to ${selectedRating} by admin`,
-      date: formatCurrentDate()
-    };
-    setLogs([newLog, ...logs]);
-    setSavedRating(selectedRating);
-  };
-
-  const handleStatusChangeSubmit = async (statusOverride, customLogEntry = null) => {
-    const finalStatus = statusOverride || enquiryStatus;
-    const bodyData = { status: finalStatus };
-    if (customLogEntry) bodyData.logEntry = customLogEntry;
-
-    try {
-      const response = await fetch(`/api/leads/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
-      });
-      if (response.ok) {
-        fetchLead();
-        setStatusDropdownOpen(false);
-        setIsStatusEditing(false);
-      }
-    } catch (error) {
-      console.error('Failed to update status:', error);
-    }
-  };
-
-  const handleStatusSelect = (status) => {
-    setEnquiryStatus(status);
-    if (status === 'Attempted') {
-      setAttemptedModalOpen(true);
-      setStatusDropdownOpen(false);
-    } else if (status === 'Rejected') {
-      setRejectedModalSource('Enquiry');
-      setRejectedModalOpen(true);
-      setStatusDropdownOpen(false);
-    } else if (status === 'Site Visit') {
-      setSiteVisitModalOpen(true);
-      setStatusDropdownOpen(false);
-    } else if (status === 'Interested') {
-      setInterestedModalOpen(true);
-      setStatusDropdownOpen(false);
-    } else if (status === 'Allocate') {
-      setAllocateModalOpen(true);
-      setStatusDropdownOpen(false);
-    }
-  };
-
-  const handleAttemptedSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    try {
-      const response = await fetch(`/api/leads/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Attempted',
-          ...attemptedFormData,
-          logEntry: {
-            title: 'Lead Enquiry Status Updated',
-            subtitle: 'by admin as Attempted'
-          }
-        })
-      });
-      if (response.ok) {
-        setAttemptedModalOpen(false);
-        setIsStatusEditing(false);
-        fetchLead();
-        showToast('success', 'Lead status is updated as Attempted successfully');
-      }
-    } catch (error) {
-      console.error('Failed to save Attempted status:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const viewOnly = isConverted || allocatorOnly;
 
   const handleRejectedSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 3000));
     try {
-      const payload = rejectedModalSource === 'SiteVisit' 
+      const payload = rejectedModalSource === 'SiteVisit'
         ? {
-            siteVisitStatus: 'Rejected',
-            reasonDetails: rejectedFormData.rejectedReason,
-            logEntry: {
-              title: 'Site Visit Status Updated',
-              subtitle: `by admin as Rejected - ${rejectedFormData.rejectedReason}`
-            }
+          siteVisitStatus: 'Rejected',
+          reasonDetails: rejectedFormData.rejectedReason,
+          logEntry: {
+            title: 'Site Visit Status Updated',
+            subtitle: `by admin as Rejected - ${rejectedFormData.rejectedReason}`
           }
+        }
         : {
-            status: 'Rejected',
-            reasonDetails: rejectedFormData.rejectedReason,
-            logEntry: {
-              title: 'Lead Enquiry Status Updated',
-              subtitle: `by admin as Rejected - ${rejectedFormData.rejectedReason}`
-            }
-          };
+          status: 'Rejected',
+          reasonDetails: rejectedFormData.rejectedReason,
+          logEntry: {
+            title: 'Lead Status Updated',
+            subtitle: `by admin as Rejected - ${rejectedFormData.rejectedReason}`
+          }
+        };
 
       const response = await fetch(`/api/leads/${id}`, {
         method: 'PUT',
@@ -609,8 +378,8 @@ export default function LeadProfile() {
       });
       if (response.ok) {
         setRejectedModalOpen(false);
-        setIsStatusEditing(false);
         fetchLead();
+        afterLeadMutation(); // keep every other lead view in sync
         const toastMsg = rejectedModalSource === 'SiteVisit'
           ? 'Site visit status is rejected successfully'
           : 'Lead status is updated as Rejected successfully';
@@ -623,87 +392,75 @@ export default function LeadProfile() {
     }
   };
 
-  const handleSiteVisitSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
+  /**
+   * Saves several fields in one request. The country code has to travel with
+   * the number it belongs to, otherwise a half-applied save leaves the lead
+   * with a dial code that does not match its mobile.
+   */
+  const handleFieldsSubmit = async (fields) => {
     try {
-      const response = await fetch(`/api/leads/${id}`, {
+      const response = await fetch(`/api/leads/${id}/fields`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Site Visit',
-          siteVisitDate: siteVisitFormData.siteVisitDate,
-          siteVisitNote: siteVisitFormData.siteVisitNote,
-          logEntry: {
-            title: 'Lead Enquiry Status Updated',
-            subtitle: `by admin as Site Visit Scheduled`
-          }
-        })
+        body: JSON.stringify(fields)
       });
       if (response.ok) {
-        setSiteVisitModalOpen(false);
-        setIsStatusEditing(false);
-        setActiveTab('Site Visit Details');
         fetchLead();
-        showToast('success', 'Site visit status updated to Site Visit Scheduled successfully');
+        afterLeadMutation();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        showToast('error', data.message || 'Could not save the change.');
       }
     } catch (error) {
-      console.error('Failed to save Site Visit status:', error);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Failed to save fields:', error);
+      showToast('error', 'Could not save the change.');
     }
+  };
+
+  /**
+   * Reassigning the lead, with a confirmation first.
+   *
+   * Every other field here saves the moment you leave it, which suits a typo
+   * in a phone number. Ownership is different: it hands the lead to someone
+   * else and takes it out of the current owner's list, and the picker is one
+   * click — easy to brush past the wrong name and not notice.
+   */
+  const changeOwner = async (nextId) => {
+    const nameOf = (who) => {
+      const user = usersList.find((u) => u.id === who || u.username === who);
+      return user ? (user.username || user.firstName || who) : (who || 'nobody');
+    };
+
+    const from = nameOf(lead.owner);
+    const to = nameOf(nextId);
+
+    const ok = await window.appConfirm(
+      `Move this lead from ${from} to ${to}?\n\n`
+      + `${leadName} will leave ${from}'s list and appear in ${to}'s.`,
+      'Change lead owner',
+    );
+    if (!ok) return;
+
+    await handleGenericSubmit('owner', nextId);
   };
 
   const handleGenericSubmit = async (field, value) => {
+    /* The last line of defence. Every control above is disabled on a converted
+       lead, but a control that slips through should not be able to write. */
+    if (lead?.status === 'Opportunity') return;
     try {
-      const response = await fetch(`/api/leads/${id}`, {
+      // Use the dedicated fields endpoint — no log entry, no status change
+      const response = await fetch(`/api/leads/${id}/fields`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          [field]: value,
-          logEntry: {
-            title: 'Lead Updated',
-            subtitle: `by admin updated ${field} to ${value}`
-          }
-        })
+        body: JSON.stringify({ [field]: value })
       });
       if (response.ok) {
-        fetchLead();
+        fetchLead(); // refresh this detail view
+        afterLeadMutation(); // keep every other lead view in sync
       }
     } catch (error) {
       console.error(`Failed to save ${field}:`, error);
-    }
-  };
-
-  const handleInterestedSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    try {
-      const response = await fetch(`/api/leads/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Interested',
-          followUpDate: interestedFormData.followUpDate,
-          callRemarks: interestedFormData.callRemarks,
-          logEntry: {
-            title: 'Lead Enquiry Status Updated',
-            subtitle: `by admin as Interested`
-          }
-        })
-      });
-      if (response.ok) {
-        setInterestedModalOpen(false);
-        setIsStatusEditing(false);
-        fetchLead();
-        showToast('success', 'Lead status is updated as Interested successfully');
-      }
-    } catch (error) {
-      console.error('Failed to save Interested status:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -726,6 +483,7 @@ export default function LeadProfile() {
       if (response.ok) {
         setReScheduledModalOpen(false);
         fetchLead();
+        afterLeadMutation(); // keep every other lead view in sync
         showToast('success', 'Site visit status updated to Re Scheduled Visit successfully');
       }
     } catch (error) {
@@ -753,6 +511,7 @@ export default function LeadProfile() {
       if (response.ok) {
         setConfirmedModalOpen(false);
         fetchLead();
+        afterLeadMutation(); // keep every other lead view in sync
         showToast('success', 'Site visit status updated to Site Visit Confirmed successfully');
       }
     } catch (error) {
@@ -779,43 +538,11 @@ export default function LeadProfile() {
       if (response.ok) {
         setDoneModalOpen(false);
         fetchLead();
+        afterLeadMutation(); // keep every other lead view in sync
         showToast('success', 'Site visit status updated to Site Visit Done successfully');
       }
     } catch (error) {
       console.error('Failed to save Done status:', error);
-    }
-  };
-
-  const handleAllocateSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    try {
-      const response = await fetch(`/api/leads/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Allocate',
-          owner: allocateFormData.allocateTo,
-          followUpDate: allocateFormData.targetDate || undefined,
-          additionalRemarks: allocateFormData.allocationNotes || undefined,
-          logEntry: {
-            title: 'Lead Allocated',
-            subtitle: `by admin allocated to ${allocateFormData.allocateTo}`
-          }
-        })
-      });
-      if (response.ok) {
-        setAllocateModalOpen(false);
-        setIsStatusEditing(false);
-        setEnquiryStatus(lead?.status || 'New Lead');
-        fetchLead();
-        showToast('success', `Lead allocated to ${allocateFormData.allocateTo} successfully`);
-      }
-    } catch (error) {
-      console.error('Failed to allocate lead:', error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -833,8 +560,13 @@ export default function LeadProfile() {
         })
       });
 
+      // Stop here if the record was not created. Carrying on marked the lead
+      // "Opportunity" with no opportunity behind it, and the only sign was a
+      // line in the browser console.
       if (!oppResponse.ok) {
-        console.error('Failed to create opportunity record');
+        const data = await oppResponse.json().catch(() => ({}));
+        showToast('error', data.message || 'The opportunity could not be created, so the lead was left as it is.');
+        return;
       }
 
       // 2. Update Lead Status
@@ -854,6 +586,7 @@ export default function LeadProfile() {
       if (response.ok) {
         setOpportunityModalOpen(false);
         fetchLead();
+        afterLeadMutation(); // keep every other lead view in sync
         navigate('/opportunities');
       }
     } catch (error) {
@@ -861,780 +594,768 @@ export default function LeadProfile() {
     }
   };
 
+  // Statuses that need extra details before they can be applied — each opens
+  // its own modal, which submits the status change once the form is filled.
+  // Newest first. Log dates arrive in two shapes: an ISO timestamp, or the
+  // "on 04-Mar-2026 11:20:31 AM" string the older handlers wrote.
+  const parseLogDate = (d) => {
+    if (!d) return 0;
+    const str = String(d).startsWith('on ') ? String(d).slice(3) : String(d);
+    // Almost every entry is now an ISO timestamp, so try that first — the
+    // dash-stripping below is only for the older "04-Mar-2026 11:20 AM" rows,
+    // and it would mangle an ISO date if it ran first.
+    const iso = Date.parse(str);
+    if (!Number.isNaN(iso)) return iso;
+    const legacy = Date.parse(str.replace(/-/g, ' '));
+    return Number.isNaN(legacy) ? 0 : legacy;
+  };
+
+  const sortedLogs = [...logs].sort((a, b) => parseLogDate(b.date) - parseLogDate(a.date));
+  const logTitles = [...new Set(sortedLogs.map((l) => l.title).filter(Boolean))];
+  const visibleLogs = logFilter === 'all' ? sortedLogs : sortedLogs.filter((l) => l.title === logFilter);
+
+  const currentStage = stageIndexFor(lead.status);
+
+  const visibleTabs = LEAD_TABS;
+
+  const renderLogList = (list = visibleLogs, emptyText = null) => (
+    <div className="nx-rec-log">
+      {list.length === 0 && (
+        <p className="nx-rec-log__empty">
+          {emptyText
+            || (sortedLogs.length === 0 ? 'No activity recorded yet.' : 'No activity matches this filter.')}
+        </p>
+      )}
+      {list.map((log, idx) => (
+        <div className="nx-rec-log__item" key={log.id || idx}>
+          <span className="nx-rec-log__dot"><Activity size={14} /></span>
+          <div className="nx-rec-log__body">
+            <p className="nx-rec-log__title">{log.title}</p>
+            {log.subtitle && <p className="nx-rec-log__meta">{log.subtitle}</p>}
+            <p className="nx-rec-log__date"><Clock size={11} /> {recordStamp(log.date)}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="lead-profile-page">
-      <div className="profile-header">
-        <div className="page-breadcrumb">
-          <Home size={14} style={{ cursor: 'pointer' }} onClick={() => navigate('/')} />
-          <span className="slash">/</span>
-          <span className="current" onClick={() => navigate('/leads')} style={{ cursor: 'pointer', color: '#8c6cf5', fontWeight: '500' }}>Lead Profile - {leadName}</span>
-        </div>
-      </div>
+    <RecordViewOnly active={viewOnly}>
+      <div className="nx-rec">
+        <div className="nx-rec__topbar">
+          <nav className="nx-rec__crumb">
+            <span className="is-current" style={{ fontSize: '18px', fontWeight: '600', color: 'var(--nx-text)' }}>
+              Leads : {leadName} {lead.mobile ? `[${[lead.mobileCountryCode, lead.mobile].filter(Boolean).join(' ')}]` : ''}
+            </span>
+          </nav>
 
+          {/* How long the owner has left to respond before the lead moves to
+            the next person on the project rota. Only while a window is open,
+            so a lead nobody is waiting on looks exactly as it did before. */}
+          <FollowUpCountdown followUp={lead.followUp} />
 
+          {/* The status, where it can be changed without hunting for the field
+            among everything else on the page. Same control as the lead lists,
+            so the menu and its popups behave identically in both places. */}
+          <LeadStatusCell lead={lead} onChanged={fetchLead} explain />
 
-      <div className="profile-content-wrapper">
-        <div className="profile-main">
+          <button type="button" className="nx-rec__back" onClick={() => navigate('/leads')}>
+            <ArrowLeft size={15} aria-hidden="true" />
+            <span>Back to Leads</span>
+          </button>
+        </div >
 
-          <div className="info-section top-info">
-            <div className="info-column">
-              <h3>General Info</h3>
-              <EditableField label="Enquiry Id :" initialValue={lead.id.startsWith('ENQ') ? lead.id : `ENQ_${lead.id}`} readOnly={true} />
-              <EditableField label="EUID :" initialValue="469" readOnly={true} />
-              <EditableField label="Project Name :" initialValue={lead.project || ''} onSave={(v) => handleGenericSubmit('project', v)} />
-              <EditableField label="Enquiry Name :" initialValue={leadName} onSave={(v) => handleGenericSubmit('name', v)} />
-              <EditableField label="Country Code :" initialValue="91" numericOnly={true} />
-              <EditableField label="Mobile Number :" initialValue={lead.mobile} onSave={(v) => handleGenericSubmit('mobile', v)} numericOnly={true} />
-              <EditableField label="Email :" initialValue={lead.email} onSave={(v) => handleGenericSubmit('email', v)} />
-              <EditableField label="Enquiry Project :" initialValue={lead.project || ''} onSave={(v) => handleGenericSubmit('project', v)} />
-              <EditableField label="Alternate No. :" initialValue="" />
-              <EditableField label="Alternate Email :" initialValue="" />
-              <EditableField label="Occupation :" initialValue="" />
-              <EditableField label="Company Name :" initialValue="" />
-              <EditableField label="Virtual Visit :" initialValue="" />
-
-              {lead.status !== 'New Lead' && (
-                <>
-                  <div className="divider-line"></div>
-                  <EditableField label="Open Reason :" initialValue={lead.openReason || ''} onSave={(v) => handleGenericSubmit('openReason', v)} />
-                  <EditableField label="Call Status :" initialValue={lead.callStatus || ''} onSave={(v) => handleGenericSubmit('callStatus', v)} />
-                  <EditableField label="Call Remarks :" initialValue={lead.callRemarks || ''} onSave={(v) => handleGenericSubmit('callRemarks', v)} />
-                </>
-              )}
-            </div>
-
-            <div className="info-column">
-              <h3>Lead Info</h3>
-              <div className="editable-field">
-                <label>Rating :</label>
-                <div className="rating-radios">
-                  <label className="radio-label hot">
-                    <input type="radio" name="rating" checked={selectedRating === 'hot'} onChange={() => setSelectedRating('hot')} /> Hot
-                  </label>
-                  <label className="radio-label warm">
-                    <input type="radio" name="rating" checked={selectedRating === 'warm'} onChange={() => setSelectedRating('warm')} /> Warm
-                  </label>
-                  <label className="radio-label cold">
-                    <input type="radio" name="rating" checked={selectedRating === 'cold'} onChange={() => setSelectedRating('cold')} /> Cold
-                  </label>
-                  <button className="btn-update-rating" onClick={handleUpdateRating}>
-                    <RefreshCcw size={14} />
-                  </button>
-                </div>
-              </div>
-              <EditableField label="Allocator :" initialValue="admin" readOnly={true} />
-              <UserAutoSuggestField label="Lead Owner :" initialValue={lead.owner} onSave={(v) => handleGenericSubmit('owner', v)} users={usersList} />
-
-              <div className="editable-field">
-                <label>Enquiry Status :</label>
-                <div className="field-content custom-dropdown-container">
-                  {!isStatusEditing ? (
-                    <div className="value-display">{lead?.status || 'New Lead'}</div>
-                  ) : (
-                    <>
-                      <div
-                        className={`custom-dropdown-header ${statusDropdownOpen ? 'open' : ''}`}
-                        onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                      >
-                        {enquiryStatus}
-                        <ChevronDown size={14} style={{ color: '#888' }} />
-                      </div>
-                      {statusDropdownOpen && (
-                        <div className="custom-dropdown-list">
-                          {leadStatusOptions.length > 0 ? leadStatusOptions.map(s => (
-                            <div
-                              key={s}
-                              className={`custom-dropdown-item ${enquiryStatus === s ? 'selected' : ''}`}
-                              onClick={() => handleStatusSelect(s)}
-                            >
-                              {s}
-                            </div>
-                          )) : null}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {(localStorage.getItem('loggedInUser') === 'admin' || lead?.status !== 'Site Visit') && (
-                    <button
-                      className="btn-edit-inline"
-                      onClick={() => {
-                        if (isStatusEditing) {
-                          handleStatusChangeSubmit();
-                        } else {
-                          setEnquiryStatus(lead?.status || 'New Lead');
-                          setIsStatusEditing(true);
-                        }
-                      }}
-                    >
-                      {isStatusEditing ? <RefreshCcw size={12} /> : <Edit size={12} />}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <EditableField
-                label="Follow Up Date :"
-                initialValue={formatDateForInput(lead.followUpDate)}
-                inputType="datetime-local"
-                onSave={(v) => handleGenericSubmit('followUpDate', v)}
-              />
-              <EditableField label="Allocated Date :" initialValue="" inputType="datetime-local" />
-              <EditableField label="Virtual Visit Date :" initialValue="" inputType="datetime-local" />
-
-              {lead.status !== 'New Lead' && (
-                <>
-                  <div className="divider-line"></div>
-                  <EditableField label="Rejected Reason :" initialValue={lead.reasonDetails || ''} onSave={(v) => handleGenericSubmit('reasonDetails', v)} />
-                  <EditableField label="Rejected Reason Subtype:" initialValue={lead.rejectionType || ''} onSave={(v) => handleGenericSubmit('rejectionType', v)} />
-                  <EditableField label="Stage :" initialValue="" />
-                  <EditableField label="Allocated To :" initialValue="" />
-                </>
-              )}
-            </div>
+        {/* Says why the controls are dead. Without it the page just looks
+            broken to the one person most likely to open it — the colleague who
+            handed the lead on and came back to check how it is going. */}
+        {allocatorOnly && (
+          <div className="nx-lead-readonly" role="status">
+            <AlertTriangle size={15} aria-hidden="true" />
+            <span>
+              You allocated this lead to <strong>{lead.owner || 'someone else'}</strong>, so it is
+              read-only for you. They can edit it, or an administrator.
+            </span>
           </div>
+        )}
 
-          <div className="bottom-tabs">
-            <button className={`bottom-tab ${activeTab === 'Source Information' ? 'active' : ''}`} onClick={() => setActiveTab('Source Information')}>
-              Source Information
+        <div className="nx-rec__tabs" role="tablist" style={{ position: 'relative', top: 0, zIndex: 10, background: 'var(--nx-bg-app)' }}>
+          {visibleTabs.map(({ key, icon: TabIcon }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={mainTab === key}
+              className={`nx-rec__tab${mainTab === key ? ' is-active' : ''}`}
+              onClick={() => setMainTab(key)}
+            >
+              <TabIcon size={14} /> {key}
             </button>
-            {lead.status !== 'New Lead' && (
-              <button className={`bottom-tab ${activeTab === 'Site Visit Details' ? 'active' : ''}`} onClick={() => setActiveTab('Site Visit Details')}>
-                Site Visit Details
-              </button>
-            )}
-          </div>
-
-          {activeTab === 'Source Information' && (
-            <div className="info-section bottom-info">
-              <div className="info-column" style={{ gap: '5px' }}>
-                <FormBoxDropdown
-                  label="Primary Source :"
-                  initialValue={lead.primarySource || ''}
-                  options={['Digital Marketing', 'Outdoor Marketing', 'Direct Walk In', 'Channel Partner']}
-                  onSave={(val) => handleGenericSubmit('primarySource', val)}
-                />
-                <FormBoxDropdown
-                  label="Secondary Source :"
-                  initialValue={lead.secondarySource || ''}
-                  options={['Website', 'Event', 'Social Media']}
-                  onSave={(val) => handleGenericSubmit('secondarySource', val)}
-                />
-                <FormBoxDropdown
-                  label="Tertiary Source :"
-                  initialValue={lead.tertiarySource || ''}
-                  options={['Landing Page', 'Event Form', 'FB Link', 'Affiliate Link', 'FB Ads']}
-                  onSave={(val) => handleGenericSubmit('tertiarySource', val)}
-                />
-                <FormBoxField label="Preffered Budget :" value="" />
-                <FormBoxField label="Preffered Locality :" value="" />
-              </div>
-              <div className="info-column" style={{ gap: '5px' }}>
-                <FormBoxField label="Channel Partner Name :" value="" />
-                <FormBoxField label="Channel Partner ID :" value="" />
-                <FormBoxField label="Referrer Details :" value="" />
-                <FormBoxField label="Source Url :" value="" />
-                <FormBoxField label="Earlier Source :" value="" />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'Site Visit Details' && lead.status !== 'New Lead' && (
-            <div className="info-section bottom-info">
-              <div className="info-column" style={{ gap: '5px' }}>
-                <FormBoxDropdown
-                  label="Site Visit Status :"
-                  initialValue={lead.siteVisitStatus || (lead.siteVisitDate ? "Site Visit Scheduled" : "")}
-                  options={['Site Visit Scheduled', 'Re Scheduled Visit', 'Site Visit Confirmed', 'Site Visit Done', 'Opportunity', 'Rejected']}
-                  directSelect={true}
-                  onSave={(val) => {
-                    // Only do generic save if it's not one of the modal triggers
-                    if (!['Re Scheduled Visit', 'Site Visit Confirmed', 'Site Visit Done', 'Opportunity', 'Rejected'].includes(val)) {
-                      handleGenericSubmit('siteVisitStatus', val);
-                    }
-                  }}
-                  onChange={(val) => {
-                    if (val === 'Re Scheduled Visit') {
-                      setReScheduledModalOpen(true);
-                    } else if (val === 'Site Visit Confirmed') {
-                      setConfirmedFormData(prev => ({ ...prev, leadOwner: lead?.owner || '' }));
-                      setConfirmedModalOpen(true);
-                    } else if (val === 'Site Visit Done') {
-                      setDoneModalOpen(true);
-                    } else if (val === 'Opportunity') {
-                      setOpportunityModalOpen(true);
-                    } else if (val === 'Rejected') {
-                      setRejectedModalSource('SiteVisit');
-                      setRejectedModalOpen(true);
-                    }
-                  }}
-                />
-                <FormBoxField
-                  label="Site Visit Scheduled Date :"
-                  value={lead.siteVisitDate ? new Date(lead.siteVisitDate).toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }).replace(',', '') : 'dd-mm-yyyy --:-- --'}
-                />
-                <FormBoxField label="Site Visit Scheduled Note :" value={lead.siteVisitNote || ""} isTextarea={true} />
-                <FormBoxField
-                  label="Site Visit Confirmed Date :"
-                  value={lead.siteVisitConfirmedDate ? new Date(lead.siteVisitConfirmedDate).toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }).replace(',', '') : 'dd-mm-yyyy --:-- --'}
-                />
-                <FormBoxField label="Site Visit Confirmed Note :" value={lead.siteVisitConfirmedNote || ""} isTextarea={true} />
-              </div>
-              <div className="info-column" style={{ gap: '5px' }}>
-                <FormBoxField
-                  label="Site Visit Done Date :"
-                  value={lead.siteVisitDoneDate ? new Date(lead.siteVisitDoneDate).toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }).replace(',', '') : 'dd-mm-yyyy --:-- --'}
-                />
-                <FormBoxField label="Site Visit Done Note :" value={lead.siteVisitDoneNote || ""} isTextarea={true} />
-                <FormBoxField label="Number of Site Visit :" value="" />
-                <FormBoxField label="Time of 1st Visit :" value="" />
-                <FormBoxField label="Time of 2st Visit :" value="" />
-              </div>
-            </div>
-          )}
+          ))}
         </div>
 
-        <div className="profile-sidebar">
-          <div className="sidebar-tabs">
-            <button className={`sidebar-tab ${activeLogTab === 'Lead Log' ? 'active' : ''}`} onClick={() => setActiveLogTab('Lead Log')}>Lead Log</button>
-            <button className={`sidebar-tab ${activeLogTab === 'Call History' ? 'active' : ''}`} onClick={() => setActiveLogTab('Call History')}>Call History</button>
-          </div>
+        <div className="lp-body-wrap">
+          <div className="lp-body-wrap__main">
 
-          {activeLogTab === 'Lead Log' && (
-            <div className="log-list">
-              {(() => {
-                const sortedLogs = [...logs].sort((a, b) => {
-                  const parseDate = (d) => {
-                    if (!d) return 0;
-                    let str = String(d);
-                    if (str.startsWith('on ')) {
-                      str = str.substring(3);
-                    }
-                    const formatted = str.replace(/-/g, ' ');
-                    const parsed = Date.parse(formatted);
-                    return isNaN(parsed) ? new Date(d).getTime() : parsed;
-                  };
-                  return parseDate(b.date) - parseDate(a.date);
-                });
-                return sortedLogs.map((log, idx) => (
-                  <div className="log-item" key={log.id || idx}>
-                    <div className="log-avatar-img">
-                      <img src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${log.title}&backgroundColor=f0ecfc`} alt="avatar" />
+            {
+              mainTab === 'General' && (
+                <div className="nx-rec__subtabs-wrap">
+                  {/* Sub-tab bar */}
+                  <div className="nx-rec__subtabs">
+                    {[
+                      { key: 'Contact Details', icon: User },
+                      { key: 'Lead Information', icon: Tag },
+                      /* The status tabs come last, in the order a lead moves
+                         through them: the call that was made, then the visit it
+                         arranged. Each only appears when it applies. */
+                      ...(hasAttemptDetails(lead) ? [{ key: 'Attempted', icon: PhoneCall }] : []),
+                      ...(hasSiteVisitDetails(lead) ? [{ key: 'Site Visit Details', icon: MapPin }] : []),
+                    ].map(({ key, icon: SIcon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`nx-rec__subtab${generalTab === key ? ' is-active' : ''}`}
+                        onClick={() => setGeneralTab(key)}
+                      >
+                        <SIcon size={14} /> {key}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Contact Details sub-tab */}
+                  {generalTab === 'Contact Details' && (
+                    <div className="nx-rec__grid nx-rec__grid--1">
+                      <div className="nx-rec__col">
+                        <section className="nx-rec-card">
+                          <header className="nx-rec-card__head">
+                            <span className="nx-rec-card__icon"><User size={16} /></span>
+                            <div className="nx-rec-card__titles">
+                              <h2 className="nx-rec-card__title">Contact Details</h2>
+                              <p className="nx-rec-card__sub">Identity and contact information</p>
+                            </div>
+                            <span className="nx-rec-card__pill">Lead ID: {lead.id}</span>
+                          </header>
+                          <div className="nx-rec-card__body">
+                            <div className="nx-rec-fields">
+                              <RecordField label="Leads ID" icon={Hash} value={displayLeadId(lead.id)} readOnly />
+                              <RecordField label="Leads Name" icon={User} required value={lead.name || ''} onSave={(v) => handleGenericSubmit('name', v)} />
+                              <RecordPhoneField
+                                label="Mobile Number"
+                                required
+                                name="mobile"
+                                countryName="mobileCountryCode"
+                                value={lead.mobile || ''}
+                                dial={lead.mobileCountryCode || DEFAULT_DIAL}
+                                onSave={(num, code) => handleFieldsSubmit({ mobile: num, mobileCountryCode: code })}
+                              />
+                              <RecordField
+                                label="Email"
+                                icon={Mail}
+                                type="email"
+                                value={lead.email || ''}
+                                placeholder="Not set"
+                                normalize={normalizeEmail}
+                                validate={(v) => emailError(v, { label: 'Email' })}
+                                onSave={(v) => handleGenericSubmit('email', v)}
+                                action={lead.email ? (
+                                  <a className="nx-rec-field__action" href={`mailto:${lead.email}`} title={`Send an email to ${lead.email}`}><Send size={15} /></a>
+                                ) : null}
+                              />
+                              <RecordPhoneField
+                                label="Alternate No."
+                                name="alternateNo"
+                                countryName="alternateNoCountryCode"
+                                value={lead.alternateNo || ''}
+                                dial={lead.alternateNoCountryCode || DEFAULT_DIAL}
+                                onSave={(num, code) => handleFieldsSubmit({ alternateNo: num, alternateNoCountryCode: code })}
+                                action={lead.alternateNo ? (
+                                  <a className="nx-rec-field__action nx-rec-field__action--call" href={`tel:${lead.alternateNo}`} title="Call"><PhoneCall size={15} /></a>
+                                ) : null}
+                              />
+                              <RecordField
+                                label="Alternate Email"
+                                icon={Mail}
+                                type="email"
+                                value={lead.alternateEmail || ''}
+                                placeholder="Not set"
+                                normalize={normalizeEmail}
+                                validate={(v) => emailError(v, { label: 'Alternate Email' })}
+                                onSave={(v) => handleGenericSubmit('alternateEmail', v)}
+                                action={lead.alternateEmail ? (
+                                  <a className="nx-rec-field__action" href={`mailto:${lead.alternateEmail}`} title={`Send an email to ${lead.alternateEmail}`}><Send size={15} /></a>
+                                ) : null}
+                              />
+                              <RecordField label="Occupation" icon={Briefcase} value={lead.occupation || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('occupation', v)} />
+                              <RecordField label="Company Name" icon={Building2} value={lead.companyName || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('companyName', v)} />
+                              <RecordLookupField label="Project Name" apiUrl="/api/projects" displayKey="projectName" valueKey="projectName" postPayloadKey="projectName" placeholder="Select a project" value={lead.project} onSave={(v) => handleGenericSubmit('project', v)} />
+                              <RecordField label="Virtual Visit" icon={Video} options={['Yes', 'No', 'Scheduled']} value={lead.virtualVisit || ''} onSave={(v) => handleGenericSubmit('virtualVisit', v)} />
+                              <RecordField label="Virtual Visit Date" icon={Calendar} type="datetime-local" when="future" value={formatDateForInput(lead.virtualVisitDate)} onSave={(v) => handleGenericSubmit('virtualVisitDate', v)} />
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+
                     </div>
-                    <div className="log-content">
-                      <p>{log.title}</p>
-                      <span>{log.subtitle}</span>
-                      <span className="log-date">
-                        on {String(log.date).startsWith('on ') ? String(log.date).substring(3) : new Date(log.date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </span>
+                  )}
+
+
+
+                  {/* Site Visit Details sub-tab */}
+                  {generalTab === 'Site Visit Details' && hasSiteVisitDetails(lead) && (
+                    <section className="nx-rec-card">
+                      <header className="nx-rec-card__head">
+                        <span className="nx-rec-card__icon"><MapPin size={16} /></span>
+                        <div className="nx-rec-card__titles">
+                          <h2 className="nx-rec-card__title">Site Visit Details</h2>
+                          <p className="nx-rec-card__sub">Scheduled, confirmed and completed visits</p>
+                        </div>
+                      </header>
+                      <div className="nx-rec-card__body">
+                        <RecordField
+                          label="Site Visit Status"
+                          icon={Activity}
+                          /* Every value here opens its own dialog, which is
+                             where the change is actually confirmed. Requiring
+                             a tick first asked twice for one decision. */
+                          saveOnPick
+                          options={['Site Visit Scheduled', 'Re Scheduled Visit', 'Site Visit Confirmed', 'Site Visit Done', 'Opportunity', 'Rejected']}
+                          value={lead.siteVisitStatus || (lead.siteVisitDate ? 'Site Visit Scheduled' : '')}
+                          onSave={(val) => {
+                            if (val === 'Re Scheduled Visit') setReScheduledModalOpen(true);
+                            else if (val === 'Site Visit Confirmed') {
+                              setConfirmedFormData((prev) => ({ ...prev, leadOwner: lead.owner || '' }));
+                              setConfirmedModalOpen(true);
+                            } else if (val === 'Site Visit Done') setDoneModalOpen(true);
+                            else if (val === 'Opportunity') setOpportunityModalOpen(true);
+                            else if (val === 'Rejected') { setRejectedModalSource('SiteVisit'); setRejectedModalOpen(true); }
+                            else handleGenericSubmit('siteVisitStatus', val);
+                          }}
+                        />
+
+                        <div className="nx-tabs" style={{ marginTop: 'var(--nx-space-4)', marginBottom: 'var(--nx-space-3)' }}>
+                          {[['Scheduled', 'Scheduled'], ['Confirmed', 'Confirmed'], ['Done', 'Completed']].map(([id, label]) => (
+                            <button
+                              key={id}
+                              type="button"
+                              className={`nx-tabs__tab ${siteVisitTab === id ? 'is-active' : ''}`}
+                              onClick={() => { siteVisitTabTouchedRef.current = true; setSiteVisitTab(id); }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="nx-rec-fields nx-rec-fields--1">
+                          {siteVisitTab === 'Scheduled' && (
+                            <>
+                              <RecordField label="Scheduled Date" icon={Calendar} value={recordStamp(lead.siteVisitDate)} readOnly />
+                              <RecordField label="Scheduled Note" multiline value={lead.siteVisitNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitNote', v)} />
+                            </>
+                          )}
+                          {siteVisitTab === 'Confirmed' && (
+                            <>
+                              <RecordField label="Confirmed Date" icon={Calendar} value={recordStamp(lead.siteVisitConfirmedDate)} readOnly />
+                              <RecordField label="Confirmed Note" multiline value={lead.siteVisitConfirmedNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitConfirmedNote', v)} />
+                            </>
+                          )}
+                          {siteVisitTab === 'Done' && (
+                            <>
+                              <RecordField label="Done Date" icon={Calendar} value={recordStamp(lead.siteVisitDoneDate)} readOnly />
+                              <RecordField label="Done Note" multiline value={lead.siteVisitDoneNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitDoneNote', v)} />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Lead Information sub-tab */}
+                  {generalTab === 'Lead Information' && (
+                    <div className="nx-rec__grid nx-rec__grid--2">
+                      <div className="nx-rec__col">
+                        <section className="nx-rec-card">
+                          <header className="nx-rec-card__head">
+                            <span className="nx-rec-card__icon"><Tag size={16} /></span>
+                            <div className="nx-rec-card__titles">
+                              <h2 className="nx-rec-card__title">Lead Information</h2>
+                              <p className="nx-rec-card__sub">Ownership, rating and status</p>
+                            </div>
+                          </header>
+                          <div className="nx-rec-card__body">
+                            <div className="nx-rec-fields nx-rec-fields--1">
+                              <div className="nx-rec-field">
+                                <span className="nx-rec-field__label">Rating</span>
+                                <div className="lp-rating">
+                                  {RATINGS.map(({ key, label, icon: RIcon }) => (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      disabled={viewOnly}
+                                      className={`lp-rating__btn ${key}${selectedRating === key ? ' is-active' : ''}`}
+                                      onClick={() => { setSelectedRating(key); if (key !== savedRating) handleGenericSubmit('rating', key); }}
+                                    >
+                                      <RIcon size={14} /> {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <RecordField label="Allocator" icon={User} value={lead.allocator || ''} placeholder="Not allocated" readOnly />
+                              <RecordUserField label="Lead Owner" value={lead.owner} users={usersList} options={assignableUsers(usersList)} onSave={changeOwner} saveOnPick />
+                              <RecordField label="Follow Up Date" icon={Calendar} type="datetime-local" when="future" value={formatDateForInput(lead.followUpDate)} onSave={(v) => handleGenericSubmit('followUpDate', v)} />
+                              <RecordField label="Allocated Date" icon={Calendar} type="datetime-local" when="past" value={formatDateForInput(lead.allocatedDate)} onSave={(v) => handleGenericSubmit('allocatedDate', v)} />
+                              {lead.status === 'Rejected' && (
+                                <>
+                                  <RecordField label="Rejected Reason" value={lead.reasonDetails || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('reasonDetails', v)} />
+                                  <RecordField label="Rejected Reason Subtype" value={lead.rejectionType || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('rejectionType', v)} />
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+
+                      {/* Where the lead came from, beside what we know about it. */}
+                      <div className="nx-rec__col">
+                        <section className="nx-rec-card">
+                          <header className="nx-rec-card__head">
+                            <span className="nx-rec-card__icon"><Globe size={16} /></span>
+                            <div className="nx-rec-card__titles">
+                              <h2 className="nx-rec-card__title">Source Information</h2>
+                              <p className="nx-rec-card__sub">How this lead reached us</p>
+                            </div>
+                          </header>
+                          <div className="nx-rec-card__body">
+                            <div className="nx-rec-fields">
+                              <RecordLookupField label="Primary Source" apiUrl="/api/primary-sources" value={lead.primarySource} onSave={(v) => handleGenericSubmit('primarySource', v)} />
+                              <RecordLookupField label="Secondary Source" apiUrl="/api/secondary-sources" value={lead.secondarySource} onSave={(v) => handleGenericSubmit('secondarySource', v)} />
+                              <RecordLookupField label="Tertiary Source" apiUrl="/api/tertiary-sources" value={lead.tertiarySource} onSave={(v) => handleGenericSubmit('tertiarySource', v)} />
+                              <RecordField label="Channel Partner Name" icon={Users} value={lead.channelPartnerName || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('channelPartnerName', v)} />
+                              <RecordField label="Channel Partner ID" icon={Tag} value={lead.channelPartnerId || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('channelPartnerId', v)} />
+                              <RecordField label="Source URL" icon={Link2} value={lead.sourceUrl || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('sourceUrl', v)} />
+                              <RecordField label="Referrer Details" multiline full value={lead.referrerDetails || ''} placeholder="Not set" onSave={(v) => handleGenericSubmit('referrerDetails', v)} />
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attempted Details sub-tab */}
+                  {generalTab === 'Attempted' && (
+                    <div className="nx-rec__grid nx-rec__grid--1">
+                      <div className="nx-rec__col">
+                        <section className="nx-rec-card">
+                          <header className="nx-rec-card__head">
+                            <span className="nx-rec-card__icon"><PhoneCall size={16} /></span>
+                            <div className="nx-rec-card__titles">
+                              <h2 className="nx-rec-card__title">Attempt Details</h2>
+                              <p className="nx-rec-card__sub">How the call went, and when to try again</p>
+                            </div>
+                          </header>
+                          <div className="nx-rec-card__body">
+                            <div className="nx-rec-fields nx-rec-fields--1">
+                              <RecordField
+                                label="Call Status"
+                                icon={PhoneCall}
+                                options={callStatuses}
+                                value={lead.callStatus || ''}
+                                placeholder="Not set"
+                                onSave={(v) => handleGenericSubmit('callStatus', v)}
+                              />
+                              <RecordField
+                                label="Open Reason"
+                                icon={AlertTriangle}
+                                options={openReasons}
+                                value={lead.openReason || ''}
+                                placeholder="Not set"
+                                onSave={(v) => handleGenericSubmit('openReason', v)}
+                              />
+                              <RecordField
+                                label="Next Follow Up"
+                                icon={Calendar}
+                                type="datetime-local"
+                                when="future"
+                                value={formatDateForInput(lead.followUpDate)}
+                                onSave={(v) => handleGenericSubmit('followUpDate', v)}
+                              />
+                              <RecordField
+                                label="Call Remarks"
+                                multiline
+                                value={lead.callRemarks || ''}
+                                placeholder="No remarks"
+                                onSave={(v) => handleGenericSubmit('callRemarks', v)}
+                              />
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            {
+              mainTab === 'Notes' && (
+                <section className="nx-rec-card">
+                  <header className="nx-rec-card__head">
+                    <span className="nx-rec-card__icon"><MessageSquare size={16} /></span>
+                    <div className="nx-rec-card__titles">
+                      <h2 className="nx-rec-card__title">Notes</h2>
+                      <p className="nx-rec-card__sub">Free-text notes captured across the lead's journey</p>
+                    </div>
+                  </header>
+                  <div className="nx-rec-card__body">
+                    <div className="nx-rec-fields nx-rec-fields--1">
+                      <RecordField label="Call Remarks" multiline value={lead.callRemarks || ''} placeholder="No remarks" onSave={(v) => handleGenericSubmit('callRemarks', v)} />
+                      <RecordField label="Other Notes" multiline value={lead.otherNotes || ''} placeholder="No notes" onSave={(v) => handleGenericSubmit('otherNotes', v)} />
+                      <RecordField label="Additional Remarks" multiline value={lead.additionalRemarks || ''} placeholder="No remarks" onSave={(v) => handleGenericSubmit('additionalRemarks', v)} />
+                      <RecordField label="Site Visit Scheduled Note" multiline value={lead.siteVisitNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitNote', v)} />
+                      <RecordField label="Site Visit Confirmed Note" multiline value={lead.siteVisitConfirmedNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitConfirmedNote', v)} />
+                      <RecordField label="Site Visit Done Note" multiline value={lead.siteVisitDoneNote || ''} placeholder="No note" onSave={(v) => handleGenericSubmit('siteVisitDoneNote', v)} />
                     </div>
                   </div>
-                ));
-              })()}
-              {logs.length === 0 && (
-                <div className="log-item" style={{ color: '#888' }}>No logs available.</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                </section>
+              )
+            }
 
-      {attemptedModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Attempted</h3>
-              <button className="btn-close" onClick={() => {
-                setAttemptedModalOpen(false);
-                setEnquiryStatus(lead?.status || 'New Lead');
-                setIsStatusEditing(false);
-              }}>&times;</button>
+            {
+              mainTab === 'Follow-up' && (
+                <section className="nx-rec-card">
+                  <header className="nx-rec-card__head">
+                    <span className="nx-rec-card__icon"><Clock size={16} /></span>
+                    <div className="nx-rec-card__titles">
+                      <h2 className="nx-rec-card__title">Follow-ups & Scheduling</h2>
+                      <p className="nx-rec-card__sub">Every date scheduled against this lead</p>
+                    </div>
+                  </header>
+                  <div className="nx-rec-card__body">
+                    <div className="nx-rec-fields">
+                      <RecordField label="Next Follow Up" icon={Calendar} type="datetime-local" when="future" value={formatDateForInput(lead.followUpDate)} onSave={(v) => handleGenericSubmit('followUpDate', v)} />
+                      <RecordField label="Allocated Date" icon={Calendar} type="datetime-local" when="past" value={formatDateForInput(lead.allocatedDate)} onSave={(v) => handleGenericSubmit('allocatedDate', v)} />
+                      <RecordField label="Virtual Visit Date" icon={Calendar} type="datetime-local" when="future" value={formatDateForInput(lead.virtualVisitDate)} onSave={(v) => handleGenericSubmit('virtualVisitDate', v)} />
+                      <RecordField label="Site Visit Scheduled" icon={Calendar} value={recordStamp(lead.siteVisitDate)} readOnly />
+                      <RecordField label="Site Visit Confirmed" icon={Calendar} value={recordStamp(lead.siteVisitConfirmedDate)} readOnly />
+                      <RecordField label="Site Visit Done" icon={Calendar} value={recordStamp(lead.siteVisitDoneDate)} readOnly />
+                    </div>
+                  </div>
+                </section>
+              )
+            }
+
+            {mainTab === 'Conversations' && (
+              <LeadConversations leadId={lead.id} mobile={lead.mobile} readOnly={allocatorOnly} />
+            )}
+
+            {mainTab === 'Documents' && (
+              <RecordDocuments entityType="lead" entityId={lead.id} readOnly={allocatorOnly} />
+            )}
+
+          </div>{/* end lp-body-wrap__main */}
+
+          {/* ---- Persistent sidebar: shown whichever tab is open ------------- */}
+          <div className="lp-body-wrap__side">
+            <section className="nx-rec-card">
+              <header className="nx-rec-card__head">
+                <span className="nx-rec-card__icon"><CheckCircle2 size={16} /></span>
+                <div className="nx-rec-card__titles">
+                  <h2 className="nx-rec-card__title">Lead Progress</h2>
+                  <p className="nx-rec-card__sub">Stage {currentStage + 1} of {PROGRESS_STAGES.length}</p>
+                </div>
+              </header>
+              <div className="nx-rec-card__body">
+                <div className="nx-rec-steps">
+                  {PROGRESS_STAGES.map((label, i) => (
+                    <div
+                      key={label}
+                      className={`nx-rec-step${i < currentStage ? ' is-done' : ''}${i === currentStage ? ' is-current' : ''}`}
+                    >
+                      <span className="nx-rec-step__dot">
+                        {i < currentStage ? <Check size={14} /> : <Circle size={10} />}
+                      </span>
+                      <span className="nx-rec-step__label">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="nx-rec-card">
+              <header className="nx-rec-card__head">
+                <span className="nx-rec-card__icon"><Activity size={16} /></span>
+                <div className="nx-rec-card__titles">
+                  <h2 className="nx-rec-card__title">Lead Log</h2>
+                  <p className="nx-rec-card__sub">{sortedLogs.length} {sortedLogs.length === 1 ? 'entry' : 'entries'}</p>
+                </div>
+                <Select
+                  advanceOnPick={false}
+                  className="nx-rec-card__filter-select"
+                  size="sm"
+                  value={logFilter}
+                  onChange={(e) => setLogFilter(e.target.value)}
+                  aria-label="Filter the lead log"
+                >
+                  <option value="all">All Activities</option>
+                  {logTitles.map((t) => <option key={t} value={t}>{t}</option>)}
+                </Select>
+              </header>
+              <div className="nx-rec-card__body">{renderLogList()}</div>
+            </section>
+          </div>
+        </div>{/* end lp-body-wrap */}
+
+        {
+          rejectedModalOpen && (
+            <div className="modal-overlay">
+              <div className="modal-content attempted-modal">
+                <div className="modal-header">
+                  <h3>Rejected Reason</h3>
+                  {/* Closing used to put a status dropdown back where it was.
+                    That dropdown is gone, so there is nothing to restore. */}
+                  <button className="btn-close" onClick={() => setRejectedModalOpen(false)}>&times;</button>
+                </div>
+                <form onSubmit={handleRejectedSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Rejected Reason :</label>
+                      <textarea
+                        className="modal-input form-textarea"
+                        placeholder="Reject Reason"
+                        style={{ borderStyle: 'solid' }}
+                        value={rejectedFormData.rejectedReason}
+                        onChange={(e) => setRejectedFormData({ rejectedReason: e.target.value })}
+                        required
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
+                    <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-            <form onSubmit={handleAttemptedSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Open Reason:</label>
-                  <select
-                    className="modal-select"
-                    value={attemptedFormData.openReason}
-                    onChange={(e) => setAttemptedFormData({ ...attemptedFormData, openReason: e.target.value })}
-                    required
+          )
+        }
+
+
+
+
+        {
+          reScheduledModalOpen && (
+            <div className="modal-overlay">
+              <div className="modal-content attempted-modal">
+                <div className="modal-header">
+                  <h3>Re Scheduled Site Visit</h3>
+                  <button className="btn-close" onClick={() => setReScheduledModalOpen(false)}>&times;</button>
+                </div>
+                <form onSubmit={handleReScheduledSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Site Visit Scheduled Date :</label>
+                      <input
+                        type="datetime-local"
+                        {...boundsFor('future')}
+                        className="modal-input"
+                        style={{ borderStyle: 'solid' }}
+                        value={reScheduledFormData.siteVisitDate}
+                        onChange={(e) => setReScheduledFormData({ ...reScheduledFormData, siteVisitDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Note</label>
+                      <textarea
+                        className="modal-input form-textarea"
+                        placeholder="Note"
+                        style={{ borderStyle: 'solid' }}
+                        value={reScheduledFormData.siteVisitNote}
+                        onChange={(e) => setReScheduledFormData({ ...reScheduledFormData, siteVisitNote: e.target.value })}
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
+                    <button type="submit" className="btn-submit-modal">edit lead</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
+
+        {
+          confirmedModalOpen && (
+            <div className="modal-overlay">
+              <div className="modal-content attempted-modal">
+                <div className="modal-header">
+                  <h3>Site Visit Confirmed</h3>
+                  <button className="btn-close" onClick={() => setConfirmedModalOpen(false)}>&times;</button>
+                </div>
+                <form onSubmit={handleConfirmedSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Site Visit Confirm Date :</label>
+                      <input
+                        type="datetime-local"
+                        {...boundsFor('future')}
+                        className="modal-input"
+                        style={{ borderStyle: 'solid' }}
+                        value={confirmedFormData.siteVisitConfirmedDate}
+                        onChange={(e) => setConfirmedFormData({ ...confirmedFormData, siteVisitConfirmedDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Note</label>
+                      <textarea
+                        className="modal-input form-textarea"
+                        placeholder="Note"
+                        style={{ borderStyle: 'solid' }}
+                        value={confirmedFormData.siteVisitConfirmedNote}
+                        onChange={(e) => setConfirmedFormData({ ...confirmedFormData, siteVisitConfirmedNote: e.target.value })}
+                      ></textarea>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Lead Owner :</label>
+                      <Select
+                        value={confirmedFormData.leadOwner}
+                        onChange={(e) => setConfirmedFormData({ ...confirmedFormData, leadOwner: e.target.value })}
+                      >
+                        <option value="">Select Owner</option>
+                        {assignableUsers(usersList).map(u => (
+                          <option key={u.id} value={u.username || u.id}>
+                            {u.username || u.id} - {u.firstName || u.name || 'User'} {u.lastName || ''}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
+                    <button type="submit" className="btn-submit-modal">Submit</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
+
+        {
+          doneModalOpen && (
+            <div className="modal-overlay">
+              <div className="modal-content attempted-modal">
+                <div className="modal-header">
+                  <h3>Site Visit Done</h3>
+                  <button className="btn-close" onClick={() => setDoneModalOpen(false)}>&times;</button>
+                </div>
+                <form onSubmit={handleDoneSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Site Visit Done Date :</label>
+                      <input
+                        type="datetime-local"
+                        {...boundsFor('past')}
+                        className="modal-input"
+                        style={{ borderStyle: 'solid' }}
+                        value={doneFormData.siteVisitDoneDate}
+                        onChange={(e) => setDoneFormData({ ...doneFormData, siteVisitDoneDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: 'var(--text-muted)', fontSize: '13px' }}>Note</label>
+                      <textarea
+                        className="modal-input form-textarea"
+                        placeholder="Note"
+                        style={{ borderStyle: 'solid' }}
+                        value={doneFormData.siteVisitDoneNote}
+                        onChange={(e) => setDoneFormData({ ...doneFormData, siteVisitDoneNote: e.target.value })}
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
+                    <button type="submit" className="btn-submit-modal">Submit</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
+
+        {
+          opportunityModalOpen && (
+            <div className="modal-overlay">
+              <div className="modal-content attempted-modal">
+                <div className="modal-header">
+                  <h3>Are you sure, this lead will be converted to opportunity now?</h3>
+                  <button className="btn-close" onClick={() => setOpportunityModalOpen(false)}>&times;</button>
+                </div>
+                <form onSubmit={handleOpportunitySubmit}>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label
+                        className="form-label"
+                        style={{
+                          marginBottom: "10px",
+                          display: "block",
+                          color: 'var(--text-muted)',
+                          fontSize: "13px",
+                        }}
+                      >
+                        Booking Status :
+                      </label>
+
+                      <Select
+                        value={opportunityFormData.bookingStatus}
+                        onChange={(e) =>
+                          setOpportunityFormData({
+                            ...opportunityFormData,
+                            bookingStatus: e.target.value,
+                          })
+                        }
+                        required
+                      >
+                        <option value="">Select Booking Status</option>
+                        <option value="Initiate">Initiate</option>
+                        <option value="Booking Done">Booking Done</option>
+                      </Select>
+                    </div>
+                    {/* A hidden LeadsId input used to sit here, reading a field
+                    this form's state never had. It was always undefined, and
+                    the handler takes the id from the route anyway. */}
+                  </div>
+
+                  <div
+                    className="modal-footer"
+                    style={{ paddingRight: "20px", paddingBottom: "20px" }}
                   >
-                    <option value="">Select Open Reason</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Shared Details">Shared Details</option>
-                    <option value="Retry">Retry</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Call Status :</label>
-                  <select
-                    className="modal-select"
-                    value={attemptedFormData.callStatus}
-                    onChange={(e) => setAttemptedFormData({ ...attemptedFormData, callStatus: e.target.value })}
-                    required
-                  >
-                    <option value="">Select Call Status</option>
-                    <option value="RNR">RNR</option>
-                    <option value="Call Connected">Call Connected</option>
-                    <option value="Number Busy">Number Busy</option>
-                    <option value="Not Reachable">Not Reachable</option>
-                    <option value="Switched Off">Switched Off</option>
-                    <option value="Number Not In Use">Number Not In Use</option>
-                    <option value="Wrong Number">Wrong Number</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Follow Up Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    value={attemptedFormData.followUpDate}
-                    onChange={(e) => setAttemptedFormData({ ...attemptedFormData, followUpDate: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Call Remarks</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Call Remarks"
-                    value={attemptedFormData.callRemarks}
-                    onChange={(e) => setAttemptedFormData({ ...attemptedFormData, callRemarks: e.target.value })}
-                    required
-                  ></textarea>
-                </div>
+                    <button type="submit" className="btn-submit-modal">
+                      Submit
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="modal-footer">
-                <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {rejectedModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Rejected Reason</h3>
-              <button className="btn-close" onClick={() => {
-                setRejectedModalOpen(false);
-                setEnquiryStatus(lead?.status || 'New Lead');
-                setIsStatusEditing(false);
-              }}>&times;</button>
             </div>
-            <form onSubmit={handleRejectedSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Rejected Reason :</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Reject Reason"
-                    style={{ borderStyle: 'dashed' }}
-                    value={rejectedFormData.rejectedReason}
-                    onChange={(e) => setRejectedFormData({ rejectedReason: e.target.value })}
-                    required
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          )
+        }
 
-      {siteVisitModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Converted To Site Visit</h3>
-              <button className="btn-close" onClick={() => {
-                setSiteVisitModalOpen(false);
-                setEnquiryStatus(lead?.status || 'New Lead');
-                setIsStatusEditing(false);
-              }}>&times;</button>
+        {/* Toast Notification */}
+        {
+          toast.visible && (
+            <div className={`leads-toast leads-toast-${toast.type}`}>
+              <div className="leads-toast-icon">
+                {toast.type === 'success' && <Check size={20} />}
+                {toast.type === 'duplicate' && <AlertTriangle size={20} />}
+                {toast.type === 'error' && <X size={20} />}
+              </div>
+              <span className="leads-toast-message">{toast.message}</span>
+              <button className="leads-toast-close" onClick={() => setToast({ visible: false, type: '', message: '' })}>
+                <X size={16} />
+              </button>
             </div>
-            <form onSubmit={handleSiteVisitSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Site Visit Scheduled Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={siteVisitFormData.siteVisitDate}
-                    onChange={(e) => setSiteVisitFormData({ ...siteVisitFormData, siteVisitDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Note</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Note"
-                    style={{ borderStyle: 'dashed' }}
-                    value={siteVisitFormData.siteVisitNote}
-                    onChange={(e) => setSiteVisitFormData({ ...siteVisitFormData, siteVisitNote: e.target.value })}
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          )
+        }
 
-      {interestedModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Interested</h3>
-              <button className="btn-close" onClick={() => {
-                setInterestedModalOpen(false);
-                setEnquiryStatus(lead?.status || 'New Lead');
-                setIsStatusEditing(false);
-              }}>&times;</button>
-            </div>
-            <form onSubmit={handleInterestedSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Follow Up Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={interestedFormData.followUpDate}
-                    onChange={(e) => setInterestedFormData({ ...interestedFormData, followUpDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Call Remarks</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Call Remarks"
-                    style={{ borderStyle: 'dashed' }}
-                    value={interestedFormData.callRemarks}
-                    onChange={(e) => setInterestedFormData({ ...interestedFormData, callRemarks: e.target.value })}
-                    required
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {allocateModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Allocate Lead</h3>
-              <button className="btn-close" onClick={() => {
-                setAllocateModalOpen(false);
-                setEnquiryStatus(lead?.status || 'New Lead');
-                setIsStatusEditing(false);
-              }}>&times;</button>
-            </div>
-            <form onSubmit={handleAllocateSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Allocate To :</label>
-                  <select
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={allocateFormData.allocateTo}
-                    onChange={(e) => setAllocateFormData({ ...allocateFormData, allocateTo: e.target.value })}
-                    required
-                  >
-                    <option value="">Select User</option>
-                    {usersList.map(u => (
-                      <option key={u.id} value={u.username || u.id}>
-                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName} (${u.username})` : (u.username || u.id)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Target Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={allocateFormData.targetDate}
-                    onChange={(e) => setAllocateFormData({ ...allocateFormData, targetDate: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Allocation Notes :</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Allocation Notes"
-                    style={{ borderStyle: 'dashed' }}
-                    value={allocateFormData.allocationNotes}
-                    onChange={(e) => setAllocateFormData({ ...allocateFormData, allocationNotes: e.target.value })}
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {reScheduledModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Re Scheduled Site Visit</h3>
-              <button className="btn-close" onClick={() => setReScheduledModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleReScheduledSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Site Visit Scheduled Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={reScheduledFormData.siteVisitDate}
-                    onChange={(e) => setReScheduledFormData({ ...reScheduledFormData, siteVisitDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Note</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Note"
-                    style={{ borderStyle: 'dashed' }}
-                    value={reScheduledFormData.siteVisitNote}
-                    onChange={(e) => setReScheduledFormData({ ...reScheduledFormData, siteVisitNote: e.target.value })}
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal">edit lead</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {confirmedModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Site Visit Confirmed</h3>
-              <button className="btn-close" onClick={() => setConfirmedModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleConfirmedSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Site Visit Confirm Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={confirmedFormData.siteVisitConfirmedDate}
-                    onChange={(e) => setConfirmedFormData({ ...confirmedFormData, siteVisitConfirmedDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Note</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Note"
-                    style={{ borderStyle: 'dashed' }}
-                    value={confirmedFormData.siteVisitConfirmedNote}
-                    onChange={(e) => setConfirmedFormData({ ...confirmedFormData, siteVisitConfirmedNote: e.target.value })}
-                  ></textarea>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Lead Owner :</label>
-                  <select
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={confirmedFormData.leadOwner}
-                    onChange={(e) => setConfirmedFormData({ ...confirmedFormData, leadOwner: e.target.value })}
-                  >
-                    <option value="">Select Owner</option>
-                    {usersList.map(u => (
-                      <option key={u.id} value={u.username || u.id}>
-                        {u.username || u.id} - {u.firstName || u.name || 'User'} {u.lastName || ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal">Submit</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {doneModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Site Visit Done</h3>
-              <button className="btn-close" onClick={() => setDoneModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleDoneSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Site Visit Done Date :</label>
-                  <input
-                    type="datetime-local"
-                    className="modal-input"
-                    style={{ borderStyle: 'dashed' }}
-                    value={doneFormData.siteVisitDoneDate}
-                    onChange={(e) => setDoneFormData({ ...doneFormData, siteVisitDoneDate: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: '10px', display: 'block', color: '#555', fontSize: '13px' }}>Note</label>
-                  <textarea
-                    className="modal-input form-textarea"
-                    placeholder="Note"
-                    style={{ borderStyle: 'dashed' }}
-                    value={doneFormData.siteVisitDoneNote}
-                    onChange={(e) => setDoneFormData({ ...doneFormData, siteVisitDoneNote: e.target.value })}
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer" style={{ paddingRight: '20px', paddingBottom: '20px' }}>
-                <button type="submit" className="btn-submit-modal">Submit</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {opportunityModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content attempted-modal">
-            <div className="modal-header">
-              <h3>Are you sure, this lead will be converted to opportunity now?</h3>
-              <button className="btn-close" onClick={() => setOpportunityModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleOpportunitySubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label
-                    className="form-label"
-                    style={{
-                      marginBottom: "10px",
-                      display: "block",
-                      color: "#555",
-                      fontSize: "13px",
-                    }}
-                  >
-                    Booking Status :
-                  </label>
-
-                  <select
-                    className="modal-select"
-                    style={{ borderStyle: "dashed" }}
-                    value={opportunityFormData.bookingStatus}
-                    onChange={(e) =>
-                      setOpportunityFormData({
-                        ...opportunityFormData,
-                        bookingStatus: e.target.value,
-                      })
-                    }
-                    required
-                  >
-                    <option value="">Select Booking Status</option>
-                    <option value="Initiate">Initiate</option>
-                    <option value="Booking Done">Booking Done</option>
-                  </select>
-                </div>
-
-                <input
-                  type="hidden"
-                  name="enquiryId"
-                  value={opportunityFormData.enquiryId}
-                  readOnly
-                />
-              </div>
-
-              <div
-                className="modal-footer"
-                style={{ paddingRight: "20px", paddingBottom: "20px" }}
-              >
-                <button type="submit" className="btn-submit-modal">
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className={`leads-toast leads-toast-${toast.type}`}>
-          <div className="leads-toast-icon">
-            {toast.type === 'success' && <Check size={20} />}
-            {toast.type === 'duplicate' && <AlertTriangle size={20} />}
-            {toast.type === 'error' && <X size={20} />}
-          </div>
-          <span className="leads-toast-message">{toast.message}</span>
-          <button className="leads-toast-close" onClick={() => setToast({ visible: false, type: '', message: '' })}>
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
-    </div>
+      </div >
+    </RecordViewOnly>
   );
 }

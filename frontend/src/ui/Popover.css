@@ -1,0 +1,90 @@
+/* Portalled onto <body> with fixed positioning, so no scrolling or
+   overflow:hidden ancestor can clip it. --nx-z-popover clears the modal
+   layer, because menus can open from inside a dialog, and stays below
+   --nx-z-confirm so a confirm raised from a menu is not hidden by it. */
+.nx-popover {
+  position: fixed;
+  z-index: var(--nx-z-popover);
+  display: flex;
+  flex-direction: column;
+  padding: var(--nx-space-2);
+  background: var(--nx-bg-raised);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  box-shadow: var(--nx-overlay-ring);
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+  overflow-y: auto;
+  animation: nx-popover-in var(--nx-duration-fast) var(--nx-ease);
+}
+
+@keyframes nx-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Rows inside a popover ---------------------------------------------------- */
+.nx-popover__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px var(--nx-space-3);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-popover__item:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-popover__check {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: 7px var(--nx-space-2);
+  border-radius: var(--nx-radius-sm);
+  font-size: var(--nx-text-base);
+  cursor: pointer;
+}
+
+.nx-popover__check:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-popover__check input {
+  accent-color: var(--nx-accent);
+  cursor: pointer;
+}
+
+.nx-popover__note {
+  margin: 0 0 var(--nx-space-1);
+  padding: var(--nx-space-1) var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-accent);
+}
+
+.nx-popover__divider {
+  margin-top: var(--nx-space-1);
+  padding-top: var(--nx-space-2);
+  border-top: var(--nx-divider);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-popover {
+    animation: none;
+  }
+}

@@ -2,7 +2,7 @@
   flex: 1;
   padding: 15px 30px;
   overflow-y: auto;
-  background-color: var(--bg-main, #f5f6fa);
+  background-color: var(--bg-main, var(--nx-bg-app));
   display: flex;
   flex-direction: column;
 }
@@ -12,16 +12,16 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  background-color: #fff;
+  background-color: var(--bg-card);
   padding: 15px 20px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .header-left h2 {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text-main, #333);
+  color: var(--text-main, var(--nx-text));
   margin: 0 0 5px 0;
 }
 
@@ -29,18 +29,18 @@
   display: flex;
   align-items: center;
   font-size: 12px;
-  color: #6366f1;
+  color: var(--nx-accent);
   font-weight: 500;
 }
 
 .page-breadcrumb .slash {
   margin: 0 8px;
-  color: #999;
+  color: var(--nx-text-muted);
 }
 
 .btn-create-rrq {
-  background-color: #6366f1;
-  color: white;
+  background-color: var(--nx-accent);
+  color: var(--nx-accent-contrast);
   border: none;
   border-radius: 6px;
   padding: 10px 20px;
@@ -54,30 +54,30 @@
 }
 
 .btn-create-rrq:hover {
-  background-color: #4f46e5;
+  background-color: var(--nx-accent);
 }
 
 .rrq-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .rrq-card-header {
   padding: 20px 20px 15px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--nx-border);
 }
 
 .rrq-card-header h3 {
   margin: 0 0 5px 0;
   font-size: 16px;
-  color: #333;
+  color: var(--text-main);
 }
 
 .rrq-card-header p {
   margin: 0;
   font-size: 13px;
-  color: #777;
+  color: var(--nx-text-muted);
 }
 
 .table-responsive {
@@ -95,24 +95,24 @@
 .rrq-table td {
   padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px dashed #eee;
-  color: #495057;
+  border-bottom: 1px solid var(--nx-border);
+  color: var(--nx-text-secondary);
 }
 
 .rrq-table th {
-  background-color: #f8f9fa;
-  color: #555;
+  background-color: var(--nx-bg-app);
+  color: var(--text-muted);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .rrq-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--nx-bg-app);
 }
 
 .badge-type {
-  background-color: #0d6efd;
-  color: #fff;
+  background-color: var(--nx-info);
+  color: var(--nx-accent-contrast);
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
@@ -120,8 +120,8 @@
 }
 
 .user-badge {
-  background-color: #f8f9fa;
-  color: #555;
+  background-color: var(--nx-bg-app);
+  color: var(--text-muted);
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
@@ -143,7 +143,7 @@
   justify-content: center;
   padding: 4px;
   border-radius: 4px;
-  color: #2ecc71;
+  color: var(--nx-success);
   transition: all 0.2s;
 }
 
@@ -152,7 +152,7 @@
 }
 
 .rl-action-btn.rl-delete-btn {
-  color: #e74c3c;
+  color: var(--nx-danger);
 }
 
 .rl-action-btn.rl-delete-btn:hover {
@@ -160,58 +160,16 @@
 }
 
 /* Modal Styling */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: #fff;
-  border-radius: 8px;
-  width: 400px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
-}
-
 .btn-close {
   background: none;
   border: none;
   font-size: 20px;
   cursor: pointer;
-  color: #888;
+  color: var(--nx-text-muted);
 }
 
 .btn-close:hover {
-  color: #333;
-}
-
-.modal-content.edit-modal {
-  width: 700px;
-}
-
-.modal-body.edit-body {
-  padding: 20px;
+  color: var(--text-main);
 }
 
 .edit-grid {
@@ -222,7 +180,7 @@
 }
 
 .users-table-wrapper {
-  border: 1px dashed #eee;
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
 }
 
@@ -232,27 +190,29 @@
   font-size: 13px;
 }
 
-.users-table th, .users-table td {
+.users-table th,
+.users-table td {
   padding: 10px 15px;
-  border-bottom: 1px dashed #eee;
+  border-bottom: 1px solid var(--nx-border);
   text-align: left;
 }
 
 .users-table th {
-  background-color: #fcfcfc;
+  background-color: var(--nx-bg-surface);
   font-weight: 600;
-  color: #555;
+  color: var(--text-muted);
 }
 
-.users-table th:last-child, .users-table td:last-child {
+.users-table th:last-child,
+.users-table td:last-child {
   text-align: center;
-  border-left: 1px dashed #eee;
+  border-left: 1px solid var(--nx-border);
 }
 
 .remove-icon-btn {
   background: none;
   border: none;
-  color: #555;
+  color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -260,11 +220,7 @@
 }
 
 .remove-icon-btn:hover {
-  color: #dc3545;
-}
-
-.modal-body {
-  padding: 20px;
+  color: var(--nx-danger);
 }
 
 .form-group {
@@ -274,57 +230,15 @@
 .form-label {
   display: block;
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
   font-weight: 500;
   margin-bottom: 5px;
 }
 
-.input-with-icon {
-  display: flex;
-  border: 1px dashed #ccc;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.input-icon {
-  background-color: #f8f9fa;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #888;
-  border-right: 1px dashed #ccc;
-}
-
-.input-icon.blue {
-  color: #007bff;
-}
-.input-icon.yellow {
-  color: #ffc107;
-}
-.input-icon.cyan {
-  color: #00a0f1;
-}
-
-.modal-input, .modal-select {
-  flex: 1;
-  border: none;
-  padding: 8px 12px;
-  font-size: 13px;
-  outline: none;
-  width: 100%;
-}
-
-.modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-}
 
 .btn-submit-modal {
-  background-color: #7b6bee;
-  color: white;
+  background-color: var(--nx-accent);
+  color: var(--nx-accent-contrast);
   border: none;
   padding: 8px 20px;
   border-radius: 4px;
@@ -335,4 +249,16 @@
 
 .btn-submit-modal:hover {
   opacity: 0.9;
+}
+/* Save failures and orphaned-project warnings inside the edit modal. The form
+   had nowhere to put a message, which is why a rejected save showed nothing. */
+.rrq-form-error {
+  margin-bottom: var(--nx-space-3, 12px);
+  padding: 10px 12px;
+  border: 1px solid var(--nx-danger, #c0392b);
+  border-radius: var(--nx-radius-sm, 6px);
+  background: var(--nx-danger-soft, rgba(192, 57, 43, 0.08));
+  color: var(--nx-danger, #c0392b);
+  font-size: 13px;
+  line-height: 1.45;
 }

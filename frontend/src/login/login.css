@@ -1,0 +1,745 @@
+/* The signed-out page.
+ *
+ * Scoped under .nx-login so none of it can reach the application behind the
+ * sign-in, which has its own token set in ui/tokens.css. The two themes are
+ * driven from one block of variables rather than a second copy of every rule.
+ *
+ * The photographic background in the design is not shipped with the app. This
+ * builds the same night-city mood out of gradients, so there is no missing
+ * asset and nothing to download before the form is usable. Drop a real image
+ * in public/ and point --nx-login-photo at it to use one. */
+
+.nx-login {
+  --nx-login-photo: none;
+
+  --lg-ink: #f4f7fb;
+  --lg-ink-soft: #9fb0c7;
+  --lg-ink-faint: #6d7f96;
+  --lg-gold: #ffd23f;
+  --lg-gold-deep: #f5b301;
+  /* The same accent, but for text. On the dark ground the bright gold is
+     legible; on the light one it is not, so words get a darker amber while
+     the button, rules and icons keep the brand colour. */
+  --lg-gold-ink: #ffd23f;
+  --lg-card: rgba(17, 25, 40, 0.82);
+  --lg-card-line: rgba(255, 255, 255, 0.12);
+  --lg-field: rgba(255, 255, 255, 0.05);
+  --lg-field-line: rgba(255, 255, 255, 0.14);
+  --lg-base: #070b14;
+  --lg-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--lg-base);
+  color: var(--lg-ink);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+.nx-login.is-light {
+  --lg-ink: #0f172a;
+  --lg-ink-soft: #4a5a70;
+  --lg-ink-faint: #6b7a90;
+  --lg-card: rgba(255, 255, 255, 0.94);
+  --lg-card-line: rgba(15, 23, 42, 0.1);
+  --lg-field: rgba(15, 23, 42, 0.04);
+  --lg-field-line: rgba(15, 23, 42, 0.14);
+  --lg-base: #eef2f8;
+  --lg-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --lg-gold-ink: #9a6b00;
+}
+
+/* ---- backdrop ----------------------------------------------------------- */
+
+.nx-login__scene {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 620px at 78% 14%, rgba(255, 210, 63, 0.13), transparent 62%),
+    radial-gradient(900px 600px at 12% 82%, rgba(56, 132, 255, 0.16), transparent 60%),
+    linear-gradient(160deg, #060a12 0%, #0b1220 46%, #060a12 100%);
+}
+
+.nx-login.is-light .nx-login__scene {
+  background:
+    radial-gradient(1000px 560px at 80% 10%, rgba(245, 179, 1, 0.16), transparent 62%),
+    radial-gradient(860px 560px at 10% 84%, rgba(56, 132, 255, 0.12), transparent 60%),
+    linear-gradient(160deg, #f7f9fc 0%, #e8eef7 100%);
+}
+
+/* A supplied photo sits above the gradient and under everything else. */
+.nx-login__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--nx-login-photo);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.28;
+  mix-blend-mode: luminosity;
+}
+
+/* ---- top bar ------------------------------------------------------------ */
+
+.nx-login__top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 20px clamp(16px, 4vw, 48px);
+}
+
+.nx-login__logo { height: 42px; width: auto; flex-shrink: 0; }
+
+.nx-login__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.nx-login__navlink {
+  background: none;
+  border: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--lg-ink-soft);
+  cursor: pointer;
+  transition: color .18s, background .18s;
+}
+
+.nx-login__navlink:hover { color: var(--lg-ink); }
+.nx-login__navlink.is-on { color: var(--lg-gold-ink); background: rgba(255, 210, 63, 0.18); }
+
+.nx-login__tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nx-login__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0 10px;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--lg-card-line);
+  background: var(--lg-field);
+  color: var(--lg-ink-soft);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+}
+
+.nx-login__icon-btn:hover { color: var(--lg-ink); border-color: var(--lg-gold); }
+.nx-login__icon-btn--wide { padding: 0 14px; }
+
+.nx-login__lang { position: relative; }
+
+.nx-login__lang-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 250px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--lg-card-line);
+  background: var(--lg-card);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--lg-shadow);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--lg-ink-soft);
+  z-index: 5;
+}
+
+/* ---- the two columns ---------------------------------------------------- */
+
+.nx-login__main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(24px, 5vw, 72px);
+  align-items: center;
+  padding: clamp(16px, 3vw, 40px) clamp(16px, 4vw, 48px);
+}
+
+/* ---- left: the pitch ---------------------------------------------------- */
+
+.nx-login__eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: var(--lg-gold-ink);
+}
+
+.nx-login__wordmark {
+  margin: 0;
+  font-size: clamp(40px, 5.4vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -.01em;
+  font-weight: 800;
+}
+
+.nx-login__wordmark span { color: var(--lg-gold-ink); }
+.nx-login__wordmark strong { color: var(--lg-ink); font-weight: 800; }
+
+.nx-login__tagline {
+  margin: 6px 0 0;
+  font-size: clamp(17px, 2vw, 24px);
+  letter-spacing: .18em;
+  color: var(--lg-ink-soft);
+}
+
+.nx-login__rule {
+  display: block;
+  width: 68px;
+  height: 4px;
+  margin: 20px 0;
+  border-radius: 2px;
+  background: var(--lg-gold);
+}
+
+.nx-login__blurb {
+  margin: 0 0 26px;
+  max-width: 30rem;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--lg-ink-soft);
+}
+
+.nx-login__features {
+  list-style: none;
+  margin: 0 0 30px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 33rem;
+}
+
+.nx-login__feature {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--lg-card-line);
+  background: var(--lg-field);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--lg-ink);
+  transition: opacity .2s, border-color .2s, transform .2s;
+}
+
+.nx-login__feature svg { color: var(--lg-gold); }
+.nx-login__feature.is-on { border-color: var(--lg-gold); transform: translateY(-2px); }
+.nx-login__feature.is-dim { opacity: .38; }
+
+.nx-login__quote {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 3px solid var(--lg-gold);
+}
+
+.nx-login__quote p {
+  margin: 0;
+  font-size: clamp(16px, 1.8vw, 20px);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.nx-login__quote em { color: var(--lg-gold-ink); font-style: normal; }
+
+.nx-login__quote cite {
+  display: block;
+  margin-top: 8px;
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--lg-ink-faint);
+}
+
+/* ---- right: wherever the card goes -------------------------------------- */
+
+.nx-login__panel { display: flex; justify-content: center; }
+
+/* ---- footer ------------------------------------------------------------- */
+
+.nx-login__foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  padding: 16px clamp(16px, 4vw, 48px);
+  border-top: 1px solid var(--lg-card-line);
+  font-size: 12.5px;
+  color: var(--lg-ink-faint);
+}
+
+.nx-login__promises {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+}
+
+.nx-login__promises li { display: flex; align-items: center; gap: 7px; }
+.nx-login__promises svg { color: var(--lg-gold); }
+.nx-login__copy { margin: 0 0 0 auto; }
+
+/* ---- narrow screens ------------------------------------------------------
+   The pitch is an advertisement and the person is here to sign in, so below
+   the breakpoint it goes and the card takes the width. */
+
+@media (max-width: 1020px) {
+  .nx-login__main { grid-template-columns: 1fr; }
+  .nx-login__pitch { display: none; }
+  .nx-login__nav { display: none; }
+}
+
+@media (max-width: 560px) {
+  .nx-login__top { padding: 14px 16px; gap: 12px; }
+  .nx-login__logo { height: 34px; }
+  .nx-login__foot { flex-direction: column; align-items: flex-start; }
+  .nx-login__copy { margin: 0; }
+}
+
+/* =========================================================================
+   The sign-in card
+   ========================================================================= */
+
+.nx-card {
+  width: 100%;
+  max-width: 460px;
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 18px;
+  border: 1px solid var(--lg-card-line);
+  background: var(--lg-card);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--lg-shadow);
+}
+
+.nx-card__title {
+  margin: 0;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--lg-ink);
+}
+
+.nx-card__sub {
+  margin: 6px 0 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--lg-ink-soft);
+}
+
+/* ---- method tabs -------------------------------------------------------- */
+
+.nx-card__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: var(--lg-field);
+  border: 1px solid var(--lg-card-line);
+}
+
+.nx-card__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  /* Tight on purpose: three labels share the card's width, and "Email /
+     Username" is the long one. At 12.5px with a 15px icon it ellipsised. */
+  padding: 9px 4px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  letter-spacing: -.1px;
+  font-weight: 600;
+  color: var(--lg-ink-soft);
+  cursor: pointer;
+  transition: color .18s, background .18s;
+}
+
+.nx-card__tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nx-card__tab:hover { color: var(--lg-ink); }
+.nx-card__tab.is-on { color: var(--lg-gold-ink); background: rgba(255, 210, 63, 0.18); }
+.nx-card__tab.is-on svg { color: var(--lg-gold-ink); }
+/* Shown, but marked as not yet available rather than quietly broken. */
+.nx-card__tab.is-pending { opacity: .55; }
+
+.nx-card__pending {
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px dashed var(--lg-field-line);
+  background: var(--lg-field);
+  text-align: center;
+}
+
+.nx-card__pending p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--lg-ink-soft); }
+
+/* ---- banners ------------------------------------------------------------ */
+
+.nx-card__banner {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.nx-card__banner.is-error { color: #ffb4b4; background: rgba(220, 38, 38, .14); border-color: rgba(220, 38, 38, .35); }
+.nx-card__banner.is-info { color: var(--lg-ink); background: rgba(56, 132, 255, .13); border-color: rgba(56, 132, 255, .32); }
+.nx-login.is-light .nx-card__banner.is-error { color: #a11616; }
+
+/* ---- fields ------------------------------------------------------------- */
+
+.nx-card__form { display: flex; flex-direction: column; gap: 14px; }
+
+.nx-card__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--lg-field-line);
+  background: var(--lg-field);
+  transition: border-color .18s, box-shadow .18s;
+}
+
+.nx-card__field:focus-within {
+  border-color: var(--lg-gold);
+  box-shadow: 0 0 0 3px rgba(255, 210, 63, .18);
+}
+
+.nx-card__field-icon { color: var(--lg-ink-faint); flex-shrink: 0; }
+
+.nx-card__field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 14.5px;
+  color: var(--lg-ink);
+}
+
+.nx-card__field input::placeholder { color: var(--lg-ink-faint); }
+
+.nx-card__field-btn {
+  display: inline-flex;
+  border: 0;
+  background: none;
+  padding: 4px;
+  color: var(--lg-ink-faint);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.nx-card__field-btn:hover { color: var(--lg-ink); }
+
+/* ---- remember / forgot -------------------------------------------------- */
+
+.nx-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 2px 0 4px;
+  font-size: 13.5px;
+}
+
+.nx-card__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--lg-ink-soft);
+  cursor: pointer;
+}
+
+.nx-card__check input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.nx-card__box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--lg-field-line);
+  background: var(--lg-field);
+  position: relative;
+  transition: background .16s, border-color .16s;
+}
+
+.nx-card__check input:checked + .nx-card__box {
+  background: var(--lg-gold);
+  border-color: var(--lg-gold);
+}
+
+.nx-card__check input:checked + .nx-card__box::after {
+  content: '';
+  position: absolute;
+  left: 5px; top: 1px;
+  width: 5px; height: 10px;
+  border: solid #15233b;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.nx-card__check input:focus-visible + .nx-card__box { box-shadow: 0 0 0 3px rgba(255, 210, 63, .3); }
+
+.nx-card__link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--lg-gold-ink);
+  cursor: pointer;
+}
+
+.nx-card__link:hover { text-decoration: underline; }
+
+/* ---- submit ------------------------------------------------------------- */
+
+.nx-card__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  height: 52px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--lg-gold) 0%, var(--lg-gold-deep) 100%);
+  color: #15233b;
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .18s, transform .12s;
+}
+
+.nx-card__submit:hover:not(:disabled) { filter: brightness(1.06); }
+.nx-card__submit:active:not(:disabled) { transform: translateY(1px); }
+.nx-card__submit:disabled { opacity: .65; cursor: not-allowed; }
+
+/* ---- divider and social ------------------------------------------------- */
+
+.nx-card__or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+  font-size: 12.5px;
+  color: var(--lg-ink-faint);
+}
+
+.nx-card__or::before,
+.nx-card__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--lg-card-line);
+}
+
+.nx-card__social {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.nx-card__social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  border-radius: 11px;
+  border: 1px solid var(--lg-field-line);
+  background: var(--lg-field);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--lg-ink);
+  cursor: pointer;
+  transition: border-color .18s;
+}
+
+.nx-card__social-btn:hover:not(:disabled) { border-color: var(--lg-gold); }
+.nx-card__social-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+@media (max-width: 560px) {
+  .nx-card { padding: 22px 18px; border-radius: 14px; }
+  .nx-card__tab span { display: none; }
+  .nx-card__tab { padding: 10px 4px; }
+}
+
+/* ---- provider tiles ------------------------------------------------------
+   Google's own control is an iframe that cannot be restyled, and there is no
+   supported way to start the ID-token flow from a button of our own. So the
+   tile is ours and Google's button is laid over it at zero opacity: the click
+   that starts the flow is a real click on Google's control, and the card
+   still gets the design. */
+
+.nx-oauth { position: relative; overflow: hidden; }
+
+.nx-oauth__real {
+  position: absolute;
+  /* -1px so the overlay covers the tile's border too: an absolute child of a
+     bordered box fills the padding box, leaving a 1px rim that would take the
+     click itself. */
+  top: -1px;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Google enforces a 200px minimum on its rendered button, which is wider
+     than a third of the card. Centred and clipped by the tile's overflow, so
+     whatever the tile's width the whole of it sits over Google's control. */
+  width: max(220px, calc(100% + 2px));
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.nx-oauth__real > div,
+.nx-oauth__real iframe { width: 100% !important; height: 100% !important; }
+
+/* Not configured, or the script was blocked: dimmed, with the reason on hover. */
+.nx-oauth.is-off { opacity: .45; cursor: not-allowed; }
+.nx-oauth__why { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+
+.nx-card__social-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- the security line -------------------------------------------------- */
+
+.nx-card__secure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--lg-card-line);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--lg-ink-faint);
+}
+
+.nx-card__secure > svg { color: var(--lg-ink-soft); flex-shrink: 0; }
+.nx-card__secure > span { flex: 1; min-width: 0; }
+
+.nx-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.nx-card__more svg { transition: transform .18s; }
+.nx-card__more svg.is-open { transform: rotate(90deg); }
+
+.nx-card__secure-list {
+  margin: 10px 0 0;
+  padding: 12px 14px 12px 30px;
+  border-radius: 10px;
+  background: var(--lg-field);
+  border: 1px solid var(--lg-card-line);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--lg-ink-soft);
+}
+
+.nx-card__secure-list li + li { margin-top: 4px; }
+
+/* Why a provider tile is dimmed — on the page, not in a tooltip a disabled
+   button will not show. */
+.nx-card__offline {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--lg-field-line);
+  background: var(--lg-field);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lg-ink-soft);
+}
+
+/* ---- autofill ------------------------------------------------------------
+   Chrome repaints an autofilled field with its own background and near-black
+   text, which on this card turned both fields into white rectangles — the
+   dark theme simply gone. It ignores `background-color` on those fields, so
+   the fill is covered with an inset shadow in the field's own colour and the
+   text recoloured with -webkit-text-fill-color, which does win. The absurd
+   transition delay stops Chrome painting its blue for one frame first.
+
+   The shadow colour has to be opaque: --lg-field is a translucent white over
+   the card, and a translucent patch lets Chrome's fill show straight through. */
+
+.nx-login { --lg-field-solid: #161e2e; --lg-field-solid-focus: #1b2437; }
+.nx-login.is-light { --lg-field-solid: #f2f4f8; --lg-field-solid-focus: #e9edf4; }
+
+.nx-card__field input:-webkit-autofill,
+.nx-card__field input:-webkit-autofill:hover,
+.nx-card__field input:-webkit-autofill:focus,
+.nx-card__field input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--lg-ink);
+  caret-color: var(--lg-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--lg-field-solid) inset;
+  box-shadow: 0 0 0 1000px var(--lg-field-solid) inset;
+  transition: background-color 600000s 0s, color 600000s 0s;
+  /* Matches the field's own size, so an autofilled value does not jump. */
+  font-size: 14.5px;
+  border-radius: 10px;
+}
+
+/* Focus lightens the field, so the patch follows it. */
+.nx-card__field:focus-within input:-webkit-autofill,
+.nx-card__field:focus-within input:-webkit-autofill:hover,
+.nx-card__field:focus-within input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--lg-field-solid-focus) inset;
+  box-shadow: 0 0 0 1000px var(--lg-field-solid-focus) inset;
+}
+
+/* Firefox marks the field rather than repainting it. */
+.nx-card__field input:autofill {
+  background: transparent;
+  color: var(--lg-ink);
+}

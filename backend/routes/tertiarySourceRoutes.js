@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { authMiddleware, requireSuperAdmin } = require('../middleware/authMiddleware');
 const tertiarySourceController = require('../controllers/tertiarySourceController');
 
-router.get('/', tertiarySourceController.getSources);
-router.post('/', tertiarySourceController.createSource);
-router.put('/:id', tertiarySourceController.updateSource);
-router.delete('/:id', tertiarySourceController.deleteSource);
+router.get('/', authMiddleware, tertiarySourceController.getSources);
+router.post('/', authMiddleware, tertiarySourceController.createSource);
+router.put('/:id', authMiddleware, tertiarySourceController.updateSource);
+router.delete('/:id', authMiddleware, requireSuperAdmin, tertiarySourceController.deleteSource);
 
 module.exports = router;

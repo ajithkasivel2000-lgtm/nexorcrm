@@ -1,6 +1,19 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Building2, Landmark } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './CreateChannelPartner.css';
+import invalidateLeadCache from './utils/invalidateLeadCache';
+import {
+  Button, DEFAULT_DIAL, emailError, normalizeEmail,
+  RecordCard, RecordColumn, RecordField, RecordFields, RecordFileField,
+  RecordGrid, RecordPage, RecordPhoneField,
+} from './ui';
+
+const CP_TYPES = [
+  { value: 'Broker', label: 'Broker' },
+  { value: 'Agency', label: 'Agency' },
+  { value: 'Individual', label: 'Individual' },
+];
 
 export default function CreateChannelPartner() {
   const navigate = useNavigate();
@@ -33,292 +46,153 @@ export default function CreateChannelPartner() {
     }
   });
 
-  const handleChange = (e) => {
-    const { name } = e.target;
-    let { value } = e.target;
-
-    // Enforce numbers-only for Mobile Number, RERA Registration Number, Aadhaar Number, Office Landline, Company Registration Number, Bank Account Number
-    if (['mobileNumber', 'reraRegistrationNumber', 'aadhaarNumber', 'officeLandline', 'companyRegistrationNumber', 'account_bankAccountNumber'].includes(name)) {
-      value = value.replace(/\D/g, '');
-    }
-
-    if (name.startsWith('account_')) {
-      const field = name.split('_')[1];
-      setFormData(prev => ({
-        ...prev,
-        accountDetails: {
-          ...prev.accountDetails,
-          [field]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (files && files.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        [name]: files[0].name
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const badEmail = emailError(formData.emailAddress, { required: true, label: 'Email address' });
+    if (badEmail) { window.appAlert(badEmail); return; }
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/channel-partners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, emailAddress: normalizeEmail(formData.emailAddress) })
       });
       if (response.ok) {
+        // A new channel partner can be referenced by leads, so refresh every
+        // lead view (lists, tabs, dashboard) without a browser refresh.
+        invalidateLeadCache();
         navigate('/channel-partners');
       } else {
         const errData = await response.json();
-        alert(errData.message || 'Failed to register channel partner');
+        window.appAlert(errData.message || 'Failed to register channel partner');
       }
     } catch (error) {
       console.error('Error creating channel partner:', error);
-      alert('Network error while registering channel partner.');
+      window.appAlert('Network error while registering channel partner.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const set = (name) => (value) => setFormData((prev) => ({ ...prev, [name]: value }));
+  const setAcc = (name) => (value) => setFormData((prev) => ({
+    ...prev,
+    accountDetails: { ...prev.accountDetails, [name]: value },
+  }));
+  const acc = formData.accountDetails || {};
+
   return (
-    <div className="create-cp-page">
-      <div className="create-cp-header-card">
-        <h2>Create New Channel Partners</h2>
-        <div className="page-breadcrumb">
-          <Link to="/channel-partners" className="breadcrumb-link">Channel Partners</Link> <span className="slash">/</span> <span className="current">Create New Channel Partners</span>
-        </div>
-      </div>
-
-      <div className="create-cp-card">
-        <form onSubmit={handleSubmit}>
-          <div className="form-main-grid">
-            
-            {/* Left Column */}
-            <div className="form-col">
-              <div className="form-row">
-                <label className="form-label">Type Of Channel Partner :</label>
-                <select 
-                  className="form-select" 
-                  name="typeOfChannelPartner" 
-                  value={formData.typeOfChannelPartner} 
-                  onChange={handleChange}
+    <RecordPage
+      crumbs={[{ label: 'Channel Partners', to: '/channel-partners' }]}
+      title="Create New Channel Partners"
+      backTo="/channel-partners"
+      backLabel="Back to Partners"
+    >
+      <form onSubmit={handleSubmit}>
+        <RecordGrid cols={1}>
+          <RecordColumn>
+            <RecordCard icon={Building2} title="Create New Channel Partners">
+              <RecordFields>
+                <RecordField
+                  label="Type Of Channel Partner :"
+                  options={CP_TYPES}
+                  placeholder="Select Type Of Channel Partner"
+                  value={formData.typeOfChannelPartner}
+                  onChange={set('typeOfChannelPartner')}
+                />
+                <RecordField label="Company Name :" required placeholder="Company Name*" value={formData.companyName} onChange={set('companyName')} />
+                <RecordField label="Owner/Partner's Name :" required placeholder="Owner/Partner's Name*" value={formData.ownerName} onChange={set('ownerName')} />
+                <RecordPhoneField
+                  label="Mobile Number :"
                   required
-                >
-                  <option value="">Select Type Of Channel Partner</option>
-                  <option value="Broker">Broker</option>
-                  <option value="Agency">Agency</option>
-                  <option value="Individual">Individual</option>
-                </select>
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Company Name :</label>
-                <input type="text" className="form-input" name="companyName" value={formData.companyName} onChange={handleChange} required placeholder="Company Name*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Owner/Partner's Name :</label>
-                <input type="text" className="form-input" name="ownerName" value={formData.ownerName} onChange={handleChange} required placeholder="Owner/Partner's Name*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Mobile Number :</label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="form-input" 
-                  name="mobileNumber" 
-                  value={formData.mobileNumber} 
-                  onChange={handleChange} 
-                  required 
-                  placeholder="Mobile Number*" 
+                  name="mobileNumber"
+                  countryName="mobileCountryCode"
+                  value={formData.mobileNumber}
+                  dial={formData.mobileCountryCode || DEFAULT_DIAL}
+                  onSave={(num, code) => setFormData((prev) => ({ ...prev, mobileNumber: num, mobileCountryCode: code }))}
                 />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Office Landline Number :</label>
-                <input 
-                  type="text" 
+                <RecordField
+                  label="Office Landline Number :"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  className="form-input" 
-                  name="officeLandline" 
-                  value={formData.officeLandline} 
-                  onChange={handleChange} 
-                  placeholder="Office Landline Number (Optional)" 
+                  placeholder="Office Landline Number (Optional)"
+                  value={formData.officeLandline}
+                  onChange={set('officeLandline')}
                 />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Email Address :</label>
-                <input type="email" className="form-input" name="emailAddress" value={formData.emailAddress} onChange={handleChange} required placeholder="Email Address*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Company Registration Number :</label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="form-input" 
-                  name="companyRegistrationNumber" 
-                  value={formData.companyRegistrationNumber} 
-                  onChange={handleChange} 
-                  required 
-                  placeholder="Company/Firm Registration Number*" 
-                />
-              </div>
-
-              <div className="form-row align-top">
-                <label className="form-label">Registered Address :</label>
-                <textarea className="form-textarea" name="registeredAddress" value={formData.registeredAddress} onChange={handleChange} required placeholder="Registered Address*"></textarea>
-              </div>
-
-              <div className="form-row align-top">
-                <label className="form-label">Communication Address :</label>
-                <textarea className="form-textarea" name="communicationAddress" value={formData.communicationAddress} onChange={handleChange} placeholder="Communication Address"></textarea>
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="form-col">
-              <div className="form-row align-top">
-                <label className="form-label">Message :</label>
-                <textarea className="form-textarea" style={{ height: '70px' }} name="message" value={formData.message} onChange={handleChange} required placeholder="Message*"></textarea>
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Website URL :</label>
-                <input type="text" className="form-input" name="websiteUrl" value={formData.websiteUrl} onChange={handleChange} required placeholder="Website URL*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Aadhaar Number :</label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="form-input" 
-                  name="aadhaarNumber" 
-                  value={formData.aadhaarNumber} 
-                  onChange={handleChange} 
+                <RecordField
+                  label="Email Address :"
+                  type="email"
                   required
-                  placeholder="Aadhaar Number*" 
+                  value={formData.emailAddress}
+                  onChange={set('emailAddress')}
+                  normalize={normalizeEmail}
+                  validate={(v) => emailError(v, { label: 'Email address' })}
                 />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Upload Aadhaar Copy :</label>
-                <input type="file" className="form-file-input" name="uploadAadhaarCopy" onChange={handleFileChange} required />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">PAN of the Company :</label>
-                <input type="text" className="form-input" name="panOfCompany" value={formData.panOfCompany} onChange={handleChange} required placeholder="PAN of the Company*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Upload PAN copy :</label>
-                <input type="file" className="form-file-input" name="uploadPanCopy" onChange={handleFileChange} required />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">GST Registration Number :</label>
-                <input type="text" className="form-input" name="gstRegistrationNumber" value={formData.gstRegistrationNumber} onChange={handleChange} placeholder="GST Registration Number" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Upload GST copy :</label>
-                <input type="file" className="form-file-input" name="uploadGstCopy" onChange={handleFileChange} />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">RERA Registration Number :</label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="form-input" 
-                  name="reraRegistrationNumber" 
-                  value={formData.reraRegistrationNumber} 
-                  onChange={handleChange} 
-                  required 
-                  placeholder="RERA Registration Number*" 
-                />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Upload RERA copy :</label>
-                <input type="file" className="form-file-input" name="uploadReraCopy" onChange={handleFileChange} required />
-              </div>
-            </div>
-
-          </div>
-
-          {/* Account Details Section */}
-          <div className="section-divider-container">
-            <div className="section-title">Account Details</div>
-          </div>
-
-          <div className="form-account-grid">
-            <div className="form-col">
-              <div className="form-row">
-                <label className="form-label">Beneficiary Bank Name :</label>
-                <input type="text" className="form-input" name="account_beneficiaryBankName" value={formData.accountDetails.beneficiaryBankName} onChange={handleChange} required placeholder="Beneficiary Bank Name*" />
-              </div>
-
-              <div className="form-row">
-                <label className="form-label">Bank Account No. :</label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="form-input" 
-                  name="account_bankAccountNumber" 
-                  value={formData.accountDetails.bankAccountNumber} 
-                  onChange={handleChange} 
+                <RecordField
+                  label="Company Registration Number :"
                   required
-                  placeholder="Bank Account No.*" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Company/Firm Registration Number*"
+                  value={formData.companyRegistrationNumber}
+                  onChange={set('companyRegistrationNumber')}
                 />
-              </div>
-            </div>
+                <RecordField label="Registered Address :" required multiline placeholder="Registered Address*" value={formData.registeredAddress} onChange={set('registeredAddress')} />
+                <RecordField label="Communication Address :" multiline placeholder="Communication Address" value={formData.communicationAddress} onChange={set('communicationAddress')} />
+                <RecordField label="Message :" required multiline placeholder="Message*" value={formData.message} onChange={set('message')} />
+                <RecordField label="Website URL :" required placeholder="Website URL*" value={formData.websiteUrl} onChange={set('websiteUrl')} />
+                <RecordField
+                  label="Aadhaar Number :"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Aadhaar Number*"
+                  value={formData.aadhaarNumber}
+                  onChange={set('aadhaarNumber')}
+                />
+                <RecordFileField label="Upload Aadhaar Copy :" value={formData.uploadAadhaarCopy} onSave={set('uploadAadhaarCopy')} />
+                <RecordField label="PAN of the Company :" required placeholder="PAN of the Company*" value={formData.panOfCompany} onChange={set('panOfCompany')} />
+                <RecordFileField label="Upload PAN copy :" value={formData.uploadPanCopy} onSave={set('uploadPanCopy')} />
+                <RecordField label="GST Registration Number :" placeholder="GST Registration Number" value={formData.gstRegistrationNumber} onChange={set('gstRegistrationNumber')} />
+                <RecordFileField label="Upload GST copy :" value={formData.uploadGstCopy} onSave={set('uploadGstCopy')} />
+                <RecordField
+                  label="RERA Registration Number :"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="RERA Registration Number*"
+                  value={formData.reraRegistrationNumber}
+                  onChange={set('reraRegistrationNumber')}
+                />
+                <RecordFileField label="Upload RERA copy :" value={formData.uploadReraCopy} onSave={set('uploadReraCopy')} />
+              </RecordFields>
+            </RecordCard>
 
-            <div className="form-col">
-              <div className="form-row">
-                <label className="form-label">Beneficiary Name :</label>
-                <input type="text" className="form-input" name="account_beneficiaryName" value={formData.accountDetails.beneficiaryName} onChange={handleChange} required placeholder="Beneficiary Name*" />
-              </div>
+            <RecordCard icon={Landmark} title="Account Details">
+              <RecordFields>
+                <RecordField label="Beneficiary Bank Name :" required placeholder="Beneficiary Bank Name*" value={acc.beneficiaryBankName} onChange={setAcc('beneficiaryBankName')} />
+                <RecordField
+                  label="Bank Account No. :"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Bank Account No.*"
+                  value={acc.bankAccountNumber}
+                  onChange={setAcc('bankAccountNumber')}
+                />
+                <RecordField label="Beneficiary Name :" required placeholder="Beneficiary Name*" value={acc.beneficiaryName} onChange={setAcc('beneficiaryName')} />
+                <RecordField label="IFSC code :" required placeholder="IFSC code*" value={acc.ifscCode} onChange={setAcc('ifscCode')} />
+              </RecordFields>
 
-              <div className="form-row">
-                <label className="form-label">IFSC code :</label>
-                <input type="text" className="form-input" name="account_ifscCode" value={formData.accountDetails.ifscCode} onChange={handleChange} required placeholder="IFSC code*" />
+              <div className="nx-rec-card__actions">
+                <Button type="submit" variant="primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Registering...' : 'Register Channel Partners'}
+                </Button>
               </div>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button type="submit" className="btn-register" disabled={isSubmitting}>
-              {isSubmitting ? 'Registering...' : 'Register Channel Partners'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </RecordCard>
+          </RecordColumn>
+        </RecordGrid>
+      </form>
+    </RecordPage>
   );
 }
-

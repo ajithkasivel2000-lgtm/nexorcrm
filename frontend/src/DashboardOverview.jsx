@@ -1,37 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import {
-  User, Calendar, Phone, Star, CheckCircle, XCircle, Copy, Briefcase,
-  AlertCircle, ChevronDown, Search, X, ArrowLeft
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { SearchInput } from './ui';
+import { Users, ChevronDown, Search, X, ArrowLeft } from 'lucide-react';
 import './Dashboard.css';
-
-const statConfig = {
-  'Today Leads':          { icon: <Calendar size={20} color="#fff" />, color: '#4a72ff' },
-  'New Lead':             { icon: <User size={20} color="#fff" />, color: '#00c37b' },
-  'Attempted':            { icon: <Phone size={20} color="#fff" />, color: '#6c757d' },
-  'Interested':           { icon: <Star size={20} color="#fff" />, color: '#ffb822' },
-  'Allocate':             { icon: <User size={20} color="#fff" />, color: '#00b5e9' },
-  'Site Visit':           { icon: <Calendar size={20} color="#fff" />, color: '#4a72ff', path: '/site-visits' },
-  'Rejected':             { icon: <XCircle size={20} color="#fff" />, color: '#ff3d60', path: '/rejected-leads' },
-  'Duplicate':            { icon: <Copy size={20} color="#fff" />, color: '#6c757d' },
-  'Opportunity':          { icon: <Briefcase size={20} color="#fff" />, color: '#00c37b' },
-  'Missed Follow Up':     { icon: <AlertCircle size={20} color="#fff" />, color: '#ffb822' },
-  'Site Visit Done':      { icon: <CheckCircle size={20} color="#fff" />, color: '#00c37b' },
-  'Site Visit Confirmed': { icon: <CheckCircle size={20} color="#fff" />, color: '#4a72ff' },
-  'Re Scheduled Visit':   { icon: <Calendar size={20} color="#fff" />, color: '#ffb822' },
-  'Site Visit Scheduled': { icon: <Calendar size={20} color="#fff" />, color: '#4a72ff' },
-};
-
-const PIE_COLORS = ['#8884d8', '#ff3d60', '#ffc658', '#00c37b', '#00b5e9', '#e91e63'];
+import DashboardInsights from './DashboardInsights';
+import ProjectStatusBoard from './ProjectStatusBoard';
+import { subscribeLeadCacheInvalidation } from './utils/invalidateLeadCache';
+import useLiveRefresh from './utils/useLiveRefresh';
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
 
 /** Map a logged-in user's status to their home dashboard view. */
 const getHomeView = (isSuperAdmin, status) => {
   if (isSuperAdmin) return 'Superadmin';
-  if (status === 'Admin')   return 'Admin';
+  if (status === 'Admin') return 'Admin';
   if (status === 'Manager') return 'Manager';
   return 'Employee';
 };
@@ -42,21 +23,19 @@ const getHomeView = (isSuperAdmin, status) => {
  */
 const getDropdownOptions = (homeView) => {
   if (homeView === 'Superadmin') return ['Admin', 'Manager', 'Employee'];
-  if (homeView === 'Admin')      return ['Manager', 'Employee'];
-  if (homeView === 'Manager')    return ['Employee'];
+  if (homeView === 'Admin') return ['Manager', 'Employee'];
+  if (homeView === 'Manager') return ['Employee'];
   return []; // Employee / User — no sub-views
-};
-
-/** Which user statuses the search should return for a given dashboard view. */
+};/** Which user statuses the search should return for a given dashboard view. */
 const getSearchStatus = (view) => {
-  if (view === 'Admin')   return 'Admin';
-  if (view === 'Manager') return 'Manager';
-  return 'Employee';
+  if (view === 'Admin')   return 'Manager';   // Admins search managers
+  if (view === 'Manager') return 'Employee';  // Managers search employees
+  return 'Employee';                          // Employees search employees (no one lower)
 };
 
 /** Search input placeholder text for a given dashboard view. */
 const getSearchPlaceholder = (view) => {
-  if (view === 'Admin')   return 'Search admins by name or username...';
+  if (view === 'Admin') return 'Search admins by name or username...';
   if (view === 'Manager') return 'Search managers by name or username...';
   return 'Search employees by name or username...';
 };
@@ -64,43 +43,39 @@ const getSearchPlaceholder = (view) => {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DashboardOverview() {
-  const navigate = useNavigate();
-  const loggedInUser        = localStorage.getItem('loggedInUser') || '';
-  const isSuperAdmin        = loggedInUser === 'admin';
+  const loggedInUser = localStorage.getItem('loggedInUser') || '';
+  const isSuperAdmin = loggedInUser === 'admin';
   const userStatusFromStorage = localStorage.getItem('userStatus') || '';
 
   // ── Role / home view ─────────────────────────────────────────────────────
-  const [userRole,  setUserRole]  = useState(isSuperAdmin ? 'Superadmin' : (userStatusFromStorage || 'Employee'));
-  const [homeView,  setHomeView]  = useState(getHomeView(isSuperAdmin, userStatusFromStorage));
+  const [homeView, setHomeView] = useState(getHomeView(isSuperAdmin, userStatusFromStorage));
 
   // ── Current dashboard view (starts at home) ───────────────────────────────
   const [dashboardView, setDashboardView] = useState(getHomeView(isSuperAdmin, userStatusFromStorage));
 
   // ── Project filter ────────────────────────────────────────────────────────
-  const [projects,         setProjects]         = useState([]);
-  const [selectedProject,  setSelectedProject]  = useState('All Projects');
-  const [isDropdownOpen,   setIsDropdownOpen]   = useState(false);
-  const dropdownRef = useRef(null);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('All Projects');
 
   // ── Dashboard data ────────────────────────────────────────────────────────
   const [dashboardData, setDashboardData] = useState(null);
-  const [loading,       setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
 
   // ── Dashboard-view dropdown ───────────────────────────────────────────────
   const [isDashDropdownOpen, setIsDashDropdownOpen] = useState(false);
   const dashDropdownRef = useRef(null);
 
   // ── Specific user (from search) ───────────────────────────────────────────
-  const [specificUser,    setSpecificUser]    = useState('');
+  const [specificUser, setSpecificUser] = useState('');
   const [selectedUserInfo, setSelectedUserInfo] = useState(null);
 
   // ── Search ────────────────────────────────────────────────────────────────
-  const [searchQuery,       setSearchQuery]       = useState('');
-  const [searchResults,     setSearchResults]     = useState([]);
-  const [searchLoading,     setSearchLoading]     = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchError,       setSearchError]       = useState('');
-  const searchRef    = useRef(null);
+  const [searchError, setSearchError] = useState('');
+  const searchRef = useRef(null);
   const debounceTimer = useRef(null);
 
   // ── Fetch true user role on mount ─────────────────────────────────────────
@@ -111,7 +86,6 @@ export default function DashboardOverview() {
         .then(data => {
           if (data && data.status) {
             const status = data.status;
-            setUserRole(status);
             const home = getHomeView(false, status);
             setHomeView(home);
             setDashboardView(home);
@@ -130,13 +104,22 @@ export default function DashboardOverview() {
       .catch(err => console.error('Error fetching projects:', err));
 
     const handleClickOutside = (e) => {
-      if (dropdownRef.current     && !dropdownRef.current.contains(e.target))     setIsDropdownOpen(false);
       if (dashDropdownRef.current && !dashDropdownRef.current.contains(e.target)) setIsDashDropdownOpen(false);
-      if (searchRef.current       && !searchRef.current.contains(e.target))       setShowSearchResults(false);
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearchResults(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  /* The stats below already refresh on any lead change (see the subscription
+     further down); this is the project filter beside them, which was loaded
+     once and so never showed a project added since the page opened. */
+  useLiveRefresh(['projects'], () => {
+    fetch('/api/projects')
+      .then(res => res.json())
+      .then(data => setProjects(Array.isArray(data) ? data : []))
+      .catch(err => console.error('Error refreshing projects:', err));
+  });
 
   // ── Debounced search (scoped to current dashboardView) ────────────────────
   useEffect(() => {
@@ -169,23 +152,58 @@ export default function DashboardOverview() {
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
   }, [searchQuery, dashboardView]);
 
+  /* The window the Project Status tiles count over. Thirty days to start with,
+     which is what they effectively showed before there was a picker. */
+  const [range, setRange] = useState(() => ({
+    from: new Date(Date.now() - 30 * 86400000),
+    to: new Date(),
+  }));
+
+  /* Built once and used by both fetches below. Written out twice before, which
+     is how the two could have drifted the moment anything new was added to it. */
+  const dashboardUrl = useMemo(() => {
+    const q = new URLSearchParams({
+      username: loggedInUser || '',
+      viewAsRole: dashboardView,
+      from: new Date(range.from).toISOString(),
+      to: new Date(range.to).toISOString(),
+    });
+    if (specificUser) q.set('specificUser', specificUser);
+    if (selectedProject !== 'All Projects') q.set('project', selectedProject);
+    return `/api/dashboard?${q.toString()}`;
+  }, [loggedInUser, dashboardView, specificUser, selectedProject, range]);
+
   // ── Fetch dashboard stats ─────────────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
-    let url = `/api/dashboard?username=${encodeURIComponent(loggedInUser)}&viewAsRole=${dashboardView}`;
-    if (specificUser)                       url += `&specificUser=${encodeURIComponent(specificUser)}`;
-    if (selectedProject !== 'All Projects') url += `&project=${encodeURIComponent(selectedProject)}`;
-    fetch(url)
+    fetch(dashboardUrl)
       .then(res => res.json())
-      .then(data  => { setDashboardData(data);  setLoading(false); })
-      .catch(err  => { console.error('Error fetching dashboard data:', err); setLoading(false); });
-  }, [selectedProject, dashboardView, specificUser, loggedInUser]);
+      .then(data => { setDashboardData(data); setLoading(false); })
+      .catch(err => { console.error('Error fetching dashboard data:', err); setLoading(false); });
+  }, [dashboardUrl]);
+
+  // Keep dashboard stats in sync after any lead mutation anywhere in the CRM
+  // (create, edit, delete, status change, assignment, follow-up, log, import).
+  // The dashboard reads from /api/dashboard, which is derived from lead data,
+  // so a lead change must re-fetch those stats without a browser refresh.
+  useEffect(() => {
+    const unsubscribe = subscribeLeadCacheInvalidation(() => {
+      setLoading(true);
+      fetch(dashboardUrl)
+        .then(res => res.json())
+        .then(data => { setDashboardData(data); setLoading(false); })
+        .catch(err => { console.error('Error refreshing dashboard data after lead change:', err); setLoading(false); });
+    });
+    return unsubscribe;
+  }, [dashboardUrl]);
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const dropdownOptions  = getDropdownOptions(homeView);
-  const isOnNonHomeView  = dashboardView !== homeView;
+  const dropdownOptions = getDropdownOptions(homeView);
+  const isOnNonHomeView = dashboardView !== homeView;
+  const roleNoun = dashboardView === 'Admin' ? 'admin'
+    : dashboardView === 'Manager' ? 'manager' : 'employee';
   // Show search bar only when browsing a non-home sub-view
-  const showSearchBar    = isOnNonHomeView;
+  const showSearchBar = isOnNonHomeView;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -216,10 +234,10 @@ export default function DashboardOverview() {
     setSearchQuery('');
     setSpecificUser(user.username);
     setSelectedUserInfo({
-      username:  user.username,
+      username: user.username,
       firstName: user.firstName,
-      lastName:  user.lastName,
-      status:    user.status
+      lastName: user.lastName,
+      status: user.status
     });
   };
 
@@ -235,39 +253,9 @@ export default function DashboardOverview() {
     setShowSearchResults(false);
   };
 
-  const selectProject = (name) => {
-    setSelectedProject(name);
-    setIsDropdownOpen(false);
-  };
+  const selectProject = (name) => setSelectedProject(name);
 
   // ── Chart / stats data ────────────────────────────────────────────────────
-  const projectStats = dashboardData
-    ? Object.keys(statConfig).map(name => {
-        let count = 0;
-        if (name === 'Today Leads')  count = dashboardData.todayLeads   || 0;
-        else if (name === 'Opportunity') count = dashboardData.opportunities || 0;
-        else count = (dashboardData.leadStats && dashboardData.leadStats[name]) || 0;
-        return { name, count, ...statConfig[name] };
-      })
-    : [];
-
-  const leadInsightsData = dashboardData
-    ? (dashboardData.leadInsights || []).map((item, i) => ({
-        name:  item.primarySource || 'Unknown',
-        value: item._count.id,
-        fill:  PIE_COLORS[i % PIE_COLORS.length],
-      }))
-    : [];
-  const totalLeads = leadInsightsData.reduce((a, c) => a + c.value, 0);
-
-  const siteVisitsInsightsData = dashboardData
-    ? (dashboardData.siteVisitsInsights || []).map((item, i) => ({
-        name:  item.primarySource || 'Unknown',
-        value: item._count.id,
-        fill:  PIE_COLORS[i % PIE_COLORS.length],
-      }))
-    : [];
-  const totalSiteVisits = siteVisitsInsightsData.reduce((a, c) => a + c.value, 0);
 
   // Dashboard title
   const dashboardTitle = selectedUserInfo
@@ -292,13 +280,13 @@ export default function DashboardOverview() {
               onClick={handleBack}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '8px',
+                background: 'var(--nx-bg-sunken)', border: '1px solid var(--nx-border)', borderRadius: '8px',
                 padding: '8px 14px', cursor: 'pointer', fontSize: '13px',
-                color: '#475569', fontWeight: '500', whiteSpace: 'nowrap',
+                color: 'var(--nx-text-secondary)', fontWeight: '500', whiteSpace: 'nowrap',
                 transition: 'all 0.18s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--nx-bg-hover)'; e.currentTarget.style.color = 'var(--nx-text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--nx-bg-sunken)'; e.currentTarget.style.color = 'var(--nx-text-secondary)'; }}
             >
               <ArrowLeft size={14} />
               Back to {homeView} Dashboard
@@ -316,7 +304,7 @@ export default function DashboardOverview() {
               style={{
                 cursor: !isOnNonHomeView && dropdownOptions.length > 0 ? 'pointer' : 'default',
                 display: 'flex', alignItems: 'center', gap: '8px',
-                margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#1e293b',
+                margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--text-main)',
               }}
             >
               {dashboardTitle}
@@ -327,7 +315,7 @@ export default function DashboardOverview() {
               <ul
                 style={{
                   position: 'absolute', top: '100%', left: 0, marginTop: '8px',
-                  background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px',
+                  background: 'var(--bg-card)', border: '1px solid var(--nx-border)', borderRadius: '8px',
                   boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 100,
                   padding: '6px 0', margin: 0, listStyle: 'none', minWidth: '220px',
                 }}
@@ -336,8 +324,8 @@ export default function DashboardOverview() {
                   <li
                     key={view}
                     onClick={() => handleViewSwitch(view)}
-                    style={{ padding: '10px 16px', cursor: 'pointer', fontSize: '14px', color: '#334155' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    style={{ padding: '10px 16px', cursor: 'pointer', fontSize: '14px', color: 'var(--nx-text)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--nx-bg-hover)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     {view} Dashboard
@@ -352,21 +340,14 @@ export default function DashboardOverview() {
         {showSearchBar && (
           <div className="dashboard-user-search" ref={searchRef}>
             <div className="dashboard-user-search-input-wrapper">
-              <Search size={18} className="dashboard-user-search-icon" />
-              <input
-                type="text"
-                className="dashboard-user-search-input"
+              <SearchInput
                 placeholder={getSearchPlaceholder(dashboardView)}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
+                onClear={clearSearch}
                 onFocus={() => { if (searchResults.length > 0) setShowSearchResults(true); }}
               />
               {searchLoading && <span className="dashboard-user-search-spinner" />}
-              {searchQuery && !searchLoading && (
-                <button className="dashboard-user-search-clear" onClick={clearSearch}>
-                  <X size={16} />
-                </button>
-              )}
             </div>
 
             {showSearchResults && (
@@ -428,189 +409,41 @@ export default function DashboardOverview() {
       )}
 
       {/* ── Dashboard content: show only on home view OR when a specific user is selected ── */}
-      {(!isOnNonHomeView || specificUser) ? (
-        <>
-          {/* ── Project Status section ──────────────────────────────────────────── */}
-          <section className="dashboard-card project-status-section">
-            <div className="card-header">
-              <h3>Project Status</h3>
-
-              <div className="project-dropdown-container" ref={dropdownRef}>
-                <button
-                  className={`project-dropdown-toggle${isDropdownOpen ? ' open' : ''}`}
-                  onClick={() => setIsDropdownOpen(prev => !prev)}
-                >
-                  <span>{selectedProject}</span>
-                  <ChevronDown
-                    size={14}
-                    style={{ transition: 'transform 0.2s', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
-                  />
-                </button>
-
-                {isDropdownOpen && (
-                  <ul className="project-dropdown-menu">
-                    <li
-                      className={selectedProject === 'All Projects' ? 'active' : ''}
-                      onClick={() => selectProject('All Projects')}
-                    >
-                      All Projects
-                    </li>
-                    {projects.map(p => (
-                      <li
-                        key={p.id}
-                        className={selectedProject === p.projectName ? 'active' : ''}
-                        onClick={() => selectProject(p.projectName)}
-                      >
-                        {p.projectName}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="dashboard-loading">Loading data…</div>
-            ) : (
-              <div className="stats-grid">
-                {projectStats.map((stat, i) => (
-                  <div
-                    key={i}
-                    className="stat-card"
-                    style={{ borderBottomColor: stat.color, cursor: stat.path ? 'pointer' : 'default' }}
-                    onClick={() => {
-                      if (stat.path === '/rejected-leads') window.location.href = stat.path;
-                      else if (stat.path) navigate(stat.path);
-                    }}
-                  >
-                    <div className="stat-icon" style={{ backgroundColor: stat.color }}>{stat.icon}</div>
-                    <div className="stat-info">
-                      <span className="stat-name">{stat.name}</span>
-                      <span className="stat-count">{stat.count}</span>
-                    </div>
-                    <div className="stat-footer">
-                      <span style={{ color: stat.color, cursor: 'pointer', fontWeight: 600 }}>VIEW DETAILS &rarr;</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ── Bottom grid ─────────────────────────────────────────────────────── */}
-          <div className="bottom-grid">
-
-            {/* Lead Insights */}
-            <section className="dashboard-card chart-card">
-              <h3>Lead Insights</h3>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={150}>
-                  <PieChart>
-                    <Pie data={leadInsightsData} innerRadius={50} outerRadius={70} dataKey="value" stroke="none">
-                      {leadInsightsData.map((entry, idx) => (
-                        <Cell key={`li-${idx}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="chart-center-text">
-                  <div className="count">{totalLeads}</div>
-                  <div className="label">Total Leads</div>
-                </div>
-              </div>
-              <ul className="chart-legend">
-                {leadInsightsData.map((item, idx) => (
-                  <li key={idx}>
-                    <span>{item.name}</span>
-                    <span className="val">{item.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* SiteVisits Insights */}
-            <section className="dashboard-card chart-card">
-              <h3>SiteVisits Insights</h3>
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={150}>
-                  <PieChart>
-                    <Pie data={siteVisitsInsightsData} innerRadius={50} outerRadius={70} dataKey="value" stroke="none">
-                      {siteVisitsInsightsData.map((entry, idx) => (
-                        <Cell key={`sv-${idx}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="chart-center-text">
-                  <div className="count">{totalSiteVisits}</div>
-                  <div className="label">Total SV</div>
-                </div>
-              </div>
-              <ul className="chart-legend">
-                {siteVisitsInsightsData.map((item, idx) => (
-                  <li key={idx}>
-                    <span>{item.name}</span>
-                    <span className="val">{item.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* Digit Lead Stats */}
-            <section className="dashboard-card table-card">
-              <h3>Digit Lead Stats</h3>
-              <div className="table-responsive">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Source</th>
-                      <th>Tertiary</th>
-                      <th>Total Lead</th>
-                      <th>Total Open Lead</th>
-                      <th>Total Reject Lead</th>
-                      <th>%TOP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData && dashboardData.digitLeadStats && dashboardData.digitLeadStats.length > 0 ? (
-                      dashboardData.digitLeadStats.map((row, idx) => (
-                        <tr key={idx}>
-                          <td>{row.source}</td>
-                          <td>{row.tertiary}</td>
-                          <td>{row.totalLead}</td>
-                          <td>{row.totalOpenLead}</td>
-                          <td>{row.totalRejectLead}</td>
-                          <td>{row.top}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No data available</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-          </div>
-        </>
-      ) : (
-        /* ── Empty state: sub-dashboard open but no user selected yet ── */
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          minHeight: '55vh', gap: '16px', color: '#94a3b8', userSelect: 'none'
-        }}>
-          <Search size={52} style={{ color: '#cbd5e1', strokeWidth: 1.5 }} />
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '18px', fontWeight: '600', color: '#64748b', margin: '0 0 8px 0' }}>
-              Search for a {dashboardView === 'Admin' ? 'admin' : dashboardView === 'Manager' ? 'manager' : 'employee'} to view their dashboard
-            </p>
-            <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
-              Use the search bar on the right to find and select a user
-            </p>
-          </div>
+      {/* A role view shows that role's combined figures straight away; the
+          search narrows to one person rather than being a prerequisite. */}
+      {isOnNonHomeView && !specificUser && (
+        <div className="dashboard-scope-note">
+          <Users size={15} />
+          <span>
+            Showing every {roleNoun} together. Use the search to focus on one.
+          </span>
         </div>
+      )}
+
+      {loading && !dashboardData ? (
+        <div className="dashboard-scope-empty">
+          <Search size={40} strokeWidth={1.5} />
+          <p>Loading…</p>
+        </div>
+      ) : (
+        <>
+          {/* The whole-CRM picture. Everything below it is unchanged. */}
+          <DashboardInsights overview={dashboardData?.overview} />
+
+          {/* ── Project Status section ──────────────────────────────────────────── */}
+          {/* Every figure, comparison and bar comes from /api/dashboard; the
+              board decides how they read, not what they say. */}
+          <ProjectStatusBoard
+            tiles={dashboardData?.projectStatus || []}
+            loading={loading}
+            projects={projects}
+            selectedProject={selectedProject}
+            onProjectChange={selectProject}
+            range={range}
+            onRangeChange={setRange}
+          />
+
+        </>
       )}
     </div>
   );

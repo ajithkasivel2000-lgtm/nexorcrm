@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Home, Save, Send } from 'lucide-react';
+import { Save, Send } from 'lucide-react';
 import './MailSettings.css';
-import { Link } from 'react-router-dom';
+import submitOnEnter from './utils/submitOnEnter';
+import { Button, EmailInput, RecordPage, RecordPasswordField, Select, emailError, isValidEmail, normalizeEmail } from './ui';
 
 const defaultSettings = {
   smtpHost: '',
@@ -73,19 +74,15 @@ const MailSettings = () => {
     }));
   };
 
-  const isValidEmail = (email) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
   const addEmail = (list, setList, input, setInput, fieldName) => {
-    const email = input.trim();
+    const email = normalizeEmail(input);
     if (!email) return;
     if (!isValidEmail(email)) {
-      alert(`Please enter a valid email address for ${fieldName}.`);
+      window.appAlert(`Please enter a valid email address for ${fieldName}.`);
       return;
     }
     if (list.includes(email)) {
-      alert(`Email "${email}" is already in the ${fieldName} list.`);
+      window.appAlert(`Email "${email}" is already in the ${fieldName} list.`);
       return;
     }
     setList([...list, email]);
@@ -105,6 +102,8 @@ const MailSettings = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    const badFrom = emailError(settings.fromEmail, { label: 'From email address' });
+    if (badFrom) { window.appAlert(badFrom); return; }
     // Convert email lists to comma-separated strings for backend
     const settingsToSave = {
       ...settings,
@@ -118,9 +117,9 @@ const MailSettings = () => {
         body: JSON.stringify(settingsToSave)
       });
       if (response.ok) {
-        alert('Mail settings updated successfully!');
+        window.appAlert('Mail settings updated successfully!');
       } else {
-        alert('Failed to update mail settings.');
+        window.appAlert('Failed to update mail settings.');
       }
     } catch (error) {
       console.error('Error updating mail settings:', error);
@@ -128,13 +127,11 @@ const MailSettings = () => {
   };
 
   const handleTestEmail = async () => {
-    if (!testEmail) {
-      alert('Please enter a recipient email address for the test.');
-      return;
-    }
+    const badRecipient = emailError(testEmail, { required: true, label: 'Recipient email address' });
+    if (badRecipient) { window.appAlert(badRecipient); return; }
 
     if (!settings.fromEmail) {
-      alert('Please configure a From Email Address in the SMTP settings first.');
+      window.appAlert('Please configure a From Email Address in the SMTP settings first.');
       return;
     }
 
@@ -152,12 +149,12 @@ const MailSettings = () => {
       });
       
       if (!saveResponse.ok) {
-        alert('Failed to save mail settings before test.');
+        window.appAlert('Failed to save mail settings before test.');
         return;
       }
     } catch (error) {
       console.error('Error saving mail settings:', error);
-      alert('Failed to save mail settings before test.');
+      window.appAlert('Failed to save mail settings before test.');
       return;
     }
     
@@ -169,45 +166,38 @@ const MailSettings = () => {
       });
       
       if (response.ok) {
-        const data = await response.json();
-        alert(`✓ Test email sent successfully to ${testEmail}!`);
+        window.appAlert(`✓ Test email sent successfully to ${testEmail}!`);
       } else {
         const errorData = await response.json();
-        alert(`✗ Failed to send test email: ${errorData.error || errorData.message}`);
+        window.appAlert(`✗ Failed to send test email: ${errorData.error || errorData.message}`);
       }
     } catch (error) {
       console.error('Error sending test email:', error);
-      alert('Failed to send test email. Please check the console for details.');
+      window.appAlert('Failed to send test email. Please check the console for details.');
     }
   };
 
   return (
-    <div className="mail-settings-page">
-      <div className="mail-header-card">
-        <div className="mail-header-info">
-          <h2>Email Settings</h2>
-          <div className="page-breadcrumb">
-            <Link to="/"><Home size={12} /></Link>
-            <span className="slash">/</span>
-            <span>Settings</span>
-            <span className="slash">/</span>
-            <span>Email Settings</span>
-          </div>
-        </div>
-        <button className="mail-btn-save" onClick={handleSubmit}>
+    <RecordPage
+      crumbs={[{ label: 'Settings' }]}
+      title="Email Settings"
+      backTo="/"
+      backLabel="Back to Dashboard"
+      actions={(
+        <Button variant="primary" onClick={handleSubmit}>
           <Save size={16} /> Save Settings
-        </button>
-      </div>
-
+        </Button>
+      )}
+    >
       <div className="mail-content-area">
         {/* SMTP Configuration Card */}
-        <div className="mail-card">
-          <div className="mail-card-header">
+        <div className="mail-card nx-rec-card">
+          <div className="mail-card-header nx-rec-card__head nx-rec-card__head--plain">
             <h3>SMTP Server Configuration</h3>
             <p className="mail-card-subtitle">Configure the SMTP server settings used by the system to dispatch notifications and emails.</p>
           </div>
           
-          <div className="mail-form">
+          <div className="mail-form nx-rec-card__body">
             {/* Row 1 */}
             <div className="mail-row">
               <div className="mail-col w-20">
@@ -235,6 +225,7 @@ const MailSettings = () => {
                     name="smtpHost"
                     value={settings.smtpHost}
                     onChange={handleInputChange}
+                    onKeyDown={submitOnEnter(handleSubmit)}
                     placeholder="smtp.gmail.com"
                   />
                 </div>
@@ -248,6 +239,7 @@ const MailSettings = () => {
                     name="smtpPort"
                     value={settings.smtpPort}
                     onChange={handleInputChange}
+                    onKeyDown={submitOnEnter(handleSubmit)}
                     placeholder="587"
                   />
                 </div>
@@ -265,22 +257,21 @@ const MailSettings = () => {
                     name="smtpUsername"
                     value={settings.smtpUsername}
                     onChange={handleInputChange}
-                    placeholder="erpsvlpackagingmall@gmail.com"
+                    onKeyDown={submitOnEnter(handleSubmit)}
+                    placeholder="you@yourcompany.com"
                   />
                 </div>
               </div>
               <div className="mail-col w-50">
                 <div className="mail-field-group">
-                  <label className="mail-field-label">Password</label>
-                  <input
-                    type="password"
-                    className="mail-field-input"
+                  <RecordPasswordField
+                    label="Password"
                     name="smtpPassword"
                     value={settings.smtpPassword}
                     onChange={handleInputChange}
                     placeholder="******** (enter to change)"
+                    hint="Password is set. Leave blank to keep existing."
                   />
-                  <span className="mail-helper-text">Password is set. Leave blank to keep existing.</span>
                 </div>
               </div>
             </div>
@@ -290,29 +281,27 @@ const MailSettings = () => {
               <div className="mail-col w-50">
                 <div className="mail-field-group">
                   <label className="mail-field-label">SMTP Auth</label>
-                  <select 
-                    className="mail-field-input mail-field-select"
+                  <Select
                     name="smtpAuth"
                     value={settings.smtpAuth}
                     onChange={handleInputChange}
                   >
                     <option value="True">True</option>
                     <option value="False">False</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div className="mail-col w-50">
                 <div className="mail-field-group">
                   <label className="mail-field-label">STARTTLS</label>
-                  <select 
-                    className="mail-field-input mail-field-select"
+                  <Select
                     name="starttls"
                     value={settings.starttls}
                     onChange={handleInputChange}
                   >
                     <option value="True">True</option>
                     <option value="False">False</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -322,13 +311,12 @@ const MailSettings = () => {
               <div className="mail-col w-50">
                 <div className="mail-field-group">
                   <label className="mail-field-label">From Email Address</label>
-                  <input
-                    type="email"
-                    className="mail-field-input"
+                  <EmailInput
                     name="fromEmail"
+                    label="From email address"
                     value={settings.fromEmail}
-                    onChange={handleInputChange}
-                    placeholder="erpsvlpackagingmall@gmail.com"
+                    onChange={(v) => setSettings(prev => ({ ...prev, fromEmail: v }))}
+                    placeholder="you@yourcompany.com"
                   />
                 </div>
               </div>
@@ -341,7 +329,8 @@ const MailSettings = () => {
                     name="fromName"
                     value={settings.fromName}
                     onChange={handleInputChange}
-                    placeholder="SVL Packaging & Printers"
+                    onKeyDown={submitOnEnter(handleSubmit)}
+                    placeholder="NexorCRM"
                   />
                 </div>
               </div>
@@ -407,22 +396,22 @@ const MailSettings = () => {
         </div>
 
         {/* Test Connection Card */}
-        <div className="mail-card">
-          <div className="mail-card-header">
+        <div className="mail-card nx-rec-card">
+          <div className="mail-card-header nx-rec-card__head nx-rec-card__head--plain">
             <h3>Test Connection</h3>
             <p className="mail-card-subtitle">Verify your configuration settings by sending a test email to any recipient.</p>
           </div>
-          <div className="mail-form">
+          <div className="mail-form nx-rec-card__body">
             <div className="mail-row align-bottom">
               <div className="mail-col w-70">
                 <div className="mail-field-group">
                   <label className="mail-field-label">Recipient Email Address</label>
-                  <input
-                    type="email"
-                    className="mail-field-input"
-                    placeholder="test-recipient@example.com"
+                  <EmailInput
+                    name="testEmail"
+                    label="Recipient email address"
                     value={testEmail}
-                    onChange={(e) => setTestEmail(e.target.value)}
+                    onChange={setTestEmail}
+                    placeholder="test-recipient@example.com"
                   />
                 </div>
               </div>
@@ -436,7 +425,7 @@ const MailSettings = () => {
         </div>
 
       </div>
-    </div>
+    </RecordPage>
   );
 };
 

@@ -2,7 +2,7 @@
   flex: 1;
   padding: 15px 30px;
   overflow-y: auto;
-  background-color: var(--bg-main, #f0f2f5);
+  background-color: var(--bg-main, var(--nx-bg-app));
   display: flex;
   flex-direction: column;
 }
@@ -12,7 +12,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  background-color: #fff;
+  background-color: var(--bg-card);
   padding: 15px 20px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -21,7 +21,7 @@
 .header-left h2 {
   font-size: 16px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-main);
   margin: 0 0 5px 0;
 }
 
@@ -29,13 +29,13 @@
   display: flex;
   align-items: center;
   font-size: 12px;
-  color: #6366f1;
+  color: var(--nx-accent);
   font-weight: 500;
 }
 
 .page-breadcrumb .slash {
   margin: 0 8px;
-  color: #999;
+  color: var(--nx-text-muted);
 }
 
 .reg-content-wrapper {
@@ -53,7 +53,7 @@
 }
 
 .reg-card {
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
@@ -63,14 +63,14 @@
 
 .reg-card-header {
   padding: 15px 20px;
-  border-bottom: 1px dashed #eee;
+  border-bottom: 1px solid var(--nx-border);
 }
 
 .reg-card-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-main);
 }
 
 .reg-form {
@@ -85,12 +85,12 @@
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #555;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .group-label span {
-  color: #ef4444;
+  color: var(--nx-danger);
 }
 
 /* Custom Radio Buttons */
@@ -111,7 +111,7 @@
   padding-left: 22px;
   cursor: pointer;
   font-size: 13px;
-  color: #444;
+  color: var(--nx-text);
   user-select: none;
 }
 
@@ -128,19 +128,19 @@
   transform: translateY(-50%);
   height: 14px;
   width: 14px;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: var(--bg-card);
+  border: 1px solid var(--nx-border);
   border-radius: 50%;
 }
 
 .custom-radio:hover input ~ .radio-mark {
-  background-color: #f0f0f0;
+  background-color: var(--nx-bg-hover);
 }
 
 /* Base states */
 .custom-radio input:checked ~ .radio-mark {
-  background-color: #fff;
-  border-color: #ef4444; /* default red */
+  background-color: var(--bg-card);
+  border-color: var(--nx-danger); /* default red */
 }
 
 .custom-radio input:checked ~ .radio-mark:after {
@@ -152,36 +152,36 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--nx-danger);
 }
 
 /* For "Yes" or specific selections we can make them green */
 .custom-radio input[value="true"]:checked ~ .radio-mark {
-  border-color: #10b981;
+  border-color: var(--nx-success);
 }
 .custom-radio input[value="true"]:checked ~ .radio-mark:after {
-  background: #10b981;
+  background: var(--nx-success);
 }
 /* For Admin Activation selection (green in screenshot) */
 .custom-radio input[value="Admin Activation"]:checked ~ .radio-mark {
-  border-color: #f97316; /* Actually in screenshot it's orange! */
+  border-color: var(--nx-warning); /* Actually in screenshot it's orange! */
 }
 .custom-radio input[value="Admin Activation"]:checked ~ .radio-mark:after {
-  background: #f97316;
+  background: var(--nx-warning);
 }
 .custom-radio input[value="No Activation (immediate access)"]:checked ~ .radio-mark {
-  border-color: #10b981; /* Green in screenshot */
+  border-color: var(--nx-success); /* Green in screenshot */
 }
 .custom-radio input[value="No Activation (immediate access)"]:checked ~ .radio-mark:after {
-  background: #10b981;
+  background: var(--nx-success);
 }
 /* If unchecked but value="true", border is green */
 .custom-radio input[value="true"] ~ .radio-mark {
-  border-color: #10b981;
+  border-color: var(--nx-success);
 }
 /* If unchecked but value="false", border is red */
 .custom-radio input[value="false"] ~ .radio-mark {
-  border-color: #ef4444;
+  border-color: var(--nx-danger);
 }
 
 /* Range Inputs */
@@ -194,21 +194,21 @@
 .range-inputs input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px dashed #dcdcdc;
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
   font-size: 13px;
-  background-color: #fcfcfc;
+  background-color: var(--nx-bg-surface);
 }
 
 .range-inputs input:focus {
-  border-color: #6a67ce;
+  border-color: var(--nx-accent);
   outline: none;
-  background-color: #fff;
+  background-color: var(--bg-card);
 }
 
 .to-text {
   font-size: 12px;
-  color: #777;
+  color: var(--nx-text-muted);
 }
 
 /* Custom Dropdown */
@@ -219,18 +219,18 @@
 
 .custom-select-trigger {
   padding: 10px 12px;
-  border: 1px dashed #dcdcdc;
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
   font-size: 13px;
-  color: #444;
-  background-color: #fcfcfc;
+  color: var(--nx-text);
+  background-color: var(--nx-bg-surface);
   cursor: pointer;
   user-select: none;
 }
 
 .custom-select-wrapper.open .custom-select-trigger {
-  border: 1px dashed #6a67ce;
-  background-color: #fff;
+  border: 1px solid var(--nx-accent);
+  background-color: var(--bg-card);
 }
 
 .custom-select-options {
@@ -238,8 +238,8 @@
   top: 100%;
   left: 0;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  border: 1px solid var(--nx-border);
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   z-index: 10;
 }
@@ -248,16 +248,16 @@
   padding: 10px 12px;
   font-size: 13px;
   cursor: pointer;
-  color: #333;
+  color: var(--text-main);
 }
 
 .custom-select-option:hover {
-  background-color: #f5f5f5;
+  background-color: var(--nx-bg-hover);
 }
 
 .custom-select-option.selected {
-  background-color: #1e60d0; /* Blue highlight */
-  color: #fff;
+  background-color: var(--nx-info); /* Blue highlight */
+  color: var(--nx-accent-contrast);
 }
 
 /* Submit Button */
@@ -266,9 +266,9 @@
 }
 
 .btn-submit-changes {
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
   padding: 8px 16px;
   font-size: 12px;
@@ -277,7 +277,7 @@
 }
 
 .btn-submit-changes:hover {
-  background-color: #f9f9f9;
+  background-color: var(--nx-bg-sunken);
 }
 
 /* Help section */
@@ -287,12 +287,12 @@
 
 .help-content p {
   font-size: 12px;
-  color: #555;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-top: 0;
   margin-bottom: 15px;
 }
 
 .help-content p strong {
-  color: #333;
+  color: var(--text-main);
 }

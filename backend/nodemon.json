@@ -1,0 +1,15 @@
+{
+  "//": "Restart on .env too. Editing it and seeing nothing change is a trap: nodemon's default extension list does not cover it, so a newly added GOOGLE_CLIENT_ID or MICROSOFT_CLIENT_ID looked like it had been ignored.",
+  "watch": [
+    "index.js",
+    "controllers",
+    "routes",
+    "utils",
+    "middleware",
+    "jobs",
+    "prismaClient.js",
+    ".env"
+  ],
+  "ext": "js,mjs,cjs,json,env",
+  "ignore": ["dist", "uploads", "node_modules", "scripts"]
+}

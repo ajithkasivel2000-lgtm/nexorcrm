@@ -1,0 +1,278 @@
+/* ============================================================================
+   NexorCRM design tokens — "flat line"
+   ----------------------------------------------------------------------------
+   Nothing floats. Every surface is defined by a hairline outline rather than a
+   shadow or a filled panel, and buttons are outlined rather than solid. Every
+   primitive in src/ui/ is built only from these variables, so a theme change
+   happens here and nowhere else.
+
+   Elevation is deliberately switched off at the token level: the shadow
+   variables still exist so no component breaks, they simply resolve to none.
+
+   Dark mode follows the app's existing convention: the `dark-mode` class on
+   <body> (set in App.jsx / Dashboard.jsx). Both the light values and the dark
+   overrides are defined here so no component ever hardcodes a colour.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand + accent ---------------------------------------------------- */
+  --nx-accent: #4f46e5;
+  --nx-accent-hover: #4338ca;
+  --nx-accent-soft: #eef2ff;
+  --nx-accent-contrast: #ffffff;
+  --nx-focus-ring: rgba(79, 70, 229, 0.35);
+
+  /* ---- Surfaces ---------------------------------------------------------- */
+  --nx-bg-app: #f5f6fa;
+  --nx-bg-surface: #ffffff;
+  --nx-bg-raised: #ffffff;
+  --nx-bg-sunken: #fbfcfe;
+  --nx-bg-hover: #f1f5f9;
+  --nx-bg-selected: #eef2ff;
+  --nx-bg-overlay: rgba(15, 23, 42, 0.45);
+
+  /* ---- Sidebar (its own scale so the shell can stay dark in both themes) -- */
+  --nx-sidebar-bg: #111827;
+  --nx-sidebar-text: #9ca3af;
+  --nx-sidebar-text-active: #ffffff;
+  --nx-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --nx-sidebar-active: rgba(99, 102, 241, 0.18);
+  --nx-sidebar-border: rgba(255, 255, 255, 0.07);
+
+  /* ---- Text -------------------------------------------------------------- */
+  --nx-text: #0f172a;
+  --nx-text-secondary: #475569;
+  --nx-text-muted: #64748b;
+  --nx-text-inverse: #ffffff;
+
+  /* ---- Borders ----------------------------------------------------------- */
+  --nx-border: #dfe4ec;
+  --nx-border-strong: #c7cedb;
+
+  /* ---- Status palette (pills, badges, chart series) ---------------------- */
+  --nx-success: #059669;
+  --nx-success-bg: #d1fae5;
+  --nx-warning: #b45309;
+  --nx-warning-bg: #fef3c7;
+  --nx-danger: #dc2626;
+  --nx-danger-bg: #fee2e2;
+  --nx-info: #0369a1;
+  --nx-info-bg: #e0f2fe;
+  --nx-neutral: #475569;
+  --nx-neutral-bg: #eef2f7;
+  --nx-purple: #7c3aed;
+  --nx-purple-bg: #ede9fe;
+
+  /* ---- Spacing scale (4px base) ------------------------------------------ */
+  --nx-space-1: 4px;
+  --nx-space-2: 8px;
+  --nx-space-3: 12px;
+  --nx-space-4: 16px;
+  --nx-space-5: 20px;
+  --nx-space-6: 24px;
+  --nx-space-8: 32px;
+  --nx-space-10: 40px;
+  --nx-space-12: 48px;
+
+  /* ---- Radius (soft, rounded direction) ---------------------------------- */
+  --nx-radius-sm: 8px;
+  --nx-radius: 12px;
+  --nx-radius-lg: 16px;
+  --nx-radius-xl: 20px;
+  --nx-radius-pill: 999px;
+
+  /* ---- Elevation: none. Outlines do the work instead. -------------------- */
+  --nx-shadow-xs: none;
+  --nx-shadow-sm: none;
+  --nx-shadow: none;
+  --nx-shadow-lg: none;
+  --nx-shadow-xl: none;
+
+  /* The one exception: overlays still need to read as "above" the page, so a
+     dialog gets a ring rather than a drop shadow. */
+  --nx-overlay-ring: 0 0 0 1px var(--nx-border-strong);
+
+  /* ---- Dividers ----------------------------------------------------------
+     Switch to "dashed" here to make every rule in the app dashed. */
+  --nx-divider-style: solid;
+  --nx-divider: 1px var(--nx-divider-style) var(--nx-border);
+
+  /* ---- Typography -------------------------------------------------------- */
+  --nx-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --nx-text-xs: 11px;
+  --nx-text-sm: 12px;
+  --nx-text-base: 13px;
+  --nx-text-md: 14px;
+  --nx-text-lg: 16px;
+  --nx-text-xl: 20px;
+  --nx-text-2xl: 24px;
+  --nx-text-3xl: 30px;
+  --nx-leading-tight: 1.25;
+  --nx-leading: 1.5;
+  --nx-weight-normal: 400;
+  --nx-weight-medium: 500;
+  --nx-weight-semibold: 600;
+  --nx-weight-bold: 700;
+
+  /* ---- Motion ------------------------------------------------------------ */
+  --nx-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --nx-duration-fast: 120ms;
+  --nx-duration: 200ms;
+  --nx-duration-slow: 320ms;
+
+  /* ---- Layout ------------------------------------------------------------ */
+  --nx-sidebar-width: 260px;
+  --nx-sidebar-width-collapsed: 72px;
+  --nx-topbar-height: 64px;
+  /* Sticky page furniture — headers, toolbars. Below every overlay, so a
+     portalled menu still renders on top of it. */
+  --nx-z-sticky: 100;
+  --nx-z-dropdown: 1000;
+  --nx-z-overlay: 1100;
+  --nx-z-modal: 1110;
+  /* A menu that belongs to a field inside a modal. It renders in a portal on
+     <body>, so it has to clear the modal it visually sits in — but it must
+     still fall UNDER a confirm dialog, or confirming a delete from inside one
+     of these menus puts the question behind the list that asked it. */
+  --nx-z-popover: 1150;
+  /* Confirm and alert: the last thing opened and the only thing that matters
+     while it is open, so it clears the menus above. */
+  --nx-z-confirm: 1200;
+  --nx-z-toast: 1300;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode. Only the values change — never the variable names, so every
+   component keeps working without a single dark-mode-specific rule of its own.
+   -------------------------------------------------------------------------- */
+body.dark-mode {
+  --nx-accent: #818cf8;
+  --nx-accent-hover: #6366f1;
+  --nx-accent-soft: rgba(99, 102, 241, 0.16);
+  --nx-accent-contrast: #0b1120;
+  --nx-focus-ring: rgba(129, 140, 248, 0.4);
+
+  --nx-bg-app: #0b1120;
+  --nx-bg-surface: #151d2e;
+  --nx-bg-raised: #1b2436;
+  --nx-bg-sunken: #101827;
+  --nx-bg-hover: #1f2a3d;
+  --nx-bg-selected: rgba(99, 102, 241, 0.16);
+  --nx-bg-overlay: rgba(2, 6, 16, 0.7);
+
+  --nx-sidebar-bg: #0e1524;
+  --nx-sidebar-text: #94a3b8;
+  --nx-sidebar-text-active: #ffffff;
+  --nx-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --nx-sidebar-active: rgba(129, 140, 248, 0.2);
+  --nx-sidebar-border: rgba(255, 255, 255, 0.06);
+
+  --nx-text: #e8edf7;
+  --nx-text-secondary: #a9b6cc;
+  --nx-text-muted: #8091ab;
+  --nx-text-inverse: #0b1120;
+
+  --nx-border: #2c3a55;
+  --nx-border-strong: #3c4c6b;
+
+  /* Status colours are lightened so they stay legible on dark surfaces. */
+  --nx-success: #34d399;
+  --nx-success-bg: rgba(16, 185, 129, 0.16);
+  --nx-warning: #fbbf24;
+  --nx-warning-bg: rgba(245, 158, 11, 0.16);
+  --nx-danger: #f87171;
+  --nx-danger-bg: rgba(239, 68, 68, 0.16);
+  --nx-info: #38bdf8;
+  --nx-info-bg: rgba(14, 165, 233, 0.16);
+  --nx-neutral: #a9b6cc;
+  --nx-neutral-bg: rgba(148, 163, 184, 0.14);
+  --nx-purple: #a78bfa;
+  --nx-purple-bg: rgba(139, 92, 246, 0.18);
+
+  /* No elevation in dark mode either — borders carry the structure. */
+  --nx-overlay-ring: 0 0 0 1px var(--nx-border-strong);
+}
+
+/* ---------------------------------------------------------------------------
+   Shared primitives used across every nx-* component.
+   -------------------------------------------------------------------------- */
+
+.nx-scope,
+.nx-scope * {
+  box-sizing: border-box;
+}
+
+/* One focus treatment for the whole system. */
+.nx-focusable:focus-visible,
+.nx-scope :focus-visible {
+  outline: 2px solid var(--nx-accent);
+  outline-offset: 2px;
+  border-radius: var(--nx-radius-sm);
+}
+
+/* …but exactly one ring at a time.
+
+   Several controls are an input inside a bordered wrapper, and the wrapper
+   lights up on :focus-within — an accent border plus a soft ring. The rule
+   above then drew a SECOND ring on the input itself, offset 2px outside the
+   first, which is the doubled rounded rectangle you see on a focused field.
+
+   Only the direct input is silenced, not everything inside: a phone field's
+   country button is separately tabbable and still needs a ring of its own. */
+.nx-scope .nx-rec-field__control > input:focus-visible,
+.nx-scope .nx-rec-field__control > textarea:focus-visible,
+.nx-scope .nx-email__control > input:focus-visible,
+.nx-scope .nx-phone > input:focus-visible,
+.nx-scope .nx-search > input:focus-visible,
+.nx-scope .il-file-upload-container > input:focus-visible {
+  outline: none;
+}
+
+/* Status pill — the colourful accent of this design direction. */
+/* Outlined, not filled: the colour lives in the border and the text. */
+.nx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nx-space-1);
+  padding: 2px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--nx-radius-pill);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  line-height: 1.6;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--nx-neutral);
+}
+
+.nx-pill--success { color: var(--nx-success); }
+.nx-pill--warning { color: var(--nx-warning); }
+.nx-pill--danger  { color: var(--nx-danger); }
+.nx-pill--info    { color: var(--nx-info); }
+.nx-pill--purple  { color: var(--nx-purple); }
+.nx-pill--accent  { color: var(--nx-accent); }
+
+.nx-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* Card — the base surface of the soft direction. */
+.nx-card {
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-scope *,
+  .nx-scope *::before,
+  .nx-scope *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

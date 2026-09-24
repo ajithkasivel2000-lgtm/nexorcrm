@@ -1,0 +1,280 @@
+/* The editable Status cell in a lead table. */
+
+.nx-statuscell {
+  display: inline-flex;
+  /* Both needed for the stage text to ellipsis inside a table cell rather
+     than pushing the column wider. */
+  max-width: 100%;
+  min-width: 0;
+}
+
+.nx-statuscell__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Fixed height and no wrapping: a row with a stage must sit level with a row
+     without one, and the column must not reflow as statuses change. */
+  min-height: 30px;
+  max-width: 100%;
+  padding: 2px 6px 2px 2px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* The pill already reads as a value; the border only appears on approach, so
+   the column stays a list of statuses rather than a row of buttons. */
+.nx-statuscell__trigger:hover:not(:disabled),
+.nx-statuscell__trigger.is-open {
+  border-color: var(--nx-border-strong);
+  background: var(--nx-bg-hover);
+}
+
+.nx-statuscell__trigger:disabled { cursor: default; }
+
+.nx-statuscell__chevron {
+  flex: none;
+  color: var(--nx-text-muted);
+  opacity: 0;
+  transition: opacity var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-statuscell__trigger:hover .nx-statuscell__chevron,
+.nx-statuscell__trigger.is-open .nx-statuscell__chevron,
+.nx-statuscell__trigger:focus-visible .nx-statuscell__chevron { opacity: 1; }
+
+.nx-statuscell__spin {
+  flex: none;
+  color: var(--nx-text-muted);
+  animation: nx-statuscell-spin 900ms linear infinite;
+}
+
+@keyframes nx-statuscell-spin { to { transform: rotate(360deg); } }
+
+.nx-statuscell__menu {
+  min-width: 190px;
+  padding: var(--nx-space-1);
+}
+
+.nx-statuscell__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-3);
+  width: 100%;
+  padding: var(--nx-space-2);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-statuscell__option:hover { background: var(--nx-bg-hover); }
+.nx-statuscell__option.is-current { color: var(--nx-accent); }
+
+.nx-statuscell__empty {
+  margin: 0;
+  padding: var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+/* Keeping the chevron visible avoids relying on hover to reveal the control. */
+@media (hover: none) {
+  .nx-statuscell__chevron { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-statuscell__spin { animation: none; }
+  .nx-statuscell__chevron { transition: none; }
+}
+
+/* ---- the site-visit stages ---------------------------------------------- */
+/* Stages are steps in a sequence, not statuses, so they read as plain text
+   rather than borrowing the pill that means "this is the lead's status". */
+.nx-statuscell__stage {
+  font-size: var(--nx-text-base);
+  color: inherit;
+}
+
+/* The visit stage, beside the status pill.
+   Deliberately lighter than the pill — no border, no dot — so it reads as
+   detail belonging to the status rather than a second status of its own. It
+   takes the same tones, so "Done" and "Scheduled" are no longer the same
+   grey. */
+.nx-statuscell__substage {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-muted);
+}
+
+.nx-statuscell__substage--success { color: var(--nx-success); }
+.nx-statuscell__substage--warning { color: var(--nx-warning); }
+.nx-statuscell__substage--danger  { color: var(--nx-danger); }
+.nx-statuscell__substage--info    { color: var(--nx-info); }
+.nx-statuscell__substage--purple  { color: var(--nx-purple); }
+.nx-statuscell__substage--accent  { color: var(--nx-accent); }
+.nx-statuscell__substage--neutral { color: var(--nx-text-muted); }
+
+
+/* Swaps between the visit stages and the lead statuses. */
+.nx-statuscell__switch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  margin-top: var(--nx-space-1);
+  padding: var(--nx-space-2);
+  border: none;
+  border-top: 1px solid var(--nx-border);
+  border-radius: 0;
+  background: none;
+  color: var(--nx-text-muted);
+  font-family: inherit;
+  font-size: var(--nx-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nx-statuscell__switch:hover { color: var(--nx-accent); }
+
+/* A converted lead's pill is a way to its opportunity; the chevron beside it
+   still opens the menu. */
+.nx-statuscell__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 2px 2px 2px 2px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nx-statuscell__link:hover { border-color: var(--nx-border-strong); background: var(--nx-bg-hover); }
+
+/* With the pill next door, the trigger is only the chevron. */
+.nx-statuscell__trigger.is-chevron-only { padding: 2px 4px; }
+.nx-statuscell__trigger.is-chevron-only .nx-statuscell__chevron { opacity: 1; }
+
+/* In a record page's top bar the breadcrumb takes the slack, so the status
+   must not be squeezed by a long lead name. */
+.nx-rec__topbar .nx-statuscell { flex: none; }
+
+/* ---- "How does this work?" -----------------------------------------------
+   A marker beside the status control. The pill reads as a label, so without
+   something to catch the eye people do not discover that it opens.
+
+   The animation is the whole point of it — it has to be noticed — so it is
+   kept slow and small: a breathing ring rather than anything that flashes.
+   ------------------------------------------------------------------------- */
+.nx-statushint__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: 50%;
+  background: var(--nx-bg-surface);
+  color: var(--nx-accent);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+/* The ring, drawn outside the button so it never moves the layout. */
+.nx-statushint__btn::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--nx-accent);
+  opacity: 0;
+  animation: nx-statushint-ring 3.2s var(--nx-ease) infinite;
+  pointer-events: none;
+}
+
+@keyframes nx-statushint-ring {
+  0%   { transform: scale(0.82); opacity: 0; }
+  35%  { opacity: 0.55; }
+  70%  { transform: scale(1.25); opacity: 0; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+.nx-statushint__btn:hover,
+.nx-statushint__btn:focus-visible,
+.nx-statushint__btn.is-open {
+  border-color: var(--nx-accent);
+  outline: none;
+}
+
+/* Once it has been used, it has done its job — stop asking for attention. */
+.nx-statushint__btn:hover::after,
+.nx-statushint__btn.is-open::after {
+  animation: none;
+  opacity: 0;
+}
+
+.nx-statushint__btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* Movement is an accessibility problem for some people, and this one loops
+   forever. The colour and the border still mark the control. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-statushint__btn::after {
+    animation: none;
+  }
+}
+
+/* ---- the panel ----------------------------------------------------------- */
+.nx-statushint {
+  /* Never wider than the screen it is on, whatever width the popover asks for. */
+  max-width: min(300px, calc(100vw - 32px));
+  padding: var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-secondary);
+  line-height: 1.55;
+}
+
+.nx-statushint__title {
+  margin: 0 0 var(--nx-space-2);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-statushint__steps {
+  margin: 0;
+  padding-left: var(--nx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nx-statushint__steps strong {
+  color: var(--nx-accent);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-statushint__note {
+  margin: var(--nx-space-3) 0 0;
+  padding-top: var(--nx-space-3);
+  border-top: var(--nx-divider);
+  color: var(--nx-text-muted);
+}

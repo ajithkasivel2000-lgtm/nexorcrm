@@ -9,8 +9,6 @@ const managerPermissions = [
   { page: 'report',           view: false, create: false, edit: false, delete: false },
   { page: 'enquiries',        view: false, create: false, edit: false, delete: false },
   { page: 'projects',         view: true,  create: true,  edit: true,  delete: true  },
-  { page: 'properties',       view: false, create: false, edit: false, delete: false },
-  { page: 'services',         view: false, create: false, edit: false, delete: false },
   { page: 'channel-partners', view: false, create: false, edit: false, delete: false },
   { page: 'rrq',              view: false, create: false, edit: false, delete: false },
   { page: 'user-admin',       view: false, create: false, edit: false, delete: false },

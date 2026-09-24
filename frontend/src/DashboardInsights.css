@@ -1,0 +1,502 @@
+/* ===========================================================================
+   Dashboard insights — token-only, so it follows light/dark with the app.
+   =========================================================================== */
+
+.di {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-4);
+  margin-bottom: var(--nx-space-5);
+  font-family: var(--nx-font);
+}
+
+/* ---- Headline cards ------------------------------------------------------ */
+/* One row, whatever the number of cards.
+   auto-fit with a 210px floor dropped the last two onto a second line as soon
+   as the seventh appeared. A fixed `repeat(7, ...)` would not do either: the
+   count varies — Users and User groups are only rendered for staff allowed to
+   see them — so the row has to size itself to however many turn up. */
+.di-cards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--nx-space-3);
+}
+
+/* Below this there is no honest way to fit seven across, so they wrap again
+   rather than being squeezed into columns too narrow to read. */
+@media (max-width: 1240px) {
+  .di-cards {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+}
+
+.di-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-4);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+  font-family: inherit;
+  text-align: left;
+  min-width: 0;
+}
+button.di-card { cursor: pointer; }
+button.di-card:hover { border-color: var(--nx-accent); }
+button.di-card:focus-visible {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.di-card__top { display: flex; align-items: center; gap: var(--nx-space-2); min-width: 0; }
+
+.di-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+/* The tone tints the icon only; the figure stays in text ink so the colour
+   identifies the metric without carrying the reading. */
+.di-card--teal   .di-card__icon { background: var(--nx-success-bg); color: var(--nx-success); }
+.di-card--green  .di-card__icon { background: var(--nx-success-bg); color: var(--nx-success); }
+.di-card--orange .di-card__icon { background: var(--nx-warning-bg); color: var(--nx-warning); }
+.di-card--violet .di-card__icon { background: var(--nx-purple-bg); color: var(--nx-purple); }
+.di-card--blue   .di-card__icon { background: var(--nx-info-bg); color: var(--nx-info); }
+
+.di-card__label {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.di-card__figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--nx-space-2);
+  flex-wrap: wrap;
+}
+
+.di-card__value {
+  font-size: 26px;
+  font-weight: var(--nx-weight-bold);
+  color: var(--nx-text);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The arrow and the sign carry the direction, so it is never colour alone. */
+.di-card__change {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 7px;
+  border-radius: var(--nx-radius-pill);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.di-card__change.is-up { background: var(--nx-success-bg); color: var(--nx-success); }
+.di-card__change.is-down { background: var(--nx-danger-bg); color: var(--nx-danger); }
+.di-card__change.is-flat { background: var(--nx-bg-sunken); color: var(--nx-text-muted); }
+
+.di-card__foot {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--nx-space-3);
+  margin-top: auto;
+}
+
+.di-card__spark {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  display: block;
+}
+
+.di-card__sub {
+  flex: none;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .di-card__sub { display: none; }
+}
+
+/* ---- Grids --------------------------------------------------------------- */
+.di-grid { display: grid; gap: var(--nx-space-4); align-items: start; }
+.di-grid--2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.di-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.di-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (max-width: 1400px) {
+  .di-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .di-grid--2-1,
+  .di-grid--3 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .di-grid--4 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Panel --------------------------------------------------------------- */
+.di-panel {
+  display: flex;
+  flex-direction: column;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.di-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.di-panel__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.di-panel__titles { flex: 1; min-width: 0; }
+.di-panel__title {
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+.di-panel__sub {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.di-panel__action {
+  flex: none;
+  padding: 4px var(--nx-space-2);
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-accent);
+  font-family: inherit;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+.di-panel__action:hover { background: var(--nx-bg-hover); }
+
+.di-panel__body { padding: var(--nx-space-4); flex: 1; }
+
+.di-empty {
+  margin: 0;
+  padding: var(--nx-space-4) 0;
+  font-size: var(--nx-text-sm);
+  line-height: 1.6;
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+/* ---- Ranked bars --------------------------------------------------------- */
+.di-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+
+.di-bars__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.2fr auto auto;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+}
+button.di-bars__row { cursor: pointer; }
+button.di-bars__row:hover .di-bars__label { color: var(--nx-accent); }
+
+.di-bars__label {
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.di-bars__track {
+  height: 8px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-sunken);
+  overflow: hidden;
+}
+/* Rounded data-end, anchored to the baseline. */
+.di-bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--nx-radius-pill);
+  min-width: 4px;
+}
+
+.di-bars__value {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  font-variant-numeric: tabular-nums;
+}
+.di-bars__pct {
+  min-width: 34px;
+  text-align: right;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Donut --------------------------------------------------------------- */
+.di-donut { position: relative; }
+.di-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.di-donut__center strong {
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-bold);
+  color: var(--nx-text);
+}
+.di-donut__center span { font-size: var(--nx-text-xs); color: var(--nx-text-muted); }
+
+.di-legend {
+  list-style: none;
+  margin: var(--nx-space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.di-legend li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+.di-legend__dot { width: 9px; height: 9px; border-radius: 50%; }
+.di-legend__name {
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.di-legend__value {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+  font-variant-numeric: tabular-nums;
+}
+.di-legend__pct {
+  text-align: right;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Chart tooltip ------------------------------------------------------- */
+.di-tip {
+  padding: var(--nx-space-2) var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-surface);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text);
+}
+.di-tip__label {
+  margin: 0 0 4px;
+  font-weight: var(--nx-weight-semibold);
+}
+.di-tip__row { margin: 2px 0; display: flex; align-items: center; gap: 6px; }
+.di-tip__swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+
+.di-chart .recharts-surface { overflow: visible; }
+
+/* ---- Work due ------------------------------------------------------------ */
+.di-work {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--nx-space-2);
+}
+
+.di-work__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--nx-space-3);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-muted);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.di-work__item:hover { border-color: var(--nx-accent); }
+.di-work__item strong {
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-bold);
+  color: var(--nx-text);
+}
+.di-work__item span { font-size: var(--nx-text-xs); color: var(--nx-text-secondary); }
+/* Overdue is a state, so it gets the status colour plus its own label — never
+   colour alone. */
+.di-work__item.is-urgent { color: var(--nx-danger); }
+.di-work__item.is-urgent strong { color: var(--nx-danger); }
+
+/* ---- Revenue ------------------------------------------------------------- */
+.di-revenue { display: flex; flex-direction: column; gap: 4px; padding: var(--nx-space-2) 0; }
+.di-revenue strong {
+  font-size: var(--nx-text-2xl, 28px);
+  font-weight: var(--nx-weight-bold);
+  color: var(--nx-text);
+}
+.di-revenue span { font-size: var(--nx-text-sm); color: var(--nx-text-muted); }
+
+/* ---- Lists and feed ------------------------------------------------------ */
+.di-list, .di-feed { list-style: none; margin: 0; padding: 0; }
+
+.di-list__row {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 8px 0;
+  border: none;
+  border-bottom: var(--nx-divider);
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.di-list li:last-child .di-list__row { border-bottom: none; }
+.di-list__row:hover strong { color: var(--nx-accent); }
+
+.di-list__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.di-list__main strong {
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.di-list__main span {
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.di-list__tag {
+  flex: none;
+  padding: 2px 9px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-secondary);
+  white-space: nowrap;
+}
+
+.di-feed__row {
+  display: flex;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: 7px 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.di-feed__dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nx-accent);
+}
+.di-feed__body { display: flex; flex-direction: column; min-width: 0; }
+.di-feed__body strong {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text);
+}
+.di-feed__row:hover strong { color: var(--nx-accent); }
+.di-feed__body span {
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.di-feed__when { color: var(--nx-text-muted); opacity: 0.85; }
+
+/* ---- The "recent" row ----------------------------------------------------
+   These three panels hold different numbers of rows — eight leads, eight
+   opportunities, twelve log entries — so the tallest used to set the height of
+   the row and push everything below it down the page. They share a height now
+   and scroll inside themselves instead. */
+.di-grid--recent .di-panel {
+  height: 420px;
+}
+.di-grid--recent .di-panel__body {
+  overflow-y: auto;
+  /* A visible edge while scrolling, so a cut-off row reads as "more below"
+     rather than as the end of the list. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--nx-border-strong) transparent;
+}
+.di-grid--recent .di-panel__body::-webkit-scrollbar { width: 8px; }
+.di-grid--recent .di-panel__body::-webkit-scrollbar-track { background: transparent; }
+.di-grid--recent .di-panel__body::-webkit-scrollbar-thumb {
+  background: var(--nx-border-strong);
+  border: 2px solid var(--nx-bg-surface);
+  border-radius: var(--nx-radius-pill);
+}
+.di-grid--recent .di-panel__body::-webkit-scrollbar-thumb:hover { background: var(--nx-text-muted); }
+
+/* On a phone the row stacks, so a fixed height just wastes space. */
+@media (max-width: 1100px) {
+  .di-grid--recent .di-panel { height: auto; max-height: 420px; }
+}

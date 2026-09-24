@@ -1,0 +1,643 @@
+.nx-table-card {
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  box-shadow: var(--nx-shadow-sm);
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---- Toolbar ------------------------------------------------------------- */
+.nx-table__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-4);
+  padding: var(--nx-space-4) var(--nx-space-5);
+  border-bottom: var(--nx-divider);
+  flex-wrap: wrap;
+}
+
+.nx-table__title {
+  margin: 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-table__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* Search */
+/* Column visibility menu */
+/* ---- Table --------------------------------------------------------------- */
+.nx-table__scroll {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.nx-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--nx-text-base);
+}
+
+.nx-table thead th {
+  padding: var(--nx-space-3) var(--nx-space-4);
+  /* Sticky: must stay opaque or rows scroll visibly underneath it. */
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.nx-table--sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.nx-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.nx-table__sort:hover {
+  color: var(--nx-text);
+}
+
+.nx-table__sort.is-active {
+  color: var(--nx-accent);
+}
+
+.nx-table__sort-idle {
+  opacity: 0;
+  transition: opacity var(--nx-duration-fast);
+}
+
+.nx-table__sort:hover .nx-table__sort-idle {
+  opacity: 0.5;
+}
+
+.nx-table tbody td {
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+  color: var(--nx-text);
+  vertical-align: middle;
+}
+
+.nx-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.nx-table tbody tr {
+  transition: background var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-table tbody tr:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-table tbody tr.is-selected {
+  background: var(--nx-bg-selected);
+}
+
+.nx-table tbody tr.is-clickable {
+  cursor: pointer;
+}
+
+.nx-table__cell--check {
+  width: 44px;
+  text-align: center;
+}
+
+.nx-table__cell--check input {
+  accent-color: var(--nx-accent);
+  cursor: pointer;
+}
+
+
+/* ---- Skeleton ------------------------------------------------------------ */
+.nx-skeleton {
+  display: block;
+  height: 13px;
+  border-radius: var(--nx-radius-pill);
+  background: linear-gradient(90deg,
+      var(--nx-bg-hover) 25%,
+      var(--nx-bg-sunken) 37%,
+      var(--nx-bg-hover) 63%);
+  background-size: 400% 100%;
+  animation: nx-shimmer 1.4s ease infinite;
+}
+
+@keyframes nx-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---- Empty state --------------------------------------------------------- */
+.nx-table__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-12) var(--nx-space-5);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+.nx-table__empty-title {
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.nx-table__empty-hint {
+  margin: 0;
+  font-size: var(--nx-text-base);
+}
+
+/* ---- Footer / pagination ------------------------------------------------- */
+.nx-table__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nx-space-4);
+  padding: var(--nx-space-3) var(--nx-space-5);
+  border-top: var(--nx-divider);
+  background: transparent;
+  font-size: var(--nx-text-base);
+  color: var(--nx-text-secondary);
+  flex-wrap: wrap;
+}
+
+.nx-table__page-size {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+
+.nx-table__page-size select {
+  height: 30px;
+  padding: 0 var(--nx-space-2);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  background: var(--nx-bg-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  cursor: pointer;
+}
+
+.nx-table__pager {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nx-table__page-label {
+  padding: 0 var(--nx-space-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nx-table__range {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Phone --------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .nx-table__toolbar {
+    padding: var(--nx-space-3);
+  }
+
+  .nx-table__toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .nx-table thead th,
+  .nx-table tbody td {
+    padding: var(--nx-space-3);
+  }
+
+  .nx-table__footer {
+    padding: var(--nx-space-3);
+    justify-content: center;
+  }
+
+  .nx-table__range {
+    order: -1;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Menu item inside the columns / export dropdown. */
+/* ---- Tabs ---------------------------------------------------------------- */
+.nx-table__tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nx-table__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nx-table__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--nx-radius-sm);
+  background: transparent;
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--nx-duration-fast) var(--nx-ease),
+    border-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-table__tab:hover {
+  color: var(--nx-text);
+  background: var(--nx-bg-hover);
+}
+
+.nx-table__tab.is-active {
+  color: var(--nx-accent);
+  background: var(--nx-accent-soft);
+  border-color: var(--nx-accent);
+}
+
+.nx-table__tab:focus-visible {
+  outline: 2px solid var(--nx-focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--nx-radius-sm);
+}
+
+.nx-table__tab-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-hover);
+  color: var(--nx-text-secondary);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  text-align: center;
+}
+
+.nx-table__tab.is-active .nx-table__tab-count {
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+/* ---- Filter panel -------------------------------------------------------- */
+.nx-table__filter-panel {
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-3);
+}
+
+.nx-table__filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-1);
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text-secondary);
+}
+
+.nx-table__filter-field select {
+  height: 34px;
+  padding: 0 var(--nx-space-2);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-normal);
+  color: var(--nx-text);
+  background: var(--nx-bg-surface);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-sm);
+  cursor: pointer;
+}
+
+.nx-table__filter-field select:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-table__filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--nx-space-2);
+  padding-top: var(--nx-space-2);
+  border-top: var(--nx-divider);
+}
+
+/* Count badge on the Filter button. */
+.nx-table__badge {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  line-height: 17px;
+  text-align: center;
+}
+
+/* ---- Menu extras --------------------------------------------------------- */
+/* ---- Row number column --------------------------------------------------- */
+.nx-table__cell--num {
+  /* Wide enough for the SL.NO header and a four-digit row number. */
+  width: 78px;
+  text-align: center;
+  color: var(--nx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Fullscreen ---------------------------------------------------------- */
+.nx-table-card.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--nx-z-overlay);
+  border-radius: 0;
+  border: none;
+  max-height: 100vh;
+}
+
+.nx-table-card.is-fullscreen .nx-table__scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ---- Selection state (lives inside the toolbar row) ---------------------- */
+.nx-table__toolbar.is-selecting {
+  background: var(--nx-bg-selected);
+  border-bottom-color: var(--nx-accent-soft);
+}
+
+.nx-table__selection {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.nx-table__selection-count {
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-accent);
+  white-space: nowrap;
+}
+
+/* Keep the toolbar height identical between the two states so the table below
+   doesn't shift the moment a checkbox is ticked. */
+.nx-table__toolbar,
+.nx-table__toolbar.is-selecting {
+  min-height: 62px;
+}
+
+@media (max-width: 640px) {
+  .nx-table__selection {
+    width: 100%;
+  }
+
+  .nx-table__selection-count {
+    width: 100%;
+  }
+}
+
+/* Left half of the toolbar: title and search. Takes the free space so the
+   action buttons stay pinned to the right edge. */
+.nx-table__toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .nx-table__toolbar-left {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+}
+
+/* ---- Actions column: pinned to the right edge ----------------------------
+   Wide tables scroll horizontally, and the row actions are the one thing you
+   always want reachable, so the column stays put while the rest slides under
+   it. It needs an opaque background of its own, and that background has to
+   track the row state or the cell shows the default surface over a hovered or
+   selected row. */
+.nx-table__cell--actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  position: sticky;
+  right: 0;
+  background: var(--nx-bg-surface);
+}
+
+/* Header cell sits above both the sticky column and the sticky header row. */
+.nx-table--sticky thead th.nx-table__cell--actions {
+  z-index: 3;
+  /* Must stay opaque: content scrolls underneath it. */
+  background: var(--nx-bg-surface);
+}
+
+.nx-table tbody tr:hover .nx-table__cell--actions {
+  background: var(--nx-bg-hover);
+}
+
+.nx-table tbody tr.is-selected .nx-table__cell--actions {
+  background: var(--nx-bg-selected);
+}
+
+/* A left edge marks where the pinned column begins once content slides under it. */
+.nx-table__cell--actions::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--nx-border);
+}
+
+/* Skeleton rows have no row-state background to inherit. */
+.nx-table__row--skeleton .nx-table__cell--actions {
+  background: var(--nx-bg-surface);
+}
+
+/* Layout only — the field itself is the shared SearchInput. */
+.nx-table__search {
+  flex: 1 1 320px;
+  min-width: 180px;
+  max-width: 420px;
+}
+
+@media (max-width: 640px) {
+  .nx-table__search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+}
+/* ===========================================================================
+   Row motion.
+
+   The table had a flat background swap on hover and nothing else, while every
+   other component in the kit (Button, Modal, Popover, Toast) moves. These give
+   it the same manners, built from the same duration and easing tokens so it
+   reads as one system rather than as an effect bolted on.
+
+   All of it is decorative: every rule here is switched off wholesale under
+   prefers-reduced-motion at the bottom of this file.
+   =========================================================================== */
+
+/* ---- Entrance -------------------------------------------------------------
+   Rows arrive in sequence rather than all at once, which makes a page of
+   results read as a list being dealt out instead of a block appearing. The
+   delay comes from --nx-row, set per row in DataTable.jsx and capped there. */
+@keyframes nx-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nx-table tbody tr.nx-table__row {
+  animation: nx-row-in var(--nx-duration) var(--nx-ease) backwards;
+  animation-delay: calc(var(--nx-row, 0) * 28ms);
+}
+
+/* ---- Hover ----------------------------------------------------------------
+   A left accent that wipes in, rather than only a colour change. `scaleY` on a
+   pseudo-element keeps it off the layout: a table row cannot take a border
+   without shifting every cell in it. */
+.nx-table tbody tr.nx-table__row {
+  position: relative;
+  transition:
+    background var(--nx-duration-fast) var(--nx-ease),
+    box-shadow var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-table tbody tr.nx-table__row::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0;
+  width: 3px;
+  background: var(--nx-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform var(--nx-duration) var(--nx-ease);
+  pointer-events: none;
+}
+
+.nx-table tbody tr.nx-table__row:hover::after,
+.nx-table tbody tr.nx-table__row.is-selected::after {
+  transform: scaleY(1);
+}
+
+/* A clickable row lifts very slightly, so "this responds to a click" is felt
+   before it is read. Kept to a shadow — a transform here would blur text. */
+.nx-table tbody tr.nx-table__row.is-clickable:hover {
+  box-shadow: 0 1px 0 var(--nx-border), 0 -1px 0 var(--nx-border);
+}
+
+/* ---- Actions --------------------------------------------------------------
+   The row's buttons settle in on hover instead of sitting at full strength on
+   every row at once, which is what makes a long table feel busy. They stay
+   fully visible on focus, so keyboard users never chase a fading target. */
+.nx-table tbody tr.nx-table__row .nx-row-actions {
+  opacity: 0.55;
+  transition:
+    opacity var(--nx-duration-fast) var(--nx-ease),
+    transform var(--nx-duration) var(--nx-ease);
+}
+
+.nx-table tbody tr.nx-table__row:hover .nx-row-actions,
+.nx-table tbody tr.nx-table__row:focus-within .nx-row-actions {
+  opacity: 1;
+  transform: translateX(-2px);
+}
+
+/* ---- Selection ------------------------------------------------------------
+   Ticking a row is a state change worth one beat of feedback. */
+@keyframes nx-row-select {
+  50% { background: var(--nx-bg-selected); }
+}
+
+.nx-table tbody tr.nx-table__row.is-selected {
+  animation: nx-row-select var(--nx-duration-slow) var(--nx-ease);
+}
+
+/* ---- Off, when asked ------------------------------------------------------
+   Not "faster" — off. Vestibular triggers do not care how short the motion is,
+   and none of the above carries meaning that the colour changes do not. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-table tbody tr.nx-table__row,
+  .nx-table tbody tr.nx-table__row.is-selected {
+    animation: none;
+  }
+
+  .nx-table tbody tr.nx-table__row,
+  .nx-table tbody tr.nx-table__row::after,
+  .nx-table tbody tr.nx-table__row .nx-row-actions {
+    transition: none;
+  }
+
+  .nx-table tbody tr.nx-table__row .nx-row-actions {
+    opacity: 1;
+    transform: none;
+  }
+}

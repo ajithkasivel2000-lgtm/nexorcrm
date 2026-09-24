@@ -1,0 +1,103 @@
+/* Toasts — top right, stacked newest-last. */
+
+.nx-toasts {
+  position: fixed;
+  top: var(--nx-space-6);
+  right: var(--nx-space-6);
+  z-index: var(--nx-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-3);
+  /* The strip spans only what the toasts need, so the page underneath stays
+     clickable either side of them. */
+  pointer-events: none;
+  max-width: min(420px, calc(100vw - var(--nx-space-8)));
+}
+
+.nx-toast {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nx-space-3);
+  padding: var(--nx-space-3) var(--nx-space-4) var(--nx-space-3) var(--nx-space-4);
+  border-radius: var(--nx-radius);
+  border: 1px solid var(--nx-border);
+  background: var(--nx-bg-surface);
+  box-shadow: var(--nx-shadow-lg);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+  overflow: hidden;
+  animation: nx-toast-slide-in 220ms var(--nx-ease);
+}
+
+/* Left edge carries the status colour so the message text stays readable. */
+.nx-toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--nx-neutral);
+}
+
+.nx-toast--success::before { background: var(--nx-success); }
+.nx-toast--error::before   { background: var(--nx-danger); }
+.nx-toast--info::before    { background: var(--nx-accent); }
+
+.nx-toast__icon { flex: none; margin-top: 1px; }
+.nx-toast--success .nx-toast__icon { color: var(--nx-success); }
+.nx-toast--error   .nx-toast__icon { color: var(--nx-danger); }
+.nx-toast--info    .nx-toast__icon { color: var(--nx-accent); }
+
+.nx-toast__message {
+  flex: 1;
+  line-height: 1.45;
+  /* A long server message wraps rather than stretching the toast off-screen. */
+  overflow-wrap: anywhere;
+}
+
+.nx-toast__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: -2px -4px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+.nx-toast__close:hover { color: var(--nx-text); background: var(--nx-bg-hover); }
+
+@keyframes nx-toast-slide-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes nx-toast-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+
+.nx-toast.is-leaving { animation: nx-toast-slide-out 180ms var(--nx-ease) forwards; }
+
+@media (max-width: 640px) {
+  .nx-toasts {
+    top: var(--nx-space-3);
+    right: var(--nx-space-3);
+    left: var(--nx-space-3);
+    max-width: none;
+  }
+}
+
+/* Movement is the decoration; the toast itself must still appear. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-toast,
+  .nx-toast.is-leaving { animation: none; }
+}

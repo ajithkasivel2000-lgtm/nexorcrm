@@ -1,0 +1,63 @@
+.nx-notfound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--nx-space-3);
+  max-width: 480px;
+  margin: var(--nx-space-8) auto;
+  padding: var(--nx-space-8) var(--nx-space-5);
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+  text-align: center;
+}
+
+.nx-notfound__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-notfound__title {
+  margin: 0;
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-notfound__text {
+  margin: 0;
+  font-size: var(--nx-text-base);
+  line-height: 1.6;
+  color: var(--nx-text-secondary);
+}
+
+.nx-notfound__path {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 6px;
+  border-radius: var(--nx-radius-sm);
+  background: var(--nx-bg-sunken);
+  color: var(--nx-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--nx-text-sm);
+  /* A long path must wrap rather than widen the card on a phone. */
+  overflow-wrap: anywhere;
+}
+
+.nx-notfound__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--nx-space-2);
+  margin-top: var(--nx-space-2);
+}
+
+@media (max-width: 640px) {
+  .nx-notfound { margin: var(--nx-space-4) auto; padding: var(--nx-space-5) var(--nx-space-4); }
+}

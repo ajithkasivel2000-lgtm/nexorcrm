@@ -1,116 +1,102 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Home, Edit, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
+import { useRecordTitle } from './hooks/usePageMeta';
+import { Activity, Briefcase, FileText, Globe, Receipt, User } from 'lucide-react';
 import './OpportunityProfile.css';
+import invalidateLeadCache from './utils/invalidateLeadCache';
+import OpportunityHealth from './opportunity/OpportunityHealth';
+import useLiveRefresh from './utils/useLiveRefresh';
+import { assignableUsers } from './utils/currentUser';
+import {
+  emailError, normalizeEmail,
+  RecordCard, RecordColumn, RecordField, RecordFields, RecordGrid, RecordPage,
+  RecordPhoneField, RecordTimeline, recordStamp, toDateInput,
+} from './ui';
 
-import { ChevronDown, RefreshCcw } from 'lucide-react';
+/**
+ * The page's tabs.
+ *
+ * Source Information and Agreement sat in a strip of their own beneath the
+ * main cards, which were always on screen — so the page was half tabbed and
+ * half not, and the strip was easy to miss below the fold. One strip at the
+ * top now covers the whole record.
+ */
+const OPP_TABS = [
+  { key: 'General Info', icon: User },
+  { key: 'Opportunity Info', icon: Briefcase },
+  { key: 'Agreement & Invoice Details', icon: FileText },
+];
 
-const EditableField = ({ label, initialValue, name, onChange, isSelect = false, options = [], type="text", readOnly = false }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(initialValue || '');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+/**
+ * In the order an opportunity moves through them.
+ *
+ * "Site Visit Converted" is the schema default; "Initiate" and "Booking Done"
+ * are what converting a lead writes here — the booking status chosen in that
+ * dialog becomes the stage. They were missing, so every converted opportunity
+ * showed a stage its own dropdown could not offer back.
+ */
+const STAGES = [
+  'Site Visit Converted', 'Initiate', 'Booking Done',
+  'Negotiation', 'Closed Won', 'Closed Lost',
+];
+const UNIT_TYPES = ['Flat', 'Villa', 'Plot'];
+const PAYMENT_STATUSES = ['Fully Paid', 'Partially Paid'];
+const AGREEMENT_STATUSES = ['Draft', 'Sent to Customer', 'Signed', 'Registered', 'Cancelled'];
+const PAYMENT_MODES = ['Bank Transfer', 'UPI', 'Cheque', 'Cash', 'Home Loan', 'Card'];
+const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const PIPELINES = ['Sales', 'Channel Partner', 'Referral'];
+const OPPORTUNITY_TYPES = ['New Business', 'Upgrade', 'Resale', 'Rental', 'Investment'];
+/* 0-100 in steps, rather than a free number: a forecast built from 63% and 67%
+   is not more accurate than one built from 60% and 70%, only harder to read. */
+const PROBABILITIES = ['0', '10', '20', '30', '40', '50', '60', '70', '80', '90', '100'];
 
-  useEffect(() => {
-    setValue(initialValue || '');
-  }, [initialValue]);
-
-  const handleSave = () => {
-    setIsEditing(false);
-    setDropdownOpen(false);
-    onChange(name, value);
+/**
+ * What is still owed.
+ *
+ * Worked out from the invoice and what has been paid rather than stored, so it
+ * cannot drift out of step with the two figures it comes from. Amounts are
+ * free text on this model, so anything unparseable reads as blank rather than
+ * as a confident wrong number.
+ */
+function outstanding(invoiced, paid) {
+  const num = (v) => {
+    const n = Number(String(v ?? '').replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(n) ? n : null;
   };
-
-  const handleSelect = (opt) => {
-    setValue(opt);
-    setDropdownOpen(false);
-  };
-
-  return (
-    <div className="editable-field">
-      <label>{label}</label>
-      <div className="field-content" style={{ position: 'relative' }}>
-        {isEditing ? (
-          isSelect ? (
-            <>
-              <div 
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', height: '100%', outline: 'none' }}
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-              >
-                <span>{value || `Select ${label.replace(' :', '')}`}</span>
-                <ChevronDown size={14} color="#888" />
-              </div>
-              {dropdownOpen && (
-                <div className="custom-dropdown-list" style={{ position: 'absolute', top: '100%', left: 0, width: '100%', zIndex: 10, background: '#fff', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  <div 
-                    className="custom-dropdown-item" 
-                    style={{ padding: '8px 12px', fontSize: '13px', color: '#333', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                    onClick={() => handleSelect('')}
-                  >
-                    Select {label.replace(' :', '')}
-                  </div>
-                  {options.map(opt => (
-                    <div 
-                      key={opt} 
-                      className="custom-dropdown-item" 
-                      style={{ padding: '8px 12px', fontSize: '13px', color: '#333', cursor: 'pointer', background: value === opt ? '#1967d2' : 'transparent', color: value === opt ? '#fff' : '#333' }}
-                      onClick={() => handleSelect(opt)}
-                      onMouseEnter={(e) => { if(value !== opt) { e.target.style.background = '#f5f5f5'; } }}
-                      onMouseLeave={(e) => { if(value !== opt) { e.target.style.background = 'transparent'; } }}
-                    >
-                      {opt}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <input 
-              type={type} 
-              value={value} 
-              onChange={(e) => setValue(e.target.value)}
-              autoFocus
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent' }}
-            />
-          )
-        ) : (
-          <div className="value-display" style={{ flex: 1 }}>{value || '---'}</div>
-        )}
-        {!readOnly && (
-          <button 
-            className="btn-edit-inline" 
-            onClick={() => {
-              if (isEditing) {
-                handleSave();
-              } else {
-                setIsEditing(true);
-              }
-            }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 5px' }}
-          >
-            {isEditing ? (
-              isSelect ? <RefreshCcw size={14} color="#555" /> : <Check size={12} color="green" />
-            ) : (
-              <Edit size={12} color="#666" />
-            )}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
+  const a = num(invoiced);
+  const b = num(paid);
+  if (a === null) return '';
+  const left = a - (b ?? 0);
+  return left.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
 
 export default function OpportunityProfile() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [opportunity, setOpportunity] = useState(null);
-  const [activeTab, setActiveTab] = useState('Source Information');
-  const [activeLogTab, setActiveLogTab] = useState('Opp Log');
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // The tab says which record is open, not just which kind.
+  useRecordTitle(opportunity?.opportunityName);
+  const [activeTab, setActiveTab] = useState('General Info');
+  const [projectNames, setProjectNames] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+
+  // The project list drives the Leads Project dropdown, so it is fetched
+  // once rather than per edit.
   useEffect(() => {
-    fetchOpportunity();
-  }, [id]);
+    fetch('/api/projects')
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => setProjectNames(Array.isArray(data) ? data.map(p => p.projectName).filter(Boolean) : []))
+      .catch(err => console.error('Failed to fetch projects:', err));
 
-  const fetchOpportunity = async () => {
+    fetch('/api/users')
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => setUsersList(Array.isArray(data) ? data : []))
+      .catch(err => console.error('Failed to fetch users:', err));
+  }, []);
+
+  const fetchOpportunity = useCallback(async () => {
     try {
       const response = await fetch(`/api/opportunities/${id}`);
       if (response.ok) {
@@ -120,165 +106,307 @@ export default function OpportunityProfile() {
     } catch (error) {
       console.error('Failed to fetch opportunity:', error);
     }
-  };
+  }, [id]);
 
-  const handleFieldUpdate = async (name, value) => {
+  /* The derived figures — weighted value, score, days in stage — are worked out
+     on the server so the record, the list and the dashboard cannot each reach a
+     different answer. Re-read after every save, since a change to the value or
+     the stage changes most of them. */
+  const fetchSummary = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/opportunities/${id}/summary`);
+      if (response.ok) setSummary(await response.json());
+    } catch (error) {
+      console.error('Failed to fetch the opportunity summary:', error);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [id]);
+
+  /* Below the two callbacks on purpose: a dependency array is evaluated during
+     render, so naming a `const` declared further down throws on first paint. */
+  useEffect(() => {
+    fetchOpportunity();
+    fetchSummary();
+  }, [fetchOpportunity, fetchSummary]);
+
+  /* The summary figures are derived on the server from this record and the
+     lead behind it, so a change on either side has to be re-read rather than
+     recomputed here. */
+  useLiveRefresh(['opportunities', 'leads'], () => {
+    fetchOpportunity();
+    fetchSummary();
+  });
+
+  /* The log is written by the server, which knows who is signed in and what
+     the value was before. This used to compose its own entry with the actor
+     hardcoded to "admin", so every change was attributed to admin whoever made
+     it — and once the server started logging too, twice over. */
+  const handleUpdates = async (updates) => {
     try {
       const response = await fetch(`/api/opportunities/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          [name]: value,
-          logEntry: {
-            title: `Updated ${name.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase())}`,
-            subtitle: `by admin to "${value}"`
-          }
-        })
+        body: JSON.stringify(updates)
       });
       if (response.ok) {
         fetchOpportunity();
+        fetchSummary();
+        invalidateLeadCache();
       }
     } catch (error) {
       console.error('Failed to update field:', error);
     }
   };
 
-  if (!opportunity) return <div className="loading">Loading...</div>;
+  const save = (name) => (value) => handleUpdates(
+    { [name]: value },
+    name.replace(/([A-Z])/g, ' $1').trim().replace(/^./, str => str.toUpperCase()),
+    value
+  );
+
+  const savePhone = (numKey, codeKey, label) => (num, code) => handleUpdates(
+    { [numKey]: num, [codeKey]: code },
+    label,
+    num
+  );
+
+  if (!opportunity) return <div className="nx-rec__loading">Loading…</div>;
+
+  const stored = (opportunity.logs || []).map((l) => ({
+    id: l.id,
+    title: l.title,
+    subtitle: l.subtitle,
+    date: recordStamp(l.date || l.createdAt),
+    icon: Activity,
+  }));
+
+  /* The conversion is a real log row now, written when the opportunity is
+     created, so it arrives with the rest and carries its actor and its opening
+     stage. Records converted before that have no such row, and for those the
+     opening line is still worked out from the record itself — without it their
+     history would simply begin nowhere. It names createdBy when there is one
+     rather than asserting a person, since the old rows do not know who. */
+  const hasOpeningRow = stored.some((l) => l.title === 'Lead To Opportunity');
+
+  const logEntries = hasOpeningRow ? stored : [
+    ...stored,
+    {
+      id: 'created',
+      title: 'Lead To Opportunity',
+      subtitle: opportunity.createdBy
+        ? `by ${opportunity.createdBy}`
+        : 'converted from a lead',
+      date: recordStamp(opportunity.createdAt),
+      icon: Activity,
+    },
+  ];
+
+  // The project master may not contain what an older record stored, so keep
+  // that value in the list rather than silently blanking it.
+  const projectOptions = opportunity.LeadsProject && !projectNames.includes(opportunity.LeadsProject)
+    ? [opportunity.LeadsProject, ...projectNames]
+    : projectNames;
 
   return (
-    <div className="opportunity-profile-page">
-      <div className="profile-header">
-        <div className="page-breadcrumb">
-          <Home size={14} style={{cursor: 'pointer'}} onClick={() => navigate('/')} /> 
-          <span className="slash">/</span> 
-          <span className="current" onClick={() => navigate('/opportunities')} style={{cursor: 'pointer', color: '#8c6cf5', fontWeight: '500'}}>Opportunity List</span>
-          <span className="slash">/</span> 
-          <span className="current" style={{cursor: 'default', color: '#8c6cf5', fontWeight: '500'}}>Opportunity Edit</span>
+    <RecordPage
+      crumbs={[{ label: 'Opportunities', to: '/opportunities' }]}
+      title={opportunity.opportunityName || 'Opportunity'}
+      backTo="/opportunities"
+      backLabel="Back to Opportunities"
+      tabs={OPP_TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      actions={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--nx-text-secondary)', whiteSpace: 'nowrap' }}>Stage :</span>
+          <select
+            className="nx-rec-card__filter"
+            value={opportunity.stage || ''}
+            onChange={(e) => save('stage')(e.target.value)}
+            style={{ margin: 0, height: '32px', minWidth: '130px' }}
+          >
+            {!opportunity.stage && <option value="" disabled>Select</option>}
+            {opportunity.stage && !STAGES.includes(opportunity.stage) && (
+              <option value={opportunity.stage}>{opportunity.stage}</option>
+            )}
+            {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
-      </div>
+      }
+    >
+      {/* True of the whole opportunity, so it does not belong to one tab. */}
+      <OpportunityHealth summary={summary} loading={summaryLoading} />
 
-      <div className="profile-content-wrapper">
-        <div className="profile-main">
-          
-          <div className="info-section top-info">
-            <div className="info-column">
-              <EditableField label="Opportunity Id :" name="oppId" initialValue={opportunity.oppId} onChange={handleFieldUpdate} readOnly={true} />
-              <EditableField label="Opportunity Name :" name="opportunityName" initialValue={opportunity.opportunityName} onChange={handleFieldUpdate} />
-              <EditableField label="Mobile Number :" name="mobileNumber" initialValue={opportunity.mobileNumber} onChange={handleFieldUpdate} />
-              <EditableField label="Email Address :" name="emailAddress" initialValue={opportunity.emailAddress} onChange={handleFieldUpdate} />
-              <EditableField label="Enquiry Project :" name="enquiryProject" initialValue={opportunity.enquiryProject} onChange={handleFieldUpdate} />
-              <EditableField label="Alternate Mobile No. :" name="alternateMobile" initialValue={opportunity.alternateMobile} onChange={handleFieldUpdate} />
-              <EditableField label="Alternate Email :" name="alternateEmail" initialValue={opportunity.alternateEmail} onChange={handleFieldUpdate} />
-              <EditableField label="Occupation :" name="occupation" initialValue={opportunity.occupation} onChange={handleFieldUpdate} />
-              <EditableField label="Company Name :" name="companyName" initialValue={opportunity.companyName} onChange={handleFieldUpdate} />
-            </div>
-
-            <div className="info-column">
-              <EditableField label="Allocator :" name="allocator" initialValue="admin" onChange={handleFieldUpdate} readOnly={true} />
-              <EditableField label="Opportunity Owner :" name="opportunityOwner" initialValue={opportunity.opportunityOwner} onChange={handleFieldUpdate} />
-              <EditableField 
-                label="Stage :" 
-                name="stage" 
-                initialValue={opportunity.stage} 
-                isSelect={true} 
-                options={['Site Visit Converted', 'Negotiation', 'Closed Won', 'Closed Lost']}
-                onChange={handleFieldUpdate} 
-              />
-              <EditableField label="Selected Unit :" name="selectedUnit" initialValue={opportunity.selectedUnit} onChange={handleFieldUpdate} />
-              <EditableField 
-                label="Unit Type :" 
-                name="unitType" 
-                initialValue={opportunity.unitType} 
-                isSelect={true}
-                options={['Flat', 'Villa', 'Plot']}
-                onChange={handleFieldUpdate} 
-              />
-              <EditableField label="Booking Date :" name="bookingDate" type="date" initialValue={opportunity.bookingDate ? opportunity.bookingDate.split('T')[0] : ''} onChange={handleFieldUpdate} />
-              <EditableField label="Booking Details :" name="bookingDetails" initialValue={opportunity.bookingDetails} onChange={handleFieldUpdate} />
-              <EditableField label="Booking Amount :" name="bookingAmount" initialValue={opportunity.bookingAmount} onChange={handleFieldUpdate} />
-              <EditableField 
-                label="Booking Amount Status :" 
-                name="bookingAmountStatus" 
-                initialValue={opportunity.bookingAmountStatus} 
-                isSelect={true}
-                options={['Fully Paid', 'Partially Paid']}
-                onChange={handleFieldUpdate} 
-              />
-              <EditableField label="Booking Done Date :" name="bookingDoneDate" type="date" initialValue={opportunity.bookingDoneDate ? opportunity.bookingDoneDate.split('T')[0] : ''} onChange={handleFieldUpdate} />
-              <EditableField label="Comments :" name="comments" initialValue={opportunity.comments} onChange={handleFieldUpdate} />
-              <EditableField label="Reporting Manager :" name="reportingManager" initialValue={opportunity.reportingManager} onChange={handleFieldUpdate} />
-              <EditableField label="CP Commission % :" name="cpCommissionPercent" initialValue={opportunity.cpCommissionPercent} onChange={handleFieldUpdate} />
-              <EditableField label="Approval Stage :" name="approvalStage" initialValue={opportunity.approvalStage} onChange={handleFieldUpdate} />
-            </div>
-          </div>
-
-          <div className="bottom-tabs">
-            <button className={`bottom-tab ${activeTab === 'Agreement & Invoice Details' ? 'active' : ''}`} onClick={() => setActiveTab('Agreement & Invoice Details')}>
-               Agreement & Invoice Details
-            </button>
-            <button className={`bottom-tab ${activeTab === 'Source Information' ? 'active' : ''}`} onClick={() => setActiveTab('Source Information')}>
-               Source Information
-            </button>
-          </div>
-
-          {activeTab === 'Source Information' && (
-            <div className="info-section bottom-info">
-              <div className="info-column">
-                <EditableField label="Preferred Budget :" name="preferredBudget" initialValue={opportunity.preferredBudget} onChange={handleFieldUpdate} />
-                <EditableField label="Preferred Locality :" name="preferredLocality" initialValue={opportunity.preferredLocality} onChange={handleFieldUpdate} />
-                <EditableField label="Location Commission :" name="locationCommission" initialValue={opportunity.locationCommission} onChange={handleFieldUpdate} />
-              </div>
-              <div className="info-column">
-                <EditableField label="Channel Partner Name :" name="channelPartnerName" initialValue={opportunity.channelPartnerName} onChange={handleFieldUpdate} />
-                <EditableField label="Channel Partner ID :" name="channelPartnerId" initialValue={opportunity.channelPartnerId} onChange={handleFieldUpdate} />
-                <EditableField label="Location Commission (INR) :" name="locationCommissionInr" initialValue={opportunity.locationCommissionInr} onChange={handleFieldUpdate} />
-              </div>
-            </div>
+      <div className="nx-rec__body">
+        <div className="nx-rec__body-main">
+          {activeTab === 'General Info' && (
+            <>
+              <RecordCard icon={User} title="General Info">
+                <RecordFields cols={2}>
+                  <RecordField label="Opportunity Id :" value={opportunity.oppId} readOnly />
+                  <RecordField label="Opportunity Name :" value={opportunity.opportunityName} onSave={save('opportunityName')} />
+                  <RecordPhoneField
+                    label="Mobile Number :"
+                    name="mobileNumber"
+                    value={opportunity.mobileNumber}
+                    dial={opportunity.mobileCountryCode}
+                    onSave={savePhone('mobileNumber', 'mobileCountryCode', 'Mobile Number')}
+                  />
+                  <RecordField
+                    label="Email Address :"
+                    type="email"
+                    value={opportunity.emailAddress}
+                    normalize={normalizeEmail}
+                    validate={(v) => emailError(v, { label: 'Email Address' })}
+                    onSave={save('emailAddress')}
+                  />
+                  <RecordField label="Leads Project :" options={projectOptions} value={opportunity.LeadsProject} onSave={save('LeadsProject')} />
+                  <RecordPhoneField
+                    label="Alternate Mobile No. :"
+                    name="alternateMobile"
+                    value={opportunity.alternateMobile}
+                    dial={opportunity.alternateMobileCountryCode}
+                    onSave={savePhone('alternateMobile', 'alternateMobileCountryCode', 'Alternate Mobile')}
+                  />
+                  <RecordField
+                    label="Alternate Email :"
+                    type="email"
+                    value={opportunity.alternateEmail}
+                    normalize={normalizeEmail}
+                    validate={(v) => emailError(v, { label: 'Alternate Email' })}
+                    onSave={save('alternateEmail')}
+                  />
+                  <RecordField label="Occupation :" value={opportunity.occupation} onSave={save('occupation')} />
+                  <RecordField label="Company Name :" value={opportunity.companyName} onSave={save('companyName')} />
+                </RecordFields>
+              </RecordCard>
+              <RecordGrid cols={2}>
+                <RecordColumn>
+                  <RecordCard icon={Globe} title="Source Information">
+                    <RecordFields cols={1}>
+                      <RecordField label="Preferred Budget :" value={opportunity.preferredBudget} onSave={save('preferredBudget')} />
+                      <RecordField label="Preferred Locality :" value={opportunity.preferredLocality} onSave={save('preferredLocality')} />
+                      <RecordField label="Location Commission :" value={opportunity.locationCommission} onSave={save('locationCommission')} />
+                    </RecordFields>
+                  </RecordCard>
+                </RecordColumn>
+                <RecordColumn>
+                  <RecordCard icon={Briefcase} title="Channel Partner">
+                    <RecordFields cols={1}>
+                      <RecordField label="Channel Partner Name :" value={opportunity.channelPartnerName} onSave={save('channelPartnerName')} />
+                      <RecordField label="Channel Partner ID :" value={opportunity.channelPartnerId} onSave={save('channelPartnerId')} />
+                      <RecordField label="Location Commission (INR) :" value={opportunity.locationCommissionInr} onSave={save('locationCommissionInr')} />
+                    </RecordFields>
+                  </RecordCard>
+                </RecordColumn>
+              </RecordGrid>
+            </>
           )}
-          
+
+          {activeTab === 'Opportunity Info' && (
+            <RecordCard icon={Briefcase} title="Opportunity Info">
+              <RecordFields cols={2}>
+                {/* Who allocated the opportunity is a record of what happened,
+                not a setting — editing it would rewrite history. */}
+                {/* Blank when nobody is recorded. It used to read "admin",
+                    which on a read-only field is the record asserting
+                    something untrue rather than offering a default. */}
+                <RecordField
+                  label="Allocator :"
+                  value={opportunity.allocator || ''}
+                  placeholder="Not allocated"
+                  readOnly
+                />
+                <RecordField
+                  label="Opportunity Owner :"
+                  options={assignableUsers(usersList).map(u => ({ value: u.id || u.username, label: u.username || u.id }))}
+                  value={opportunity.opportunityOwner}
+                  onSave={save('opportunityOwner')}
+                />
+                <RecordField label="Status :" options={['Open', 'Won', 'Lost', 'On Hold']} value={opportunity.status} onSave={save('status')} />
+                <RecordField label="Probability (%) :" options={PROBABILITIES} value={opportunity.probability == null ? '' : String(opportunity.probability)} onSave={save('probability')} />
+                <RecordField label="Expected Value :" value={opportunity.expectedValue ?? ''} onSave={save('expectedValue')} />
+                <RecordField label="Expected Close Date :" type="date" value={toDateInput(opportunity.expectedCloseDate)} onSave={save('expectedCloseDate')} />
+                <RecordField label="Priority :" options={PRIORITIES} value={opportunity.priority} onSave={save('priority')} />
+                <RecordField label="Pipeline :" options={PIPELINES} value={opportunity.pipeline} onSave={save('pipeline')} />
+                <RecordField label="Opportunity Type :" options={OPPORTUNITY_TYPES} value={opportunity.opportunityType} onSave={save('opportunityType')} />
+                <RecordField label="Industry :" value={opportunity.industry} onSave={save('industry')} />
+                <RecordField label="Next Action :" value={opportunity.nextAction} onSave={save('nextAction')} />
+                <RecordField label="Next Follow-up :" type="date" value={toDateInput(opportunity.nextFollowUpDate)} onSave={save('nextFollowUpDate')} />
+                <RecordField label="Description :" multiline full value={opportunity.description} onSave={save('description')} />
+                <RecordField label="Selected Unit :" value={opportunity.selectedUnit} onSave={save('selectedUnit')} />
+                <RecordField label="Unit Type :" options={UNIT_TYPES} value={opportunity.unitType} onSave={save('unitType')} />
+                <RecordField label="Booking Date :" type="date" value={toDateInput(opportunity.bookingDate)} onSave={save('bookingDate')} />
+                <RecordField label="Booking Details :" value={opportunity.bookingDetails} onSave={save('bookingDetails')} />
+                <RecordField label="Booking Amount :" value={opportunity.bookingAmount} onSave={save('bookingAmount')} />
+                <RecordField label="Booking Amount Status :" options={PAYMENT_STATUSES} value={opportunity.bookingAmountStatus} onSave={save('bookingAmountStatus')} />
+                <RecordField label="Booking Done Date :" type="date" value={toDateInput(opportunity.bookingDoneDate)} onSave={save('bookingDoneDate')} />
+                <RecordField label="Comments :" value={opportunity.comments} onSave={save('comments')} />
+                <RecordField
+                  label="Reporting Manager :"
+                  options={[
+                    { value: '', label: 'Select' },
+                    ...assignableUsers(usersList).map(u => ({ value: u.id || u.username, label: u.username || u.id }))
+                  ]}
+                  value={opportunity.reportingManager}
+                  onSave={save('reportingManager')}
+                />
+                <RecordField label="CP Commission % :" value={opportunity.cpCommissionPercent} onSave={save('cpCommissionPercent')} />
+                <RecordField label="Approval Stage :" value={opportunity.approvalStage} onSave={save('approvalStage')} />
+              </RecordFields>
+            </RecordCard>
+          )}
+
+
+
           {activeTab === 'Agreement & Invoice Details' && (
-             <div className="info-section bottom-info">
-                <div style={{color: '#888', fontSize: '13px', padding: '10px 0'}}>No agreement details available.</div>
-             </div>
-          )}
+            <RecordGrid cols={2}>
+              <RecordColumn>
+                <RecordCard icon={FileText} title="Agreement">
+                  <RecordFields cols={1}>
+                    <RecordField label="Agreement Number :" value={opportunity.agreementNumber} onSave={save('agreementNumber')} />
+                    <RecordField label="Agreement Status :" options={AGREEMENT_STATUSES} value={opportunity.agreementStatus} onSave={save('agreementStatus')} />
+                    <RecordField label="Agreement Value :" value={opportunity.agreementValue} onSave={save('agreementValue')} />
+                    <RecordField label="Agreement Date :" type="date" value={toDateInput(opportunity.agreementDate)} onSave={save('agreementDate')} />
+                    <RecordField label="Registration Date :" type="date" value={toDateInput(opportunity.registrationDate)} onSave={save('registrationDate')} />
+                    <RecordField label="Notes :" multiline value={opportunity.agreementNotes} onSave={save('agreementNotes')} />
+                  </RecordFields>
+                </RecordCard>
+              </RecordColumn>
 
-        </div>
-
-        <div className="profile-sidebar">
-          <div className="sidebar-tabs">
-            <button className={`sidebar-tab ${activeLogTab === 'Opp Log' ? 'active' : ''}`} onClick={() => setActiveLogTab('Opp Log')}>Opp Log</button>
-          </div>
-          
-          {activeLogTab === 'Opp Log' && (
-            <div className="log-list">
-              {opportunity.logs && [...opportunity.logs]
-                .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))
-                .map(log => (
-                  <div className="log-item" key={log.id}>
-                    <div className="log-avatar-img">
-                      <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=f0ecfc" alt="avatar" />
-                    </div>
-                    <div className="log-content">
-                      <p>{log.title}</p>
-                      <span>{log.subtitle}</span>
-                      <span className="log-date">on {new Date(log.date || log.createdAt).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-              <div className="log-item">
-                <div className="log-avatar-img">
-                  <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=f0ecfc" alt="avatar" />
-                </div>
-                <div className="log-content">
-                  <p>Lead To Opportunity</p>
-                  <span>by admin</span>
-                  <span className="log-date">on {new Date(opportunity.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
+              <RecordColumn>
+                <RecordCard icon={Receipt} title="Invoice & Payment">
+                  <RecordFields cols={1}>
+                    <RecordField label="Invoice Number :" value={opportunity.invoiceNumber} onSave={save('invoiceNumber')} />
+                    <RecordField label="Invoice Date :" type="date" value={toDateInput(opportunity.invoiceDate)} onSave={save('invoiceDate')} />
+                    <RecordField label="Invoice Amount :" value={opportunity.invoiceAmount} onSave={save('invoiceAmount')} />
+                    <RecordField label="Amount Paid :" value={opportunity.amountPaid} onSave={save('amountPaid')} />
+                    {/* Read-only: it is the other two subtracted, not a third
+                      number somebody has to keep in step by hand. */}
+                    <RecordField
+                      label="Balance :"
+                      value={outstanding(opportunity.invoiceAmount, opportunity.amountPaid)}
+                      placeholder="Enter an invoice amount"
+                      readOnly
+                    />
+                    <RecordField label="Payment Status :" options={PAYMENT_STATUSES} value={opportunity.bookingAmountStatus} onSave={save('bookingAmountStatus')} />
+                    <RecordField label="Payment Mode :" options={PAYMENT_MODES} value={opportunity.paymentMode} onSave={save('paymentMode')} />
+                    <RecordField label="Next Due Date :" type="date" value={toDateInput(opportunity.nextDueDate)} onSave={save('nextDueDate')} />
+                  </RecordFields>
+                </RecordCard>
+              </RecordColumn>
+            </RecordGrid>
           )}
         </div>
+
+        {/* Belongs to the whole record, not to one tab, so it stays put. */}
+        <aside className="nx-rec__body-side">
+          <RecordCard icon={Activity} title="Opp Log">
+            <RecordTimeline entries={logEntries} emptyMessage="No logs available." />
+          </RecordCard>
+        </aside>
       </div>
-    </div>
+    </RecordPage>
   );
 }

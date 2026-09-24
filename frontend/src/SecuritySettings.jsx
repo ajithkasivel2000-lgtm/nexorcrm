@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Home } from 'lucide-react';
+import { ShieldBan, UserX } from 'lucide-react';
 import './SecuritySettings.css';
-import { Link } from 'react-router-dom';
+import {
+  Button, RecordCard, RecordColumn, RecordField, RecordFields, RecordGrid, RecordPage,
+} from './ui';
 
 const SecuritySettings = () => {
   const [settings, setSettings] = useState(null);
@@ -38,7 +40,7 @@ const SecuritySettings = () => {
         const data = await response.json();
         setSettings(data);
       } else {
-        alert('Failed to update settings.');
+        window.appAlert('Failed to update settings.');
       }
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -87,45 +89,35 @@ const SecuritySettings = () => {
   if (!settings) return <div>Loading...</div>;
 
   return (
-    <div className="security-settings-page">
-      <div className="security-header-top">
-        <div className="header-left">
-          <h2>Security Settings</h2>
-          <div className="page-breadcrumb">
-            <Link to="/"><Home size={14} /></Link>
-            <span className="slash">/</span>
-            <span>Security Settings</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="security-content-wrapper">
-        
-        {/* Left Card: Disallow Usernames */}
-        <div className="security-card">
-          <div className="security-card-header">
-            <h3>Disallow Usernames - Prevent Usernames from being registered</h3>
-          </div>
-          <div className="security-card-body">
-            
-            <div className="form-group-sec">
-              <label className="group-label">Disallow Username <span>*</span></label>
-              <input 
-                type="text" 
-                className="sec-input"
-                placeholder="Required Field.." 
+    <RecordPage
+      crumbs={[{ label: 'Settings' }]}
+      title="Security Settings"
+      backTo="/"
+      backLabel="Back to Dashboard"
+    >
+      <RecordGrid cols={2}>
+        <RecordColumn>
+          <RecordCard
+            icon={UserX}
+            title="Disallow Usernames - Prevent Usernames from being registered"
+          >
+            <RecordFields cols={1}>
+              <RecordField
+                label="Disallow Username"
+                required
+                placeholder="Required Field.."
                 value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
+                onChange={setNewUsername}
               />
-              <button className="btn-sec-action" onClick={handleAddUsername}>
-                Add Username
-              </button>
+            </RecordFields>
+            <div className="nx-rec-card__actions">
+              <Button variant="secondary" onClick={handleAddUsername}>Add Username</Button>
             </div>
 
-            <div className="form-group-sec">
-              <label className="group-label">Disallowed Usernames</label>
-              <select 
-                multiple 
+            <div className="nx-rec-field">
+              <span className="nx-rec-field__label">Disallowed Usernames</span>
+              <select
+                multiple
                 className="sec-multi-select"
                 value={selectedUsernames}
                 onChange={(e) => handleMultiSelect(e, setSelectedUsernames)}
@@ -134,40 +126,36 @@ const SecuritySettings = () => {
                   <option key={idx} value={username}>{username}</option>
                 ))}
               </select>
-              <button className="btn-sec-action" onClick={handleRemoveUsernames}>
-                Remove Disallowed Usernames
-              </button>
             </div>
+            <div className="nx-rec-card__actions">
+              <Button variant="secondary" onClick={handleRemoveUsernames}>Remove Disallowed Usernames</Button>
+            </div>
+          </RecordCard>
+        </RecordColumn>
 
-          </div>
-        </div>
-
-        {/* Right Card: Ban IP Addresses */}
-        <div className="security-card">
-          <div className="security-card-header">
-            <h3>Ban IP Addresses from Registering (or logging in)</h3>
-            <p className="subtitle">Block / Ban IP</p>
-          </div>
-          <div className="security-card-body">
-            
-            <div className="form-group-sec">
-              <label className="group-label">Address <span>*</span></label>
-              <input 
-                type="text" 
-                className="sec-input"
-                placeholder="e.g. 192.168.0.1 without leading zeros" 
+        <RecordColumn>
+          <RecordCard
+            icon={ShieldBan}
+            title="Ban IP Addresses from Registering (or logging in)"
+            subtitle="Block / Ban IP"
+          >
+            <RecordFields cols={1}>
+              <RecordField
+                label="Address"
+                required
+                placeholder="e.g. 192.168.0.1 without leading zeros"
                 value={newIp}
-                onChange={(e) => setNewIp(e.target.value)}
+                onChange={setNewIp}
               />
-              <button className="btn-sec-action" onClick={handleAddIp}>
-                Add IP Address
-              </button>
+            </RecordFields>
+            <div className="nx-rec-card__actions">
+              <Button variant="secondary" onClick={handleAddIp}>Add IP Address</Button>
             </div>
 
-            <div className="form-group-sec">
-              <label className="group-label">Banned IP Addresses</label>
-              <select 
-                multiple 
+            <div className="nx-rec-field">
+              <span className="nx-rec-field__label">Banned IP Addresses</span>
+              <select
+                multiple
                 className="sec-multi-select"
                 value={selectedIps}
                 onChange={(e) => handleMultiSelect(e, setSelectedIps)}
@@ -176,16 +164,14 @@ const SecuritySettings = () => {
                   <option key={idx} value={ip}>{ip}</option>
                 ))}
               </select>
-              <button className="btn-sec-action" onClick={handleRemoveIps}>
-                Remove Banned IP Addresses
-              </button>
             </div>
-
-          </div>
-        </div>
-
-      </div>
-    </div>
+            <div className="nx-rec-card__actions">
+              <Button variant="secondary" onClick={handleRemoveIps}>Remove Banned IP Addresses</Button>
+            </div>
+          </RecordCard>
+        </RecordColumn>
+      </RecordGrid>
+    </RecordPage>
   );
 };
 

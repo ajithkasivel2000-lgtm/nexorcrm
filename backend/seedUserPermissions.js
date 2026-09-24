@@ -8,8 +8,6 @@ const userPermissions = [
   { page: 'report',           view: false, create: false, edit: false, delete: false, export: false },
   { page: 'enquiries',        view: false, create: false, edit: false, delete: false, export: false },
   { page: 'projects',         view: false, create: false, edit: false, delete: false, export: false },
-  { page: 'properties',       view: false, create: false, edit: false, delete: false, export: false },
-  { page: 'services',         view: false, create: false, edit: false, delete: false, export: false },
   { page: 'channel-partners', view: false, create: false, edit: false, delete: false, export: false },
   { page: 'rrq',              view: false, create: false, edit: false, delete: false, export: false },
   { page: 'user-admin',       view: false, create: false, edit: false, delete: false, export: false },

@@ -1,0 +1,717 @@
+/* ===========================================================================
+   The in-app assistant, in the shape of a messaging app.
+
+   Built only from the design tokens, so it follows light and dark with the
+   rest of the CRM rather than carrying its own palette.
+   =========================================================================== */
+
+/* ---- the launcher --------------------------------------------------------- */
+.nx-chat__fab {
+  position: fixed;
+  right: var(--nx-space-5);
+  bottom: var(--nx-space-5);
+  z-index: var(--nx-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, .22);
+  transition: transform var(--nx-duration-fast) var(--nx-ease),
+    background-color var(--nx-duration-fast) var(--nx-ease);
+}
+
+.nx-chat__fab:hover {
+  background: var(--nx-accent-hover);
+  transform: translateY(-2px);
+}
+
+.nx-chat__fab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--nx-focus-ring);
+}
+
+/* An answer arrived while the chat was shut. */
+.nx-chat__fab-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--nx-danger);
+  border: 2px solid var(--nx-accent);
+}
+
+/* ---- the panel ------------------------------------------------------------ */
+.nx-chat {
+  position: fixed;
+  right: var(--nx-space-5);
+  bottom: var(--nx-space-5);
+  z-index: var(--nx-z-sticky);
+  display: flex;
+  flex-direction: column;
+  width: 390px;
+  height: min(620px, calc(100vh - 96px));
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-app);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .24);
+  font-family: var(--nx-font);
+}
+
+/* On a phone it is the screen, not a card floating on it. */
+@media (max-width: 560px) {
+  .nx-chat {
+    inset: 0;
+    width: auto;
+    height: auto;
+    border: none;
+    border-radius: 0;
+  }
+
+  .nx-chat__fab {
+    right: var(--nx-space-4);
+    bottom: var(--nx-space-4);
+  }
+}
+
+/* ---- header --------------------------------------------------------------- */
+.nx-chat__head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex: none;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-chat__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-chat__who {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-chat__name {
+  margin: 0;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-chat__status {
+  margin: 1px 0 0;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-chat__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: none;
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-chat__icon-btn:hover {
+  background: var(--nx-bg-hover);
+  color: var(--nx-accent);
+}
+
+.nx-chat__icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* ---- past conversations --------------------------------------------------- */
+.nx-chat__history {
+  flex: none;
+  max-height: 210px;
+  overflow-y: auto;
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-chat__history-empty {
+  margin: 0;
+  padding: var(--nx-space-4);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+.nx-chat__history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: var(--nx-space-2) var(--nx-space-4);
+  border: none;
+  border-bottom: var(--nx-divider);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-chat__history-item:hover {
+  background: var(--nx-bg-hover);
+}
+
+.nx-chat__history-item.is-active {
+  background: var(--nx-accent-soft);
+}
+
+.nx-chat__history-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nx-chat__history-title,
+.nx-chat__history-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-chat__history-title {
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  color: var(--nx-text);
+}
+
+.nx-chat__history-preview {
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-chat__history-del {
+  display: flex;
+  flex: none;
+  padding: 5px;
+  border-radius: var(--nx-radius-sm);
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-chat__history-del:hover {
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+}
+
+/* ---- the conversation ----------------------------------------------------- */
+.nx-chat__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--nx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-space-2);
+  background: var(--nx-bg-sunken);
+  scrollbar-width: thin;
+}
+
+.nx-chat__day {
+  display: flex;
+  justify-content: center;
+  margin: var(--nx-space-2) 0;
+}
+
+.nx-chat__day span {
+  padding: 2px 10px;
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-chat__row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--nx-space-2);
+}
+
+.nx-chat__row.is-mine {
+  justify-content: flex-end;
+}
+
+/* The bubble. Which side it sits on is what says who is speaking, so the
+   corner notch follows the side rather than being decoration. */
+.nx-chat__bubble {
+  position: relative;
+  max-width: 84%;
+  padding: var(--nx-space-3);
+  border-radius: var(--nx-radius);
+  border-bottom-left-radius: 4px;
+  background: var(--nx-bg-surface);
+  border: var(--nx-divider);
+  font-size: var(--nx-text-sm);
+  line-height: 1.55;
+  color: var(--nx-text);
+}
+
+.nx-chat__bubble.is-mine {
+  border-bottom-left-radius: var(--nx-radius);
+  border-bottom-right-radius: 4px;
+  background: var(--nx-accent-soft);
+  border-color: transparent;
+}
+
+.nx-chat__title {
+  margin: 0 0 4px;
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-accent);
+}
+
+.nx-chat__text {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.nx-chat__steps {
+  margin: var(--nx-space-2) 0 0;
+  padding-left: var(--nx-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--nx-text-secondary);
+}
+
+.nx-chat__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: var(--nx-space-2);
+  padding: 5px var(--nx-space-3);
+  border: 1px solid var(--nx-accent);
+  border-radius: var(--nx-radius-pill);
+  background: none;
+  color: var(--nx-accent);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-xs);
+  font-weight: var(--nx-weight-semibold);
+  cursor: pointer;
+}
+
+.nx-chat__link:hover {
+  background: var(--nx-accent-soft);
+}
+
+.nx-chat__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: var(--nx-space-2);
+}
+
+.nx-chat__chips-label {
+  width: 100%;
+  font-size: var(--nx-text-xs);
+  color: var(--nx-text-muted);
+}
+
+.nx-chat__chip {
+  padding: 4px 10px;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-surface);
+  color: var(--nx-text-secondary);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-chat__chip:hover {
+  border-color: var(--nx-accent);
+  color: var(--nx-accent);
+}
+
+/* Time and delivery, tucked under the text the way a messaging app puts it. */
+.nx-chat__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--nx-text-muted);
+}
+
+.nx-chat__tick {
+  color: var(--nx-text-muted);
+}
+
+/* Two ticks, coloured: the question reached the server and was stored. */
+.nx-chat__tick.is-sent {
+  color: var(--nx-accent);
+}
+
+/* ---- typing --------------------------------------------------------------- */
+.nx-chat__bubble--typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px var(--nx-space-3);
+}
+
+.nx-chat__bubble--typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nx-text-muted);
+  animation: nx-chat-typing 1.3s infinite ease-in-out;
+}
+
+.nx-chat__bubble--typing span:nth-child(2) { animation-delay: .18s; }
+.nx-chat__bubble--typing span:nth-child(3) { animation-delay: .36s; }
+
+@keyframes nx-chat-typing {
+  0%, 60%, 100% { opacity: .3; transform: translateY(0); }
+  30%           { opacity: 1;  transform: translateY(-3px); }
+}
+
+/* The dots are the only thing saying an answer is coming, so they stay —
+   they simply stop moving. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-chat__bubble--typing span {
+    animation: none;
+    opacity: .6;
+  }
+}
+
+/* ---- empty state ---------------------------------------------------------- */
+.nx-chat__welcome {
+  margin: auto 0;
+  padding: var(--nx-space-4);
+  text-align: center;
+}
+
+.nx-chat__welcome-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--nx-accent-soft);
+  color: var(--nx-accent);
+}
+
+.nx-chat__welcome-title {
+  margin: var(--nx-space-3) 0 4px;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+  color: var(--nx-text);
+}
+
+.nx-chat__welcome-text {
+  margin: 0 0 var(--nx-space-3);
+  font-size: var(--nx-text-sm);
+  line-height: 1.55;
+  color: var(--nx-text-muted);
+}
+
+.nx-chat__welcome .nx-chat__chips {
+  justify-content: center;
+}
+
+/* ---- errors and the composer ---------------------------------------------- */
+.nx-chat__error {
+  flex: none;
+  margin: 0;
+  padding: var(--nx-space-2) var(--nx-space-4);
+  background: var(--nx-danger-bg);
+  color: var(--nx-danger);
+  font-size: var(--nx-text-sm);
+}
+
+.nx-chat__composer {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  flex: none;
+  padding: var(--nx-space-3);
+  background: var(--nx-bg-surface);
+  border-top: var(--nx-divider);
+}
+
+.nx-chat__input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 var(--nx-space-3);
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  background: var(--nx-bg-app);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-base);
+  color: var(--nx-text);
+}
+
+.nx-chat__input:focus {
+  outline: none;
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-chat__send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: var(--nx-accent);
+  color: var(--nx-accent-contrast);
+  cursor: pointer;
+}
+
+.nx-chat__send:disabled {
+  background: var(--nx-bg-hover);
+  color: var(--nx-text-muted);
+  cursor: default;
+}
+
+.nx-chat__send:not(:disabled):hover {
+  background: var(--nx-accent-hover);
+}
+
+.nx-chat__send:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+/* ===========================================================================
+   The assistant as a screen of its own.
+
+   The widget's bubbles, chips, ticks and composer are reused exactly — only
+   the frame around them differs, so an answer looks the same either way.
+   =========================================================================== */
+
+.nx-chatpage {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--nx-space-4);
+  height: calc(100vh - 150px);
+  min-height: 460px;
+  padding: var(--nx-space-4);
+  font-family: var(--nx-font);
+  color: var(--nx-text);
+}
+
+/* ---- past conversations --------------------------------------------------- */
+.nx-chatpage__side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-surface);
+}
+
+.nx-chatpage__side-head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border-bottom: var(--nx-divider);
+}
+
+.nx-chatpage__heading {
+  flex: 1;
+  margin: 0;
+  font-size: var(--nx-text-md);
+  font-weight: var(--nx-weight-semibold);
+}
+
+.nx-chatpage__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--nx-space-3);
+  border: 1px solid var(--nx-accent);
+  border-radius: var(--nx-radius-sm);
+  background: none;
+  color: var(--nx-accent);
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  font-weight: var(--nx-weight-medium);
+  cursor: pointer;
+}
+
+.nx-chatpage__new:hover { background: var(--nx-accent-soft); }
+
+.nx-chatpage__search {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  margin: var(--nx-space-3);
+  padding: 0 var(--nx-space-3);
+  height: 34px;
+  border: 1px solid var(--nx-border-strong);
+  border-radius: var(--nx-radius-pill);
+  color: var(--nx-text-muted);
+}
+
+.nx-chatpage__search:focus-within {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px var(--nx-focus-ring);
+}
+
+.nx-chatpage__search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--nx-font);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text);
+}
+
+.nx-chatpage__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.nx-chatpage__empty {
+  margin: 0;
+  padding: var(--nx-space-5) var(--nx-space-4);
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+  text-align: center;
+}
+
+.nx-chatpage__item {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+  width: 100%;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  border: none;
+  border-bottom: var(--nx-divider);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-chatpage__item:hover { background: var(--nx-bg-hover); }
+.nx-chatpage__item.is-active { background: var(--nx-accent-soft); }
+
+.nx-chatpage__item-text { flex: 1; min-width: 0; }
+
+.nx-chatpage__item-top {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-2);
+}
+
+.nx-chatpage__item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-base);
+  font-weight: var(--nx-weight-medium);
+}
+
+.nx-chatpage__item-when {
+  flex: none;
+  font-size: 10px;
+  color: var(--nx-text-muted);
+}
+
+.nx-chatpage__item-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--nx-text-sm);
+  color: var(--nx-text-muted);
+}
+
+.nx-chatpage__del {
+  display: flex;
+  flex: none;
+  padding: 5px;
+  border-radius: var(--nx-radius-sm);
+  color: var(--nx-text-muted);
+  cursor: pointer;
+}
+
+.nx-chatpage__del:hover { background: var(--nx-danger-bg); color: var(--nx-danger); }
+
+/* ---- the conversation ----------------------------------------------------- */
+.nx-chatpage__main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--nx-divider);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-bg-app);
+}
+
+.nx-chatpage__main-head {
+  display: flex;
+  align-items: center;
+  gap: var(--nx-space-3);
+  flex: none;
+  padding: var(--nx-space-3) var(--nx-space-4);
+  background: var(--nx-bg-surface);
+  border-bottom: var(--nx-divider);
+}
+
+/* On the page the thread has the whole column, so bubbles can be wider than
+   they are in the 390px widget without the lines becoming hard to track. */
+.nx-chatpage .nx-chat__bubble { max-width: 62ch; }
+
+@media (max-width: 860px) {
+  .nx-chatpage {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    padding: var(--nx-space-3);
+  }
+
+  /* The list would push the conversation off the screen; New starts a fresh
+     one and the widget is still there for reaching an older one. */
+  .nx-chatpage__side { display: none; }
+  .nx-chatpage__main { height: calc(100vh - 150px); }
+}

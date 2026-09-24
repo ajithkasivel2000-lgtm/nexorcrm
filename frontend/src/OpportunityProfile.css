@@ -1,6 +1,6 @@
 .opportunity-profile-page {
   flex: 1;
-  background-color: var(--bg-main, #f8f9fa);
+  background-color: var(--bg-main, var(--nx-bg-app));
   padding: 15px 30px;
   overflow-y: auto;
   display: flex;
@@ -15,12 +15,12 @@
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--nx-text-muted);
   gap: 8px;
 }
 
 .page-breadcrumb .current {
-  color: #556ee6;
+  color: var(--nx-accent);
 }
 
 .page-breadcrumb .slash {
@@ -37,7 +37,7 @@
   flex: 3;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -45,7 +45,7 @@
 
 .profile-sidebar {
   flex: 1;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
@@ -66,10 +66,10 @@
 
 .info-column h3 {
   font-size: 15px;
-  color: #333;
+  color: var(--text-main);
   margin-bottom: 10px;
   padding-bottom: 5px;
-  border-bottom: 1px dashed #ddd;
+  border-bottom: 1px solid var(--nx-border);
 }
 
 .editable-field {
@@ -81,7 +81,7 @@
 .editable-field > label {
   flex: 0 0 160px;
   font-size: 12px;
-  color: #555;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -89,10 +89,10 @@
   flex: 1;
   display: flex;
   align-items: center;
-  border: 1px dashed #ddd;
+  border: 1px solid var(--nx-border);
   border-radius: 4px;
   padding: 6px 10px;
-  background: #fdfdfd;
+  background: var(--nx-bg-surface);
 }
 
 .field-content input, .field-content select {
@@ -101,20 +101,20 @@
   outline: none;
   background: transparent;
   font-size: 12px;
-  color: #333;
+  color: var(--text-main);
 }
 
 .value-display {
   flex: 1;
   font-size: 12px;
-  color: #333;
+  color: var(--text-main);
   min-height: 18px;
 }
 
 .btn-edit-inline {
   background: transparent;
   border: none;
-  color: #888;
+  color: var(--nx-text-muted);
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -123,19 +123,19 @@
 }
 
 .btn-edit-inline:hover {
-  color: #8c6cf5;
+  color: var(--nx-accent);
 }
 
 .divider-line {
   height: 1px;
-  background: #eee;
+  background: var(--nx-bg-hover);
   margin: 15px 0;
 }
 
 .bottom-tabs {
   display: flex;
   gap: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--nx-border);
   margin: 30px 0 20px;
 }
 
@@ -144,20 +144,20 @@
   border: none;
   padding: 10px 0;
   font-size: 13px;
-  color: #666;
+  color: var(--nx-text-muted);
   cursor: pointer;
   font-weight: 500;
   border-bottom: 2px solid transparent;
 }
 
 .bottom-tab.active {
-  color: #8c6cf5;
-  border-bottom-color: #8c6cf5;
+  color: var(--nx-accent);
+  border-bottom-color: var(--nx-accent);
 }
 
 .sidebar-tabs {
   display: flex;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--nx-border);
 }
 
 .sidebar-tab {
@@ -166,14 +166,14 @@
   border: none;
   padding: 15px;
   font-size: 13px;
-  color: #666;
+  color: var(--nx-text-muted);
   cursor: pointer;
   font-weight: 500;
 }
 
 .sidebar-tab.active {
-  color: #8c6cf5;
-  border-bottom: 2px solid #8c6cf5;
+  color: var(--nx-accent);
+  border-bottom: 2px solid var(--nx-accent);
 }
 
 .log-list {
@@ -193,7 +193,7 @@
   height: 32px;
   border-radius: 50%;
   overflow: hidden;
-  background: #f0ecfc;
+  background: var(--nx-accent-soft);
 }
 
 .log-avatar-img img {
@@ -205,17 +205,17 @@
 .log-content p {
   margin: 0 0 3px 0;
   font-size: 13px;
-  color: #333;
+  color: var(--text-main);
   font-weight: 500;
 }
 
 .log-content span {
   display: block;
   font-size: 11px;
-  color: #777;
+  color: var(--nx-text-muted);
 }
 
 .log-date {
-  color: #999;
+  color: var(--nx-text-muted);
   margin-top: 3px;
 }

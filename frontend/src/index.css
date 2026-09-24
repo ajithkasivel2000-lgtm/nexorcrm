@@ -1,254 +1,1351 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* Legacy palette, kept as aliases onto the design tokens so screens that
+   predate src/ui still match everything else — and follow dark mode from the
+   one definition in tokens.css. Prefer --nx-* directly in new code. */
+:root {
+  --bg-main: var(--nx-bg-app);
+  --bg-sidebar: var(--nx-sidebar-bg);
+  --bg-card: var(--nx-bg-surface);
+  --bg-header: var(--nx-bg-surface);
+  --text-main: var(--nx-text);
+  --text-muted: var(--nx-text-muted);
+  --border-color: var(--nx-border);
+  --sidebar-text: var(--nx-sidebar-text);
+  --sidebar-hover: var(--nx-sidebar-hover);
+  --header-icon-bg-hover: var(--nx-bg-hover);
+  --header-icon-color: var(--nx-text-secondary);
+  --stat-card-border: var(--nx-border);
+  --table-header-bg: var(--nx-bg-surface);
+  --table-header-color: var(--nx-text-secondary);
+}
+
+/* The aliases must be re-declared here, not just on :root. A custom property
+   is substituted using the value present on the element where it is declared —
+   an alias computed on :root would capture the LIGHT token and descendants
+   would inherit that, leaving light text on a dark ground. Re-declaring on the
+   dark-mode element makes each alias resolve against the dark token. */
+body.dark-mode {
+  --bg-main: var(--nx-bg-app);
+  --bg-sidebar: var(--nx-sidebar-bg);
+  --bg-card: var(--nx-bg-surface);
+  --bg-header: var(--nx-bg-surface);
+  --text-main: var(--nx-text);
+  --text-muted: var(--nx-text-muted);
+  --border-color: var(--nx-border);
+  --sidebar-text: var(--nx-sidebar-text);
+  --sidebar-hover: var(--nx-sidebar-hover);
+  --header-icon-bg-hover: var(--nx-bg-hover);
+  --header-icon-color: var(--nx-text-secondary);
+  --stat-card-border: var(--nx-border);
+  --table-header-bg: var(--nx-bg-surface);
+  --table-header-color: var(--nx-text-secondary);
+
+  background-color: var(--nx-bg-app);
+  color: var(--nx-text);
+}
+
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 171, 192, 0.5) transparent;
+}
+
+/* ---- Native form controls follow the theme ------------------------------
+   Without this, the browser paints <select>/<input>/<textarea> with its own
+   light-mode background (white) even in dark mode, making their text
+   unreadable (light text on white). :where() keeps the specificity at zero so
+   any component that styles its own inputs still wins over this fallback. */
+:where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  background-color: var(--nx-bg-surface);
+  color: var(--nx-text);
+  border-color: var(--nx-border);
+}
+
+/* Native controls (select arrow, checkboxes, date pickers) render dark. */
+body.dark-mode {
+  color-scheme: dark;
+}
+
+/* The popup list of native <select> options follows the theme as well. */
+select option {
+  background-color: var(--nx-bg-surface);
+  color: var(--nx-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--nx-text-muted);
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #f5f6f8;
+  background-color: var(--bg-main);
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  color: #333;
+  color: var(--text-main);
 }
+
+/* ===== Login Page Styles ===== */
 
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
+  min-height: 100vh;
   padding: 20px;
+  background-color: #f0f2f5;
+}
+
+body.dark-mode .login-container {
+  background-color: #0f172a;
 }
 
 .login-card {
   display: flex;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  background: var(--nx-bg-surface);
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  max-width: 900px;
+  max-width: 960px;
   width: 100%;
-  min-height: 500px;
+  min-height: 520px;
+  transition: all 0.3s ease-in-out;
 }
 
-/* Left Side - Login Form */
+body.dark-mode .login-card {
+  background: #1e293b;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Left Panel: Form ---- */
 .login-left {
   flex: 1;
-  padding: 60px 50px;
+  padding: 56px 48px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background: var(--nx-bg-surface);
+}
+
+body.dark-mode .login-left {
+  background: #1e293b;
 }
 
 .login-header {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .login-header h2 {
   font-size: 28px;
   font-weight: 700;
-  color: #333;
-  margin-bottom: 8px;
+  color: var(--nx-text);
+  margin-bottom: 6px;
+}
+
+body.dark-mode .login-header h2 {
+  color: #f1f5f9;
 }
 
 .login-header p {
-  color: #888;
-  font-size: 14px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+body.dark-mode .login-header p {
+  color: #94a3b8;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
-.input-group {
+.login-brand {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nx-text);
+  margin-top: 8px;
+}
+
+body.dark-mode .login-brand {
+  color: #f1f5f9;
+}
+
+/* Input fields */
+.login-input-group {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.input-group input {
+.login-input-group input {
   width: 100%;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border: none;
   background-color: #eef2ff;
-  border-radius: 8px;
-  font-size: 15px;
-  color: #333;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #334155;
   outline: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
-.input-group input:focus {
+.login-input-group input:focus {
   background-color: #e0e7ff;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
-.input-group input::placeholder {
-  color: #a0abc0;
+.login-input-group input::placeholder {
+  color: #94a3b8;
 }
 
-.toggle-password {
+body.dark-mode .login-input-group input {
+  background-color: #334155;
+  color: #f1f5f9;
+}
+
+body.dark-mode .login-input-group input:focus {
+  background-color: #475569;
+}
+
+body.dark-mode .login-input-group input::placeholder {
+  color: #64748b;
+}
+
+.login-input-group .toggle-password {
   position: absolute;
-  right: 15px;
+  right: 14px;
   background: none;
   border: none;
-  color: #888;
+  color: #94a3b8;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
+  transition: color 0.2s;
 }
 
+.login-input-group .toggle-password:hover {
+  color: #475569;
+}
+
+body.dark-mode .login-input-group .toggle-password {
+  color: #94a3b8;
+}
+
+body.dark-mode .login-input-group .toggle-password:hover {
+  color: #cbd5e1;
+}
+
+/* Sign in button */
 .btn-sign-in {
-  background-color: #212c4b;
-  color: white;
+  background-color: #1e293b;
+  color: #ffffff;
   border: none;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 10px;
+  padding: 14px 24px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 10px;
+  transition: background-color 0.2s, transform 0.15s;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
 }
 
 .btn-sign-in:hover {
-  background-color: #171f36;
+  background-color: #0f172a;
 }
 
-/* Right Side - Welcome Banner */
+.btn-sign-in:active {
+  transform: scale(0.98);
+}
+
+.btn-sign-in:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+body.dark-mode .btn-sign-in {
+  background-color: #3b82f6;
+}
+
+body.dark-mode .btn-sign-in:hover {
+  background-color: #2563eb;
+}
+
+/* Error message */
+.login-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid #fecaca;
+}
+
+body.dark-mode .login-error {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+/* ---- Right Panel: Branding ---- */
 .login-right {
   flex: 1;
-  background-color: #3b5296; /* Similar to the original blue in the image */
-  background: linear-gradient(135deg, #3b5296 0%, #2f4382 100%);
+  background-color: #2c3e75;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 60px 40px;
+  padding: 48px 36px;
   text-align: center;
-  color: white;
+  color: #ffffff;
 }
 
 .login-right-content {
-  max-width: 300px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
 }
 
-.logo {
-  max-width: 220px;
-  margin-bottom: 20px;
-}
-
-.login-right h3 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-
-.login-right p {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.btn-register {
-  background-color: white;
-  color: #3b5296;
-  border: none;
-  border-radius: 30px;
-  padding: 12px 30px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-register:hover {
-  background-color: #f0f0f0;
-  transform: translateY(-2px);
-}
-
-.dashboard {
-  text-align: center;
-  padding: 50px;
-}
-
-.dashboard h1 {
-  margin-bottom: 20px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .login-card {
-    flex-direction: column;
-  }
-  .login-card.register-mode {
-    flex-direction: column;
-  }
-  .login-right {
-    padding: 40px 20px;
-  }
-}
-
-.login-card {
-  transition: all 0.3s ease-in-out;
-}
-
-.login-card.register-mode {
-  flex-direction: row-reverse;
-}
-
-.logo-placeholder {
+/* Logo on right panel */
+.login-right-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
-.logo-icon {
+.login-right-logo-icon {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.logo-icon svg {
-  width: 24px;
-  height: 24px;
+.login-right-logo-icon svg {
+  width: 32px;
+  height: 32px;
 }
 
-.logo-text {
+.login-right-logo-text {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
 }
 
-.logo-text-main {
-  font-size: 24px;
+.login-right-logo-main {
+  font-size: 22px;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
-.text-yellow {
+.login-right-logo-main .nexor-yellow {
   color: #f5c618;
 }
 
-.tagline {
-  font-size: 10px;
+.login-right-logo-main .nexor-white {
+  color: #ffffff;
+}
+
+.login-right-tagline {
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.85);
   margin-top: 4px;
   text-transform: lowercase;
 }
 
+.login-right h3 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.login-right p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.btn-register {
+  background-color: var(--nx-bg-surface);
+  color: #2c3e75;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 32px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.btn-register:hover {
+  background-color: var(--nx-bg-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-register:active {
+  transform: scale(0.98);
+}
+
+/* ---- Global error banner ---- */
+.login-global-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.login-global-error.error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.login-global-error.success {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+body.dark-mode .login-global-error.error {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+body.dark-mode .login-global-error.success {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: #86efac;
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+/* ---- Info banner (password reset notices) ---- */
+.login-global-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  line-height: 1.5;
+}
+
+.theme-light .login-global-info {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+/* ---- Back to login link ---- */
+.back-to-login-p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 500;
+  margin-top: -12px;
+  transition: color 0.2s;
+}
+
+.back-to-login-p:hover {
+  color: #f5c618;
+}
+
+/* ---- "Need an account? Create one" switch under the login form ---- */
+.signup-switch-p {
+  text-align: center;
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 4px 0 0;
+}
+
+.signup-switch-p a {
+  color: #f5c618;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-switch-p a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .login-card {
+    flex-direction: column;
+  }
+
+  .login-card.register-mode {
+    flex-direction: column;
+  }
+
+  .login-left {
+    padding: 36px 24px;
+  }
+
+  .login-right {
+    padding: 32px 24px;
+    min-height: 200px;
+  }
+
+  .login-header h2 {
+    font-size: 24px;
+  }
+
+  .login-right h3 {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    border-radius: 12px;
+  }
+
+  .login-left {
+    padding: 24px 16px;
+  }
+
+  .login-right {
+    padding: 24px 16px;
+  }
+
+  .login-input-group input {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .btn-sign-in {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}
+
+/* PREMIUM ADVANCED LOGIN UI */
+
+@keyframes pulse-glow {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+@keyframes slide-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-container-premium {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #060913;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  z-index: 9999;
+}
+
+/* AI Neural Grid Background */
+.ai-tech-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0f172a;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.theme-light .ai-tech-bg {
+  background: var(--nx-bg-sunken);
+}
+
+/* The AI Grid */
+.ai-tech-bg::before {
+  content: '';
+  position: absolute;
+  width: 200vw;
+  height: 200vh;
+  top: -50%;
+  left: -50%;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform: perspective(600px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+  animation: move-grid 15s linear infinite;
+  opacity: 0.6;
+}
+
+.theme-light .ai-tech-bg::before {
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.1) 1px, transparent 1px);
+}
+
+/* Add data lines shooting across */
+.data-stream {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+  height: 2px;
+  width: 200px;
+  opacity: 0;
+  animation: shoot-line 3s linear infinite;
+}
+
+.ds-1 {
+  top: 20%;
+  left: -200px;
+  animation-duration: 4s;
+  animation-delay: 1s;
+}
+
+.ds-2 {
+  top: 60%;
+  left: -200px;
+  animation-duration: 5s;
+  animation-delay: 2.5s;
+}
+
+.ds-3 {
+  top: 80%;
+  left: -200px;
+  animation-duration: 3.5s;
+  animation-delay: 0.5s;
+}
+
+/* Verticals */
+.data-stream-v {
+  position: absolute;
+  background: linear-gradient(180deg, transparent, #f5c618, transparent);
+  width: 2px;
+  height: 200px;
+  opacity: 0;
+  animation: shoot-line-v 3s linear infinite;
+}
+
+.dsv-1 {
+  left: 15%;
+  top: -200px;
+  animation-duration: 4.5s;
+  animation-delay: 0s;
+}
+
+.dsv-2 {
+  left: 55%;
+  top: -200px;
+  animation-duration: 5s;
+  animation-delay: 3s;
+}
+
+.dsv-3 {
+  left: 85%;
+  top: -200px;
+  animation-duration: 4s;
+  animation-delay: 1.5s;
+}
+
+/* Glowing nodes */
+.ai-node {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #3b82f6;
+  border-radius: 50%;
+  box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.6);
+  animation: pulse-node 2s infinite alternate;
+}
+
+.node-1 {
+  top: 20%;
+  left: 15%;
+}
+
+.node-2 {
+  top: 60%;
+  left: 55%;
+}
+
+.node-3 {
+  top: 80%;
+  left: 85%;
+}
+
+.node-4 {
+  top: 60%;
+  left: 15%;
+}
+
+@keyframes move-grid {
+  0% {
+    transform: perspective(600px) rotateX(60deg) translateY(0) translateZ(-200px);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(60deg) translateY(60px) translateZ(-200px);
+  }
+}
+
+@keyframes shoot-line {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(120vw);
+    opacity: 0;
+  }
+}
+
+@keyframes shoot-line-v {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(120vh);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-node {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 1;
+  }
+}
+
+/* Light Theme overwrites */
+.theme-light .data-stream {
+  background: linear-gradient(90deg, transparent, #2563eb, transparent);
+}
+
+.theme-light .data-stream-v {
+  background: linear-gradient(180deg, transparent, #f59e0b, transparent);
+}
+
+.theme-light .ai-node {
+  background: #2563eb;
+  box-shadow: 0 0 15px 5px rgba(37, 99, 235, 0.4);
+}
+
+.login-card-premium {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  padding: 48px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: slide-up-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.login-brand-premium {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.login-brand-logo-file {
+  width: auto;
+  height: 60px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+
+.login-header-premium {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-header-premium h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 8px;
+}
+
+.login-header-premium p {
+  font-size: 15px;
+  color: #94a3b8;
+}
+
+.login-form-premium {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.input-group-premium {
+  position: relative;
+}
+
+/* Opaque rather than a tint over the glass card, and deliberately so: Chrome
+   repaints an autofilled input with its own background, which can only be
+   covered by an opaque inset shadow on the input itself. That shadow paints
+   the input's box, not the wrapper's, so the two colours have to match
+   exactly or the fill shows as a pale rectangle sitting inside the field —
+   which is what it did. These are the tints below resolved against the card
+   (#0f172a): 3% white, and 5% white on focus. */
+.input-wrapper-premium {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #161e30;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0 16px;
+  height: 60px;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper-premium:focus-within {
+  background: #1b2335;
+  border-color: rgba(245, 198, 24, 0.5);
+  box-shadow: 0 0 20px rgba(245, 198, 24, 0.1);
+}
+
+.input-icon-p {
+  color: #64748b;
+  margin-right: 16px;
+  transition: color 0.3s;
+}
+
+.input-wrapper-premium:focus-within .input-icon-p,
+.input-wrapper-premium.has-val .input-icon-p {
+  color: #f5c618;
+}
+
+.input-wrapper-premium input {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 16px;
+  outline: none;
+  padding-top: 14px;
+}
+
+/* ---- Autofill -------------------------------------------------------------
+   A remembered username arrives with Chrome's own pale blue background and
+   black text painted straight onto the input, which turned this field into a
+   light rectangle with an unreadable yellow label over it.
+
+   `background-color` is ignored on an autofilled field, so the fill is
+   covered with an inset shadow in the wrapper's colour instead, and the text
+   recoloured with -webkit-text-fill-color, which does win. The long
+   transition delay stops Chrome painting its blue for a frame first. */
+.input-wrapper-premium input:-webkit-autofill,
+.input-wrapper-premium input:-webkit-autofill:hover,
+.input-wrapper-premium input:-webkit-autofill:focus,
+.input-wrapper-premium input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8fafc;
+  caret-color: #f8fafc;
+  -webkit-box-shadow: 0 0 0 1000px #161e30 inset;
+  box-shadow: 0 0 0 1000px #161e30 inset;
+  transition: background-color 600000s 0s, color 600000s 0s;
+  font-size: 16px;
+}
+
+/* Focus lightens the wrapper, so the patch has to follow it. */
+.input-wrapper-premium:focus-within input:-webkit-autofill,
+.input-wrapper-premium:focus-within input:-webkit-autofill:hover,
+.input-wrapper-premium:focus-within input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1b2335 inset;
+  box-shadow: 0 0 0 1000px #1b2335 inset;
+}
+
+/* Firefox marks the field instead of repainting it. */
+.input-wrapper-premium input:autofill {
+  background: transparent;
+  color: #f8fafc;
+}
+
+.floating-label {
+  position: absolute;
+  left: 50px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
+  color: #64748b;
+  pointer-events: none;
+  transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-wrapper-premium:focus-within .floating-label,
+.input-wrapper-premium.has-val .floating-label {
+  top: 14px;
+  font-size: 11px;
+  color: #f5c618;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* An autofilled field has a value the moment it is painted, but `has-val`
+   comes from React state, which the browser does not update when it fills the
+   field. App.jsx adopts the value a frame later; these two rules float the
+   label immediately so it is never seen sitting on top of the text.
+
+   The label is the input's next sibling, hence `~`. `:-webkit-autofill` and
+   `:autofill` are kept as separate rules on purpose: a browser that does not
+   recognise one of them would throw away the whole selector list. */
+.input-wrapper-premium input:-webkit-autofill ~ .floating-label {
+  top: 14px;
+  font-size: 11px;
+  color: #f5c618;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.input-wrapper-premium input:autofill ~ .floating-label {
+  top: 14px;
+  font-size: 11px;
+  color: #f5c618;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.toggle-password-p {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.toggle-password-p:hover {
+  color: #cbd5e1;
+}
+
+/* ---- Sign in with Google --------------------------------------------------
+   Google renders its own button inside .google-signin-button and will not
+   accept our styling of it — brand rules — so the work here is only to give
+   it room and to sit it under a divider. */
+.google-signin-block {
+  margin-top: 24px;
+}
+
+.google-signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.google-signin-divider::before,
+.google-signin-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-light .google-signin-divider::before,
+.theme-light .google-signin-divider::after {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Google's iframe is a fixed pixel width, so it is centred rather than
+   stretched — forcing it wider just leaves a misaligned edge. */
+.google-signin-button {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.google-signin-unavailable {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.theme-light .google-signin-unavailable {
+  color: #64748b;
+}
+
+.input-highlight {
+  position: absolute;
+  bottom: -1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #f5c618, transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.input-wrapper-premium:focus-within .input-highlight {
+  opacity: 1;
+}
+
+.form-actions-premium {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: -4px;
+}
+
+.checkbox-container-premium {
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-size: 14px;
+  color: #94a3b8;
+  user-select: none;
+  padding-left: 28px;
+  transition: color 0.2s;
+}
+
+.checkbox-container-premium:hover {
+  color: #cbd5e1;
+}
+
+.checkbox-container-premium input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 18px;
+  width: 18px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.checkbox-container-premium:hover input~.checkmark {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.checkbox-container-premium input:checked~.checkmark {
+  background-color: #f5c618;
+  border-color: #f5c618;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
+  border: solid #0f172a;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-container-premium input:checked~.checkmark:after {
+  display: block;
+}
+
+.forgot-password-p {
+  font-size: 14px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.forgot-password-p:hover {
+  color: #f5c618;
+}
+
+.btn-sign-in-premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f5c618 0%, #d4a30b 100%);
+  color: #0d172a;
+  border: none;
+  border-radius: 12px;
+  height: 56px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px -6px rgba(245, 198, 24, 0.4);
+  margin-top: 8px;
+}
+
+.btn-content-p {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn-sign-in-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #ffe169 0%, #f5c618 100%);
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 0.3s;
+}
+
+.btn-sign-in-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -8px rgba(245, 198, 24, 0.6);
+}
+
+.btn-sign-in-premium:hover::before {
+  opacity: 1;
+}
+
+.btn-sign-in-premium:active {
+  transform: translateY(1px);
+}
+
+.btn-arrow {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-sign-in-premium:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.fade-in {
+  animation: 0.3s ease-in fade-in forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card-premium {
+    padding: 32px 24px;
+    border-radius: 16px;
+  }
+}
+
+/* ---- Theme Toggle Button ---- */
+.theme-toggle-btn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(15deg);
+}
+
+/* ---- Light Theme Variables & Overrides ---- */
+.theme-light {
+  background: var(--nx-bg-sunken);
+}
+
+.theme-light .bg-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+}
+
+.theme-light .login-card-premium {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .login-brand-logo-file {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+}
+
+.theme-light .login-header-premium h2 {
+  color: var(--nx-text);
+}
+
+.theme-light .login-header-premium p {
+  color: #64748b;
+}
+
+/* Opaque for the same reason as the dark rule above: the autofill patch below
+   paints the input's box and has to match the wrapper exactly. */
+.theme-light .input-wrapper-premium {
+  background: #f7f8fa;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .input-wrapper-premium:focus-within {
+  background: #ffffff;
+}
+
+.theme-light .input-wrapper-premium input {
+  color: var(--nx-text);
+}
+
+.theme-light .input-wrapper-premium input:-webkit-autofill,
+.theme-light .input-wrapper-premium input:-webkit-autofill:hover,
+.theme-light .input-wrapper-premium input:-webkit-autofill:focus,
+.theme-light .input-wrapper-premium input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--nx-text);
+  caret-color: var(--nx-text);
+  -webkit-box-shadow: 0 0 0 1000px #f7f8fa inset;
+  box-shadow: 0 0 0 1000px #f7f8fa inset;
+}
+
+.theme-light .input-wrapper-premium:focus-within input:-webkit-autofill,
+.theme-light .input-wrapper-premium:focus-within input:-webkit-autofill:hover,
+.theme-light .input-wrapper-premium:focus-within input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+.theme-light .input-wrapper-premium input:autofill {
+  color: var(--nx-text);
+}
+
+.theme-light .theme-toggle-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--nx-text);
+}
+
+.theme-light .theme-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .checkbox-container-premium {
+  color: #475569;
+}
+
+.theme-light .checkmark {
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.theme-light .btn-sign-in-premium {
+  color: var(--nx-text);
+}
