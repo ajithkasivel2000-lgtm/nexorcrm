@@ -12,6 +12,24 @@ set up.
 - **Suspend** signs a company's users out and blocks them until you reactivate it. Nothing is deleted.
 - Each company's data is invisible to every other company, and the database layer enforces this.
 
+## Plans, trials and billing
+- **New companies** start a 14-day free trial, either through **Start a free trial** on the sign-in page or when you create them under **Platform**.
+- **Billing & Plan** (Settings, company admins) shows the plan, trial days left and users used of the limit. They pick a plan and pay through Razorpay; invoices include 18% GST and download as PDFs.
+- **Plans** are managed under **Platform → Plans**. Starting plans: Starter ₹999/month for 5 users, Growth ₹2,999 for 20, Enterprise ₹7,999 unlimited. Prices are before GST.
+- **When a trial ends or a renewal fails:** a failed renewal keeps full access for 7 days. After that, users can still sign in, but only Billing opens until a plan is paid. Nothing is deleted.
+- **Offline payments:** as the platform admin, open a company under **Platform** to record a bank-transfer payment, extend a trial, change the plan or expire a subscription.
+- **User limits:** activating a user beyond the plan's limit is refused with a clear message.
+
+## Branding
+**Settings → Integrations → Company & lead forms → Branding:** upload a logo and pick a brand colour.
+They're used in the app and on the company's own sign-in page ().
+Emails are sent in the company's name unless Mail Settings has a From name.
+
+## Report builder
+**Report Builder** in the sidebar (Managers and above). Pick leads, opportunities, bookings, payments,
+site visits or calls; choose columns and filters or group and count/total; see a chart and table.
+Save and share reports, export CSV/PDF, or **Email on a schedule**.
+
 ## Company key and website forms
 **Settings → Integrations → Company & lead forms**
 - **Website form:** `POST /api/public/leads` with the header `X-Company-Key: <key>` and JSON
@@ -92,6 +110,12 @@ the email is queued and retried after 1, 5 and 30 minutes, then after 2 and 6 ho
 The **Documents** tab on a lead: upload agreements, KYC, brochures and similar (PDF, images, Word,
 Excel; up to 10MB). Files are private to people who can open the record. They are stored on the
 server's disk, or in S3 when it is configured.
+
+## Mobile app
+The mobile app includes Bookings & Payments (list, collections, recording payments). On a lead, it has WhatsApp, Call via CRM, call history and documents. Channel partners get a partner screen, and two-factor sign-in is supported.
+
+## Error monitoring
+Set `SENTRY_DSN` (server) and `VITE_SENTRY_DSN` (web build) to see errors in Sentry, tagged with company and user. No passwords, tokens or form data are sent. Without them, errors are only logged. A crash in any screen shows a Reload message instead of a blank page.
 
 ## Live updates
 Changes appear on colleagues' screens without refreshing: new leads, status changes, chat messages

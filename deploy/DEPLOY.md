@@ -28,7 +28,11 @@ cp .env.production .env
 | `PLATFORM_ADMINS=admin` | Who manages companies (Platform → Companies) |
 | `NODE_ENV=production` | |
 
-Optional settings (S3 storage, a shared Meta app, the AI assistant) are listed in `.env.example`.
+Optional settings are listed in `.env.example`: Razorpay billing (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`), trial length, Sentry (`SENTRY_DSN`), S3 storage, a shared Meta app, and the AI assistant.
+
+**Razorpay webhook:** in the Razorpay dashboard, add `https://os.nexorcrm.com/api/webhooks/razorpay` with the events `subscription.activated`, `subscription.charged`, `subscription.pending`, `subscription.halted` and `subscription.cancelled`. Use the same secret as `RAZORPAY_WEBHOOK_SECRET`.
+
+**Sentry for the web app:** build with `VITE_SENTRY_DSN=... npm run build`.
 
 ## 3. Install, build, create the database
 
@@ -139,5 +143,5 @@ npx eas build -p android      # or -p ios
 cd backend
 npm test                                         # unit tests
 TEST_DATABASE_URL=postgresql://…/nexorcrm_test npm test     # + database isolation tests
-npm run test:e2e     # HTTP suites: running server + THROWAWAY database only (see tests/e2e)
+npm run test:e2e     # HTTP suites (tenant, features, billing, reports): running server + THROWAWAY database only; see the header of each file in tests/e2e
 ```
