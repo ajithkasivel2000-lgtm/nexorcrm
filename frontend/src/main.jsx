@@ -1,5 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/react'
+import CrashNotice from './components/CrashNotice'
+
+/* Error monitoring: only when the build sets VITE_SENTRY_DSN. Crashes in the
+   browser are reported with no form data or tokens attached. */
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    sendDefaultPii: false,
+  })
+}
 import './index.css'
 import './ui/tokens.css'
 import './ui/legacy-modal.css'
@@ -21,9 +33,14 @@ window.addEventListener('vite:preloadError', () => {
   }
 });
 
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    {/* A crash in one screen shows this instead of a blank page (and is
+        reported when Sentry is on). */}
+    <Sentry.ErrorBoundary fallback={<CrashNotice />}>
+      <App />
+    </Sentry.ErrorBoundary>
     {/* Mounted beside App rather than inside it: App returns early for the
         signed-out view, and a toast raised on the login screen still has to
         land somewhere. */}

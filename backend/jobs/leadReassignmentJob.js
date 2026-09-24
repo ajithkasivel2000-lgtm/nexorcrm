@@ -54,7 +54,7 @@ async function sweepCompany(company) {
       if (worthLogging(result)) console.log(`[${name}] ${company.slug}`, JSON.stringify(result));
     } catch (error) {
       // Never let a bad sweep kill the interval; the next one may well work.
-      console.error(`[${name}] ${company.slug} sweep failed:`, error.message);
+      require('../utils/monitoring').captureError(error, { context: `sweep:${name}:${company.slug}` });
     }
   }
 }

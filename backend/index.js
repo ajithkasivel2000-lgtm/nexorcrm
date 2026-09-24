@@ -6,6 +6,11 @@ const fs = require('fs');
 const cors = require('cors');
 require('dotenv').config();
 
+// Error monitoring first, so it sees everything (Sentry only with SENTRY_DSN).
+const monitoring = require('./utils/monitoring');
+monitoring.initMonitoring();
+monitoring.installProcessHandlers();
+
 const leadRoutes = require('./routes/leadRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
 const customerRoutes = require('./routes/customerRoutes');
@@ -191,6 +196,9 @@ if (fs.existsSync(path.join(FRONTEND_DIST, 'index.html'))) {
 /* HOST=127.0.0.1 in production keeps the port off the public interface, so
    nginx is the only way in and the X-Forwarded-For it sets can be trusted. */
 const HOST = process.env.HOST || undefined;
+// Anything a route threw and did not answer: logged, reported, clean 500.
+app.use(monitoring.errorHandler);
+
 /* One HTTP server carries the REST API and the Socket.IO live updates. */
 const server = http.createServer(app);
 initRealtime(server);

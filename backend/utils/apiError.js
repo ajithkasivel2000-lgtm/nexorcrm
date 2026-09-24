@@ -66,6 +66,8 @@ function sendError(res, error, fallback, status = 500) {
   const known = classify(error);
   if (known) return res.status(known.status).json({ message: known.message });
 
+  // Unexpected failures go to monitoring (Sentry when configured).
+  if (status >= 500) require('./monitoring').captureError(error, { req: res.req, context: fallback });
   return res.status(status).json({ message: fallback });
 }
 
