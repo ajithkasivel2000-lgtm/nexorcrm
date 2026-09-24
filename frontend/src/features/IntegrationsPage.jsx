@@ -21,7 +21,15 @@ const TABS = [
   ['email', 'Email log'],
 ];
 
-export default function IntegrationsPage() {
+/* Checked before anything loads: without it the page mounted for a moment
+   while permissions loaded, and its refused requests surfaced as error pop-ups. */
+export default function IntegrationsPage(props) {
+  const allowed = ["Admin","superadmin"].includes(localStorage.getItem('userStatus'));
+  if (!allowed) return <Page title="Integrations"><p className="fx-muted">Only administrators can manage integrations.</p></Page>;
+  return <IntegrationsPageInner {...props} />;
+}
+
+function IntegrationsPageInner() {
   const [tab, setTab] = useState('company');
   return (
     <Page title="Integrations" subtitle="Connect WhatsApp, calling, ad platforms and reports to this company's CRM.">

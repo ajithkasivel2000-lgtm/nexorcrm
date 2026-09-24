@@ -32,7 +32,15 @@ function loadCheckout() {
   });
 }
 
-export default function BillingPage() {
+/* Checked before anything loads: without it the page mounted for a moment
+   while permissions loaded, and its refused requests surfaced as error pop-ups. */
+export default function BillingPage(props) {
+  const allowed = ["Admin","superadmin"].includes(localStorage.getItem('userStatus'));
+  if (!allowed) return <Page title="Billing & Plan"><p className="fx-muted">Only administrators can manage billing.</p></Page>;
+  return <BillingPageInner {...props} />;
+}
+
+function BillingPageInner() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');

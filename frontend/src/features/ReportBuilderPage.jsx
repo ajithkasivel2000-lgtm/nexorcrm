@@ -39,7 +39,15 @@ const fmtCell = (col, v) => {
   return String(v);
 };
 
-export default function ReportBuilderPage() {
+/* Checked before anything loads: without it the page mounted for a moment
+   while permissions loaded, and its refused requests surfaced as error pop-ups. */
+export default function ReportBuilderPage(props) {
+  const allowed = ["Admin","superadmin","Manager"].includes(localStorage.getItem('userStatus'));
+  if (!allowed) return <Page title="Report Builder"><p className="fx-muted">The report builder is for managers and administrators.</p></Page>;
+  return <ReportBuilderPageInner {...props} />;
+}
+
+function ReportBuilderPageInner() {
   const [schema, setSchema] = useState([]);
   const [config, setConfig] = useState(blank(null));
   const [result, setResult] = useState(null);
