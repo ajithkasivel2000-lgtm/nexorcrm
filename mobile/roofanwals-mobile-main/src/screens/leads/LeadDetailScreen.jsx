@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { leadsService } from '../../services/leads';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { WhatsAppPanel, CallsPanel, DocumentsPanel } from '../../components/LeadComms';
 import { useTheme } from '../../context/ThemeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -136,7 +137,7 @@ export default function LeadDetailScreen({ route, navigation }) {
           <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Email"       value={lead.email} />
           <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Lead Type"   value={lead.leadType} />
           <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Status"      value={lead.status} />
-          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Assigned To" value={lead.assignedTo?.name || lead.assignedToName} />
+          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Assigned To" value={lead.ownerName || lead.owner} />
           <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Branch"      value={lead.branch?.name || lead.branchName} />
         </Section>
 
@@ -149,9 +150,9 @@ export default function LeadDetailScreen({ route, navigation }) {
 
         {/* Property Interest */}
         <Section title="Property Interest" titleStyle={themed.sectionTitle} cardStyle={themed.sectionCard}>
-          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Project"      value={lead.interestedProject || lead.project?.name} />
-          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Budget"       value={lead.budget ? `₹${Number(lead.budget).toLocaleString()}` : null} />
-          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Requirements" value={lead.requirements} />
+          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Project"      value={lead.projectName || lead.project} />
+          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Budget"       value={lead.budgetLimit} />
+          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Notes"        value={lead.otherNotes} />
         </Section>
 
         {/* Dates */}
@@ -162,10 +163,15 @@ export default function LeadDetailScreen({ route, navigation }) {
           <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Last Updated"
             value={lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString('en-IN') : null}
           />
-          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Next Action Date"
-            value={lead.nextActionDate ? new Date(lead.nextActionDate).toLocaleDateString('en-IN') : null}
+          <InfoRow labelStyle={themed.infoLabel} valueStyle={themed.infoValue} label="Next Follow-up"
+            value={lead.followUpDate ? new Date(lead.followUpDate).toLocaleString('en-IN') : null}
           />
         </Section>
+
+        {/* Talking to the lead, and its files */}
+        <WhatsAppPanel leadId={lead.id} mobile={lead.mobile} />
+        <CallsPanel leadId={lead.id} />
+        <DocumentsPanel entityType="lead" entityId={lead.id} />
 
         <View style={{ height: 32 }} />
       </ScrollView>

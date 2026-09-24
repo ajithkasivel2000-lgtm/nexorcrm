@@ -12,6 +12,8 @@ import OpportunityDetailScreen from '../screens/opportunities/OpportunityDetailS
 import ProjectDetailScreen     from '../screens/projects/ProjectDetailScreen';
 import CreateChannelPartnerScreen from '../screens/channelPartners/CreateChannelPartnerScreen';
 import EditChannelPartnerScreen   from '../screens/channelPartners/EditChannelPartnerScreen';
+import BookingDetailScreen        from '../screens/bookings/BookingDetailScreen';
+import PartnerScreen              from '../screens/partner/PartnerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,7 +26,7 @@ const FALLBACK_FONTS = {
 };
 
 export default function AppNavigator() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const { colors, mode } = useTheme();
 
   const navTheme = {
@@ -60,7 +62,10 @@ export default function AppNavigator() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator screenOptions={SCREEN_OPTIONS}>
-        {isAuthenticated ? (
+        {isAuthenticated && user?.role === 'Partner' ? (
+          // Channel partners: the partner portal and nothing else (the server enforces the same).
+          <Stack.Screen name="Partner" component={PartnerScreen} options={{ headerShown: false }} />
+        ) : isAuthenticated ? (
           <>
             <Stack.Screen name="Main"              component={DrawerNavigator}         options={{ headerShown: false }} />
             <Stack.Screen name="LeadDetail"        component={LeadDetailScreen}        options={{ title: 'Lead' }} />
@@ -68,6 +73,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ProjectDetail"     component={ProjectDetailScreen}     options={{ title: 'Project' }} />
             <Stack.Screen name="CreateChannelPartner" component={CreateChannelPartnerScreen} options={{ title: 'New Channel Partner' }} />
             <Stack.Screen name="EditChannelPartner"   component={EditChannelPartnerScreen}   options={{ title: 'Edit Channel Partner' }} />
+            <Stack.Screen name="BookingDetail"        component={BookingDetailScreen}        options={{ title: 'Booking' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

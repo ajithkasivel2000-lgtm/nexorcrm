@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 /**
  * Dynamically resolve the backend URL:
@@ -39,6 +39,7 @@ console.log('[API] Base URL:', BASE_URL);
    the in-memory user must be cleared too — otherwise the UI keeps looking
    signed in while every request goes out tokenless. */
 let onAuthFailure = null;
+let subscriptionAlerted = false;
 export const setOnAuthFailure = (fn) => { onAuthFailure = fn; };
 
 const api = axios.create({
@@ -70,6 +71,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const url = error.config?.url || '';
+    // 402: the company's trial or subscription has lapsed — say so once.
+    if (error.response?.status === 402 && !subscriptionAlerted) {
+      subscriptionAlerted = true;
+      Alert.alert('Subscription', error.response.data?.message || 'Your company subscription is not active. An administrator can renew it on the web app.');
+    }
     if (error.response?.status === 401 && !url.includes('/auth/')) {
       await AsyncStorage.multiRemove(['authToken', 'authUser']);
       if (onAuthFailure) {

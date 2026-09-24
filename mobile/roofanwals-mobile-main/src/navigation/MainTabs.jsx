@@ -23,6 +23,7 @@ import TeamChatScreen from '../screens/chat/TeamChatScreen';
 import AssistantScreen from '../screens/assistant/AssistantScreen';
 import ChannelPartnersScreen from '../screens/channelPartners/ChannelPartnersScreen';
 import RRQScreen from '../screens/rrq/RRQScreen';
+import BookingsScreen from '../screens/bookings/BookingsScreen';
 
 import UserAdminScreen from '../screens/settings/UserAdminScreen';
 import UserGroupsScreen from '../screens/settings/UserGroupsScreen';
@@ -117,6 +118,7 @@ export default function MainTabs() {
       <Tab.Screen name="TeamChat" component={TeamChatScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tab.Screen name="Assistant" component={AssistantScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tab.Screen name="RRQ" component={RRQScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tab.Screen name="Bookings" component={BookingsScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       
       <Tab.Screen name="SettingsUserAdmin" component={UserAdminScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       <Tab.Screen name="SettingsUserGroups" component={UserGroupsScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />

@@ -50,6 +50,7 @@ const MENU_ITEMS = [
   { name: 'Import Leads', icon: 'file-text', route: 'ImportLeads' },
   { name: 'Opportunity', icon: 'briefcase', route: 'Opportunities' },
   { name: 'Customer', icon: 'users', route: 'Customers' },
+  { name: 'Bookings & Payments', icon: 'dollar-sign', route: 'Bookings' },
   { name: 'Report', icon: 'bar-chart-2', route: 'Reports' },
   { name: 'Channel Partners', icon: 'user-check', route: 'ChannelPartners' },
   { name: 'Team Chat', icon: 'message-square', route: 'TeamChat' },
