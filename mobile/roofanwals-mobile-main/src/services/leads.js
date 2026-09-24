@@ -27,13 +27,5 @@ export const leadsService = {
     return res.data;
   },
 
-  async getLeadActivities(id) {
-    const res = await api.get(`/leads/${id}/activities`);
-    return res.data;
-  },
 
-  async getLeadNotes(id) {
-    const res = await api.get(`/leads/${id}/notes`);
-    return res.data;
-  },
 };
