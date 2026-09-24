@@ -1,4 +1,5 @@
 const prisma = require('../prismaClient');
+const { assertSeatAvailable, SEAT_EXCLUDED } = require('../utils/billing');
 const { sendError } = require('../utils/apiError');
 const { requestIp } = require('../utils/settings');
 const { coerceEmails } = require('../utils/email');
@@ -523,6 +524,11 @@ exports.activateUsers = async (req, res) => {
     if (!userIds || !userIds.length) {
       return res.status(400).json({ message: 'No users selected' });
     }
+
+    // The plan's user limit (utils/billing.js).
+    try { await assertSeatAvailable(req.companyId, userIds.length); } catch (limitError) {
+      return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+    }
     /* Activation is for accounts waiting on it — Registered/Pending rows from
        sign-up. Scoping the write to those statuses means a hand-picked list of
        ids cannot be used to re-level existing staff, and the reserved admin is
@@ -558,6 +564,12 @@ exports.updateStatus = async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return res.status(404).json({ message: 'User not found' });
+    // Bringing an inactive account back uses a seat.
+    if (SEAT_EXCLUDED.includes(user.status) && !['ban', 'suspend', 'archive'].includes(String(action).toLowerCase())) {
+      try { await assertSeatAvailable(req.companyId, 1); } catch (limitError) {
+        return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+      }
+    }
 
     /* The route is Admin-gated, but the ladder itself needs its own ceiling:
        a plain Admin must not be able to mint another superadmin, and nobody

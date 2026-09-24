@@ -1,6 +1,7 @@
 const prisma = require('../prismaClient');
 const { getSessionSettings } = require('../utils/settings');
 const tenant = require('../utils/tenant');
+const { accessFor } = require('../utils/billing');
 
 /**
  * Middleware: verify that the request carries a real, unexpired session token.
@@ -95,6 +96,7 @@ async function verifySession(token) {
   if (!company || company.status !== 'Active') {
     return { error: { status: 403, message: 'This company account is suspended. Contact your provider.' } };
   }
+  const subscription = accessFor(company);
 
   /* The inactivity timeout from Session Settings, applied on every request:
      a session idle for longer than the configured minutes is refused even
@@ -130,7 +132,7 @@ async function verifySession(token) {
     data: { lastActive: new Date() },
   }).catch(() => {});
 
-  return { user, sessionId: session.id, companyId: session.companyId };
+  return { user, sessionId: session.id, companyId: session.companyId, subscription };
 }
 
 /**
@@ -148,6 +150,7 @@ function withSession(token) {
  * CRM's own routes can see the request.
  */
 const isPartnerUser = (user) => String(user?.status || '') === 'Partner';
+const BILLING_PATHS = ['/api/billing', '/api/auth/', '/api/company', '/api/notifications', '/api/push/', '/api/user-permissions/me', '/api/users/username/'];
 const PARTNER_PATHS = ['/api/partner/', '/api/auth/', '/api/notifications', '/api/push/'];
 
 function authMiddleware(req, res, next) {
@@ -164,6 +167,13 @@ function authMiddleware(req, res, next) {
       req.user = result.user;
       req.sessionId = result.sessionId;
       req.companyId = result.companyId;
+      req.subscription = result.subscription;
+      /* A lapsed trial or subscription: sign-in still works, but only billing
+         (and what the app needs to show it) opens until a plan is paid. */
+      if (result.subscription && !result.subscription.allowed
+        && !BILLING_PATHS.some((p) => req.originalUrl.startsWith(p))) {
+        return res.status(402).json({ message: result.subscription.reason, code: 'SUBSCRIPTION_INACTIVE' });
+      }
       if (isPartnerUser(result.user) && !PARTNER_PATHS.some((p) => req.originalUrl.startsWith(p))) {
         return res.status(403).json({ message: 'Channel partner accounts can only use the partner portal.' });
       }

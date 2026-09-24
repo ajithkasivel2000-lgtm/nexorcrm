@@ -39,6 +39,7 @@ const hookLimit = rateLimit('webhooks', { max: 600, windowMs: 60 * 1000 });
 hooks.get('/meta', hookLimit, webhooks.metaVerify);
 hooks.post('/meta', hookLimit, webhooks.metaEvent);
 hooks.post('/google-leads/:key', hookLimit, webhooks.googleLead);
+hooks.post('/razorpay', hookLimit, require('../controllers/billingController').webhook);
 // Exotel posts form-encoded unless told otherwise.
 hooks.post('/exotel/:callId', hookLimit, express.urlencoded({ extended: false }), webhooks.exotelStatus);
 

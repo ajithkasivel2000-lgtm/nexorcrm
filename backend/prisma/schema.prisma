@@ -1554,15 +1554,34 @@ model ReminderLog {
 /// which hangs off a user) carries companyId, and prismaClient.js scopes every
 /// query to the company of whoever is asking — see utils/tenant.js.
 model Company {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   name      String
-  slug      String   @unique
-  status    String   @default("Active") // Active | Suspended
+  slug      String  @unique
+  status    String  @default("Active") // Active | Suspended
   plan      String?
   /// Identifies the company to the public lead endpoints and webhooks.
-  publicKey String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  publicKey String  @unique
+
+  // Subscription (utils/billing.js)
+  planKey                String?
+  subscriptionStatus     String    @default("trialing") // trialing | active | past_due | cancelled | expired | internal
+  trialEndsAt            DateTime?
+  currentPeriodEnd       DateTime?
+  razorpaySubscriptionId String?   @unique
+  razorpayCustomerId     String?
+
+  // Billing details for GST invoices
+  legalName      String?
+  gstin          String?
+  billingAddress String?
+  billingEmail   String?
+  phone          String?
+
+  // Branding
+  logoKey    String?
+  brandColor String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 /**
@@ -1793,4 +1812,62 @@ model ScheduledReport {
 
   @@index([companyId])
   @@index([enabled, nextRunAt])
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * SaaS billing, branding and saved reports
+ * ---------------------------------------------------------------------------
+ */
+
+/// A subscription plan the platform sells. Platform-wide (no companyId).
+model Plan {
+  id             String   @id @default(uuid())
+  key            String   @unique // starter | growth | enterprise ...
+  name           String
+  pricePaise     Int // monthly price in paise, before GST
+  maxUsers       Int // active staff accounts allowed; 0 = unlimited
+  description    String?
+  features       String[] @default([])
+  active         Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  razorpayPlanId String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+/// A bill for one company: a subscription charge or a manual invoice.
+model Invoice {
+  companyId         String
+  id                String    @id @default(uuid())
+  number            String    @unique
+  planKey           String?
+  description       String
+  amountPaise       Int // before GST
+  gstPercent        Decimal   @default(18)
+  totalPaise        Int // amount + GST
+  currency          String    @default("INR")
+  status            String    @default("paid") // paid | due | failed | void
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  razorpayPaymentId String?   @unique
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+/// A report someone built in the report builder and saved.
+model SavedReport {
+  companyId String
+  id        String   @id @default(uuid())
+  name      String
+  /// { entity, columns, filters, groupBy, metric, sort }
+  config    Json
+  createdBy String?
+  shared    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }

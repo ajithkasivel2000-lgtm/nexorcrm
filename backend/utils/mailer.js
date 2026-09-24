@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const prisma = require('../prismaClient');
+const { runAsSystem, currentCompanyId } = require('./tenant');
 
 /**
  * The one way the CRM sends email.
@@ -22,8 +23,10 @@ async function getTransport() {
   const settings = await prisma.mailSetting.findFirst();
   if (!settings || settings.enabled === false || !settings.smtpHost) return null;
   const useAuth = settings.smtpAuth ? settings.smtpAuth === 'True' : Boolean(settings.smtpUsername);
+  const company = await runAsSystem(() => prisma.company.findUnique({ where: { id: currentCompanyId() || '' }, select: { name: true } })).catch(() => null);
   return {
     settings,
+    companyName: company?.name || null,
     transporter: nodemailer.createTransport({
       host: settings.smtpHost,
       port: Number(settings.smtpPort),
@@ -34,14 +37,16 @@ async function getTransport() {
   };
 }
 
-const fromLine = (settings) =>
-  `"${settings.fromName || 'NexorCRM'}" <${settings.fromEmail || settings.smtpUsername}>`;
+/* The sender's name: Mail Settings' From name, else the company's own name,
+   so a customer's emails never arrive signed by the platform. */
+const fromLine = (settings, companyName) =>
+  `"${settings.fromName || companyName || 'NexorCRM'}" <${settings.fromEmail || settings.smtpUsername}>`;
 
 const joinAddresses = (value) => (Array.isArray(value) ? value.filter(Boolean).join(', ') : value || null);
 
 async function deliver(row, mail) {
   await mail.transporter.sendMail({
-    from: fromLine(mail.settings),
+    from: fromLine(mail.settings, mail.companyName),
     to: row.to,
     cc: row.cc || undefined,
     bcc: row.bcc || undefined,

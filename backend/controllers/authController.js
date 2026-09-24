@@ -1,4 +1,5 @@
 const prisma = require('../prismaClient');
+const { assertSeatAvailable } = require('../utils/billing');
 const { sendError } = require('../utils/apiError');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -576,6 +577,12 @@ exports.register = async (req, res) => {
        User Admin screen. Landing at the bottom of the ladder, never the
        schema default. */
     const immediate = String(settings.accountActivation) === 'No Activation (immediate access)';
+    if (immediate) {
+    // The plan's user limit (utils/billing.js).
+    try { await assertSeatAvailable(company.id, 1); } catch (limitError) {
+      return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+    }
+    }
     const user = await prisma.user.create({
       data: {
         username: cleanUsername,
@@ -664,6 +671,10 @@ exports.activateAccount = async (req, res) => {
       return res.status(403).json({ message: 'This account cannot be activated.' });
     }
     if (status === 'registered' || status === 'pending') {
+    // The plan's user limit (utils/billing.js).
+    try { await assertSeatAvailable(user.companyId, 1); } catch (limitError) {
+      return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+    }
       await prisma.user.update({
         where: { id: user.id },
         data: { status: 'Employee', role: 'Employee', userlevel: 7 },

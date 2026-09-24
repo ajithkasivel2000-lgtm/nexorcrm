@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../prismaClient');
 const tenant = require('./tenant');
 const { isUsernameTaken } = require('./companyAdmin');
+const { TRIAL_DAYS } = require('./billing');
 
 /**
  * Setting up a company: the Company row, its first administrator, and the
@@ -88,8 +89,18 @@ async function provisionCompany(input) {
   const slugTaken = await prisma.company.findUnique({ where: { slug } });
   if (slugTaken) throw Object.assign(new Error('That company slug is already in use.'), { status: 409 });
 
+  // Every new company starts on a free trial; the plan decides its user limit.
+  const planKey = input.planKey || 'growth';
+  const plan = await prisma.plan.findUnique({ where: { key: planKey } });
+  if (!plan) throw Object.assign(new Error('Unknown plan.'), { status: 400 });
   const company = await prisma.company.create({
-    data: { name, slug, plan: input.plan || null, status: 'Active', publicKey: newPublicKey() },
+    data: {
+      name, slug, plan: plan.name, planKey: plan.key, status: 'Active', publicKey: newPublicKey(),
+      subscriptionStatus: 'trialing',
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86400000),
+      billingEmail: String(input.admin?.email || '').trim() || null,
+      phone: input.phone || null,
+    },
   });
 
   return tenant.runWithCompany(company.id, async () => {
@@ -103,7 +114,7 @@ async function provisionCompany(input) {
         status: 'superadmin',
         role: 'Admin',
         userlevel: 10,
-        forcePasswordChange: true,
+        forcePasswordChange: admin.mustChangePassword !== false,
       },
     });
     await seedDefaults();

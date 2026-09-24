@@ -14,6 +14,7 @@ import { applyPageMeta, SIGNED_OUT_META } from './utils/pageMeta';
 import { setAuth, getToken, getUsername, getSessionId, clearAuth } from './utils/sessionStore';
 import { connectRealtime, disconnectRealtime } from './utils/realtime';
 import TwoFactorCard from './login/TwoFactorCard';
+import CompanySignupCard from './login/CompanySignupCard';
 
 const lazyWithRetry = (componentImport) =>
   lazy(async () => {
@@ -72,6 +73,7 @@ const BookingsPage = lazyWithRetry(() => import('./features/BookingsPage'));
 const IntegrationsPage = lazyWithRetry(() => import('./features/IntegrationsPage'));
 const PlatformPage = lazyWithRetry(() => import('./features/PlatformPage'));
 const PartnerPortal = lazyWithRetry(() => import('./features/PartnerPortal'));
+const BillingPage = lazyWithRetry(() => import('./features/BillingPage'));
 
 /**
  * Keeps the tab title and meta tags in step with the route.
@@ -154,7 +156,15 @@ function App() {
   const [rememberMe, setRememberMe] = useState(false);
 
   // Password reset flow: 'login' | 'forgot' | 'reset'
-  const [view, setView] = useState('login');
+  const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('signup') === '1' ? 'start' : 'login'));
+  /* A company's own sign-in link (?company=slug) shows its logo and name. */
+  const [brand, setBrand] = useState(null);
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('company');
+    if (!slug) return;
+    fetch(`/api/public/branding?company=${encodeURIComponent(slug)}`)
+      .then((r) => (r.ok ? r.json() : null)).then((b) => b && setBrand(b)).catch(() => {});
+  }, []);
   const [forgotInput, setForgotInput] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -662,6 +672,7 @@ function App() {
               <Route path="settings/mail" element={<MailSettings />} />
               <Route path="settings/email-templates" element={<EmailTemplates />} />
               <Route path="settings/integrations" element={<IntegrationsPage />} />
+              <Route path="settings/billing" element={<BillingPage />} />
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="platform/companies" element={<PlatformPage />} />
               <Route path="my-profile" element={<MyProfile loggedInUser={loggedInUser} />} />
@@ -680,8 +691,23 @@ function App() {
   }
 
   return (
-    <LoginLayout theme={theme} onToggleTheme={toggleTheme}>
-      {view === 'login' && twoFactorChallenge ? (
+    <LoginLayout theme={theme} onToggleTheme={toggleTheme} brand={brand}>
+      {view === 'start' ? (
+        <CompanySignupCard
+          onBack={() => setView('login')}
+          onCreated={async (creds) => {
+            // Signed straight in with what they just chose.
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...creds, rememberMe: true }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.token) finishLogin(data);
+            else { setView('login'); setError(data.message || 'Your company is ready — please sign in.'); }
+          }}
+        />
+      ) : view === 'login' && twoFactorChallenge ? (
         <TwoFactorCard
           isLoading={isLoading}
           error={error}
@@ -711,7 +737,14 @@ function App() {
           onBusyChange={setIsLoading}
           formRef={loginFormRef}
         />
-      ) : (
+      ) : null}
+      {view === 'login' && !twoFactorChallenge && !brand && (
+        <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--nx-text-secondary, #94a3b8)' }}>
+          New to NexorCRM?{' '}
+          <button type="button" className="nx-card__link" onClick={() => { setError(''); setView('start'); }}>Start a free trial</button>
+        </p>
+      )}
+      {view === 'login' || view === 'start' ? null : (
         /* Sign-up, forgot-password and reset keep the card they already had.
            Only the sign-in step was redesigned; restyling the other three is a
            separate piece of work, and they sit inside the new shell meanwhile. */

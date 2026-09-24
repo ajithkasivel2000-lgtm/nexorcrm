@@ -20,6 +20,7 @@
  */
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../prismaClient');
+const { assertSeatAvailable } = require('../utils/billing');
 const { sendError } = require('../utils/apiError');
 const { auditEvent } = require('../utils/userAudit');
 const { getSessionSettings, requestIp } = require('../utils/settings');
@@ -173,6 +174,9 @@ exports.googleSignIn = async (req, res) => {
         return res.status(404).json({ message: 'That company was not found.' });
       }
       tenant.adopt(company.id);
+      try { await assertSeatAvailable(company.id, 1); } catch (limitError) {
+        return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+      }
       const domain = email.split('@')[1] || '';
       const domainAllowed = ALLOWED_DOMAINS.includes(domain);
 

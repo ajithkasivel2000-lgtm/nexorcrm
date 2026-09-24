@@ -1,4 +1,5 @@
 const prisma = require('../prismaClient');
+const { assertSeatAvailable, SEAT_EXCLUDED } = require('../utils/billing');
 const { sendError } = require('../utils/apiError');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -286,6 +287,14 @@ exports.setLifecycleStatus = async (req, res) => {
     const { status, reason } = req.body;
     if (!LIFECYCLE_STATUSES.includes(status)) {
       return res.status(400).json({ message: `Status must be one of: ${LIFECYCLE_STATUSES.join(', ')}.` });
+    }
+    if (status === 'Active') {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { status: true } });
+      if (target && SEAT_EXCLUDED.includes(target.status)) {
+        try { await assertSeatAvailable(req.companyId, 1); } catch (limitError) {
+          return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+        }
+      }
     }
     if (['Suspended', 'Banned', 'Locked'].includes(status) && !reason) {
       return res.status(400).json({ message: 'A reason is required when suspending, banning or locking an account.' });
@@ -732,6 +741,11 @@ exports.unarchive = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (!user.archivedAt) return res.status(400).json({ message: 'This account is not archived.' });
+
+    // The plan's user limit (utils/billing.js).
+    try { await assertSeatAvailable(req.companyId, 1); } catch (limitError) {
+      return res.status(limitError.status || 402).json({ message: limitError.message, code: 'PLAN_LIMIT' });
+    }
 
     const from = user.status;
     const updated = await prisma.user.update({

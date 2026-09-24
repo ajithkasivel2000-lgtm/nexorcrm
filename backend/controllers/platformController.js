@@ -45,8 +45,11 @@ exports.listCompanies = (req, res) => tenant.runAsSystem(async () => {
       prisma.booking.groupBy({ by: ['companyId'], _count: { id: true } }),
     ]);
     const count = (rows, id) => rows.find((r) => r.companyId === id)?._count.id || 0;
+    const { accessFor, trialEndOf } = require('../utils/billing');
     res.status(200).json(companies.map((c) => ({
       ...c,
+      access: accessFor(c),
+      trialEndsAt: c.subscriptionStatus === 'trialing' ? trialEndOf(c) : null,
       users: count(users, c.id),
       leads: count(leads, c.id),
       bookings: count(bookings, c.id),

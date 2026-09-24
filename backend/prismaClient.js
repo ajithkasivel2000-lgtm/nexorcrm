@@ -165,7 +165,7 @@ const withIds = base.$extends({
    stamped with it, here, once — so no controller can forget, and a row from
    one company can never be read, changed or deleted from another.
    --------------------------------------------------------------------------- */
-const TENANT_FREE = new Set(['company', 'passwordResetToken']);
+const TENANT_FREE = new Set(['company', 'passwordResetToken', 'plan']);
 
 const WHERE_OPS = new Set([
   'findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany',

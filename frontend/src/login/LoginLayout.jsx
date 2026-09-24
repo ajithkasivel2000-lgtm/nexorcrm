@@ -34,7 +34,7 @@ const NAV = [
   { id: 'growth', label: 'Growth' },
 ];
 
-export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', children }) {
+export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', brand = null, children }) {
   /* The nav highlights the cards it names rather than navigating. There is no
      marketing site behind these words — making them look like links to one
      would be the dishonest option, and making them inert would be worse. */
@@ -42,7 +42,8 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', c
   const [langOpen, setLangOpen] = useState(false);
 
   const dark = theme !== 'light';
-  const logo = dark ? '/logo_light.png' : '/logo_dark.png';
+  // A company's own sign-in page (?company=slug) shows its logo instead.
+  const logo = brand?.logoUrl || (dark ? '/logo_light.png' : '/logo_dark.png');
 
   return (
     <div className={`nx-login ${dark ? 'is-dark' : 'is-light'}`}>

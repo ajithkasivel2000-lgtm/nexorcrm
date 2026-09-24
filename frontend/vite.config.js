@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// The backend the dev server forwards to; API_TARGET overrides (e.g. a test backend).
+const API = process.env.API_TARGET || 'http://localhost:7012'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -20,9 +23,9 @@ export default defineConfig({
 
   server: {
     proxy: {
-      '/api': 'http://localhost:7012',
+      '/api': API,
       // Live updates (Socket.IO) — a websocket, so it needs ws: true.
-      '/socket.io': { target: 'http://localhost:7012', ws: true },
+      '/socket.io': { target: API, ws: true },
     }
   }
 });

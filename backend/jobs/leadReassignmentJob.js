@@ -21,6 +21,7 @@ const { runReminderSweep } = require('../utils/siteVisitReminders');
 const { runReminderSweep: runActivityReminders } = require('../utils/reminders');
 const { retryQueuedMail } = require('../utils/mailer');
 const { runDueReports } = require('../utils/scheduledReports');
+const { sweepSubscription } = require('../utils/billing');
 
 /** How often to look for expired windows. Not the window itself. */
 const SWEEP_INTERVAL_MS = 60 * 1000;
@@ -42,12 +43,14 @@ const TASKS = [
   ['reminders', runActivityReminders, (r) => r && (r.sent || r.escalated || r.errors)],
   ['mail-retry', retryQueuedMail, (r) => r > 0],
   ['scheduled-reports', runDueReports, (r) => r > 0],
+  // Trials and grace periods that have run out are marked expired.
+  ['subscription', (company) => sweepSubscription(company.id), (r) => Boolean(r)],
 ];
 
 async function sweepCompany(company) {
   for (const [name, task, worthLogging] of TASKS) {
     try {
-      const result = await task();
+      const result = await task(company);
       if (worthLogging(result)) console.log(`[${name}] ${company.slug}`, JSON.stringify(result));
     } catch (error) {
       // Never let a bad sweep kill the interval; the next one may well work.

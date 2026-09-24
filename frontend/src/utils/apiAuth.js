@@ -114,6 +114,16 @@ export default function installApiAuth() {
         return;
       }
 
+      /* 402: the company's trial or subscription has lapsed. The shell shows
+         why and sends administrators to the billing page. */
+      if (response.status === 402) {
+        response.clone().json().then((body) => {
+          if (body?.code === 'SUBSCRIPTION_INACTIVE') {
+            window.dispatchEvent(new CustomEvent('nx:subscription-inactive', { detail: body.message }));
+          }
+        }).catch(() => {});
+      }
+
       /* Anything that changed data on the server tells the rest of the app so,
          from here rather than from each of the ~120 call sites. Creating a
          user, promoting one, editing a lead — every screen showing those rows

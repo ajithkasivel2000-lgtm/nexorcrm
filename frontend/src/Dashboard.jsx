@@ -8,6 +8,7 @@ import './Dashboard.css';
 import { applyThemeColor } from './utils/pageMeta';
 import NotificationMenu from './components/NotificationMenu';
 import { subscribeDataChanged } from './utils/dataBus';
+import SubscriptionBanner from './features/SubscriptionBanner';
 
 const sidebarMenus = [
   {
@@ -72,6 +73,7 @@ const sidebarMenus = [
           { name: 'Email Templates', path: '/settings/email-templates', pageId: 'settings' },
           // WhatsApp, calling, ad lead sources, scheduled reports, company key.
           { name: 'Integrations', path: '/settings/integrations', pageId: 'settings' },
+          { name: 'Billing & Plan', path: '/settings/billing', pageId: 'settings' },
 
           // Accounts and access rules
           { name: 'Registration', path: '/settings/registration', pageId: 'settings' },
@@ -100,6 +102,24 @@ export default function Dashboard({ onLogout, loggedInUser }) {
   const [profileImage, setProfileImage] = useState('');
   // null until loaded; usePagePermissions treats null as unrestricted.
   const [permissions, setPermissions] = useState(null);
+  /* The company's branding (logo, accent colour) and subscription state.
+     A lapsed subscription is also announced by any API call that returns 402. */
+  const [brand, setBrand] = useState(null);
+  const [inactiveReason, setInactiveReason] = useState('');
+  useEffect(() => {
+    fetch('/api/branding').then((r) => (r.ok ? r.json() : null)).then((b) => {
+      if (!b) return;
+      setBrand(b);
+      if (b.brandColor) {
+        document.documentElement.style.setProperty('--nx-accent', b.brandColor);
+        document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
+      }
+    }).catch(() => {});
+    const onInactive = (e) => setInactiveReason(e.detail || 'Your subscription is not active.');
+    window.addEventListener('nx:subscription-inactive', onInactive);
+    return () => window.removeEventListener('nx:subscription-inactive', onInactive);
+  }, []);
+
   // Platform administrators (PLATFORM_ADMINS on the server) also manage companies.
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   useEffect(() => {
@@ -272,7 +292,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
   }, [permissions]);
 
   const filteredSidebarMenus = useMemo(() => (isPlatformAdmin
-    ? [...sidebarMenus, { title: 'PLATFORM', items: [{ name: 'Companies', path: '/platform/companies', icon: <Building size={18} /> }] }]
+    ? [...sidebarMenus, { title: 'PLATFORM', items: [{ name: 'Platform', path: '/platform/companies', icon: <Building size={18} /> }] }]
     : sidebarMenus)
     .map((section) => ({
       ...section,
@@ -418,11 +438,13 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         <div className="sidebar-logo">
           {isSidebarOpen ? (
             <div className="dashboard-logo-full">
-              <img src="/logo_light.png" alt="NexorCRM" style={{ height: '40px', objectFit: 'contain' }} />
+              {brand?.logoUrl
+                ? <img src={brand.logoUrl} alt={brand.name} style={{ height: '40px', maxWidth: '170px', objectFit: 'contain', background: '#fff', borderRadius: 6, padding: 2 }} />
+                : <img src="/logo_light.png" alt="NexorCRM" style={{ height: '40px', objectFit: 'contain' }} />}
             </div>
           ) : (
             <div className="dashboard-logo-icon">
-              <img src="/favicon.png" alt="NexorCRM Icon" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+              <img src={brand?.logoUrl || '/favicon.png'} alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
             </div>
           )}
           <button
@@ -640,6 +662,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         </header>
 
         <div className="dashboard-page-wrapper" ref={mainWrapperRef}>
+          <SubscriptionBanner subscription={brand?.subscription} inactiveReason={inactiveReason} onBilling={() => navigate('/settings/billing')} />
           {isPathAllowed ? (
             <Outlet context={{ userRole, permissions }} />
           ) : (

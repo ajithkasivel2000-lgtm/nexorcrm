@@ -3,7 +3,7 @@ import { Copy, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Switch, toast,
 } from '../ui';
-import { api, copyText, fmtDate } from './api';
+import { api, copyText, fmtDate, readAsDataUrl } from './api';
 import './features.css';
 
 /**
@@ -73,6 +73,7 @@ function CompanyTab() {
           }}>Issue a new key</Button>
         </div>
       </div>
+      <BrandingCard slugLink={e.signup} />
       <div className="fx-card">
         <h3 className="fx-card__title">Website form</h3>
         <p className="fx-card__hint">POST JSON with <code>name</code>, <code>mobile</code> and optionally <code>email</code>, <code>project</code>, <code>message</code>, sending the key in the <code>X-Company-Key</code> header.</p>
@@ -373,5 +374,61 @@ function EmailLogTab() {
         emptyMessage="No emails sent yet."
       />
     </>
+  );
+}
+
+/* ------------------------------------------------------------ branding --- */
+
+function BrandingCard({ slugLink }) {
+  const [brand, setBrand] = useState(null);
+  const [color, setColor] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api('/api/branding').then((b) => { setBrand(b); setColor(b?.brandColor || ''); }).catch(() => {});
+  }, []);
+  const save = async (body, message) => {
+    setBusy(true);
+    try {
+      const b = await api('/api/company/branding', { method: 'PUT', body });
+      setBrand(b);
+      if (b.brandColor) {
+        document.documentElement.style.setProperty('--nx-accent', b.brandColor);
+        document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
+      }
+      toast.success(message);
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  if (!brand) return null;
+  return (
+    <div className="fx-card">
+      <h3 className="fx-card__title">Branding</h3>
+      <p className="fx-card__hint">Your logo and colour in the app, on your sign-in page and in PDFs. Emails are sent in your company's name unless Mail Settings says otherwise.</p>
+      <div className="fx-row">
+        {brand.logoUrl
+          ? <img src={brand.logoUrl} alt="Company logo" style={{ height: 48, maxWidth: 200, objectFit: 'contain', background: '#fff', borderRadius: 8, padding: 4, border: '1px solid var(--nx-border)' }} />
+          : <span className="fx-muted">No logo yet.</span>}
+        <label className="nx-btn nx-btn--secondary nx-btn--md" style={{ cursor: 'pointer' }}>
+          Upload logo
+          <input type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            if (file.size > 1024 * 1024) { toast.error('Keep the logo under 1MB.'); return; }
+            save({ logoDataUrl: await readAsDataUrl(file) }, 'Logo saved.');
+          }} />
+        </label>
+        {brand.logoUrl && <Button onClick={() => save({ removeLogo: true }, 'Logo removed.')} disabled={busy}>Remove</Button>}
+      </div>
+      <div className="fx-row" style={{ marginTop: 'var(--nx-space-4)' }}>
+        <Field label="Brand colour">
+          <div className="fx-row">
+            <input type="color" value={color || '#4F46E5'} onChange={(e) => setColor(e.target.value)} aria-label="Pick a colour" style={{ width: 44, height: 36, border: 0, background: 'none' }} />
+            <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#4F46E5" style={{ width: 120 }} />
+          </div>
+        </Field>
+        <Button variant="primary" loading={busy} onClick={() => save({ brandColor: color }, 'Colour saved.')}>Save colour</Button>
+        {brand.brandColor && <Button onClick={() => { setColor(''); save({ brandColor: '' }, 'Back to the default colour.'); }}>Use default</Button>}
+      </div>
+      <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Your branded sign-in page: <code>{slugLink}</code></p>
+    </div>
   );
 }
