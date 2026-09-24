@@ -1,5 +1,6 @@
 const prisma = require('../prismaClient');
 const { assertSeatAvailable } = require('../utils/billing');
+const { applyRoleDefaults } = require('../utils/permissions');
 const { sendError } = require('../utils/apiError');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -622,6 +623,7 @@ exports.register = async (req, res) => {
     }
 
     if (immediate) {
+      await applyRoleDefaults(user.id, user.status, 'self-signup').catch(() => {});
       // Immediate access: the same session shape the login endpoint issues.
       const session = await prisma.session.create({
         data: {
@@ -679,6 +681,7 @@ exports.activateAccount = async (req, res) => {
         where: { id: user.id },
         data: { status: 'Employee', role: 'Employee', userlevel: 7 },
       });
+      await applyRoleDefaults(user.id, 'Employee', 'activation-link').catch(() => {});
       await auditEvent({
         userId: user.id,
         actor: user.username,

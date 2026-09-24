@@ -185,7 +185,27 @@ function requireAnyPermission(...grants) {
   };
 }
 
+/**
+ * Give an account its role's default page permissions, replacing any rows it
+ * had. Called wherever an account becomes active (activation, sign-up, SSO,
+ * role change). Without it a new account has no rows, and an account with no
+ * rows is unrestricted — so every freshly activated Employee could reach every
+ * page until someone ticked boxes by hand.
+ */
+async function applyRoleDefaults(userId, status, grantedBy = 'system') {
+  const { expandedDefaults } = require('./roleDefaults');
+  const defaults = expandedDefaults(status);
+  if (!defaults) return false;
+  await clearAll(userId);
+  for (const [page, actions] of Object.entries(defaults)) {
+    // eslint-disable-next-line no-await-in-loop
+    await setPermission(userId, page, actions, grantedBy);
+  }
+  return true;
+}
+
 module.exports = {
+  applyRoleDefaults,
   can,
   permissionsFor,
   flatPermissionsFor,

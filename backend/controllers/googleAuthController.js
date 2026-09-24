@@ -21,6 +21,7 @@
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../prismaClient');
 const { assertSeatAvailable } = require('../utils/billing');
+const { applyRoleDefaults } = require('../utils/permissions');
 const { sendError } = require('../utils/apiError');
 const { auditEvent } = require('../utils/userAudit');
 const { getSessionSettings, requestIp } = require('../utils/settings');
@@ -214,6 +215,7 @@ exports.googleSignIn = async (req, res) => {
         },
       });
       created = true;
+      await applyRoleDefaults(user.id, user.status, 'sso-signup').catch(() => {});
     }
 
     /* ---- 4. the same gates the password login applies -------------------- */

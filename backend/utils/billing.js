@@ -191,7 +191,26 @@ async function recordPayment(company, plan, { paymentId = null, periodStart = ne
   }
   const end = periodEnd || new Date(new Date(periodStart).getTime() + 30 * DAY);
   const amount = plan ? plan.pricePaise : 0;
-  const invoice = await tenant.runAsSystem(async () => prisma.invoice.create({
+  /* Idempotent under concurrency: a replayed webhook racing the first one hits
+     the unique payment id and gets the existing invoice back; two different
+     payments picking the same next number simply retry with the one after. */
+  let invoice = null;
+  for (let attempt = 0; attempt < 5 && !invoice; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      invoice = await createInvoiceRow();
+    } catch (error) {
+      if (error.code !== 'P2002') throw error;
+      if (paymentId) {
+        // eslint-disable-next-line no-await-in-loop
+        const existing = await tenant.runAsSystem(() => prisma.invoice.findUnique({ where: { razorpayPaymentId: paymentId } }));
+        if (existing) return existing;
+      }
+    }
+  }
+  if (!invoice) throw new Error('Could not allocate an invoice number.');
+
+  async function createInvoiceRow() { return tenant.runAsSystem(async () => prisma.invoice.create({
     data: {
       companyId: company.id,
       number: await nextInvoiceNumber(),
@@ -206,7 +225,7 @@ async function recordPayment(company, plan, { paymentId = null, periodStart = ne
       razorpayPaymentId: paymentId,
       paidAt: new Date(),
     },
-  }));
+  })); }
   await tenant.runAsSystem(() => prisma.company.update({
     where: { id: company.id },
     data: { subscriptionStatus: 'active', currentPeriodEnd: end, planKey: plan?.key || company.planKey },

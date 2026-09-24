@@ -30,6 +30,7 @@
 const { createRemoteJWKSet, jwtVerify } = require('jose');
 const prisma = require('../prismaClient');
 const { assertSeatAvailable } = require('../utils/billing');
+const { applyRoleDefaults } = require('../utils/permissions');
 const { sendError } = require('../utils/apiError');
 const { getSessionSettings, requestIp } = require('../utils/settings');
 const { accountBlockReason } = require('../middleware/authMiddleware');
@@ -206,6 +207,7 @@ exports.microsoftSignIn = async (req, res) => {
           registeredIp: ipAddress,
         },
       });
+      await applyRoleDefaults(user.id, user.status, 'sso-signup').catch(() => {});
     }
 
     /* ---- 4. the same gates the password login applies -------------------- */

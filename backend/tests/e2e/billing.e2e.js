@@ -72,6 +72,8 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
     r = await call(root, `/api/platform/companies/${company.id}/billing`, { method: 'POST', body: { action: 'set-plan', planKey: 'growth' } });
     r = await call(token, '/api/users/activate', { method: 'POST', body: { userIds: [waiting.id] } });
     check('after upgrade to Growth the user can be activated', r.status === 200, r.status);
+    const perms = await t.runWithCompany(company.id, () => p.userPermission.count({ where: { userId: waiting.id } }));
+    check('activation gives the Employee role default permissions', perms > 0, `rows=${perms}`);
 
     /* ---- expiry locks everything but billing ---- */
     await call(root, `/api/platform/companies/${company.id}/billing`, { method: 'POST', body: { action: 'expire' } });

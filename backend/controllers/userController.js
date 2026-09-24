@@ -6,6 +6,7 @@ const { coerceEmails } = require('../utils/email');
 const { checkDeliverable } = require('../utils/emailDomain');
 const { coerceDates } = require('../utils/coerceDates');
 const { expandedDefaults } = require('../utils/roleDefaults');
+const { applyRoleDefaults } = require('../utils/permissions');
 const {
   setPermission: setUserPermission, clearAll: clearAllPermissions,
 } = require('../utils/permissions');
@@ -546,6 +547,12 @@ exports.activateUsers = async (req, res) => {
         userlevel: 7
       }
     });
+    // Newly active accounts start with the Employee role's page permissions.
+    const activated = await prisma.user.findMany({ where: { id: { in: userIds }, status: 'Employee' }, select: { id: true, permissions: { select: { id: true }, take: 1 } } });
+    for (const u of activated) {
+      // eslint-disable-next-line no-await-in-loop
+      if (!u.permissions.length) await applyRoleDefaults(u.id, 'Employee', req.user?.username || 'system').catch(() => {});
+    }
     res.status(200).json({
       message: result.count > 0
         ? `${result.count} user(s) activated.`

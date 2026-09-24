@@ -34,6 +34,9 @@ const made = { projectId: null, users: [], integrationId: null, partnerId: null,
 (async () => {
   try {
     const adm = await mk(U.admin); const emp = await mk(U.employee);
+    // The employee holds the Employee role's default permissions, as an activated account does.
+    const empUser = await inCo(() => p.user.findFirst({ where: { username: U.employee } }));
+    await call(adm, `/api/user-permissions/${empUser.id}/apply-role-defaults`, { method: 'POST', body: '{}' });
 
     /* ---------------- bookings & payments ---------------- */
     const project = await inCo(() => p.project.create({ data: { projectName: `E2E Towers ${Date.now()}`, status: 'Active', gstPercent: 5 } }));
