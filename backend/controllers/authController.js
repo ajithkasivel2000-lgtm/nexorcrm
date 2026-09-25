@@ -101,13 +101,24 @@ exports.login = async (req, res) => {
      * else. Username is tried first so an account whose username happens to
      * look like someone else's email cannot shadow it. */
     const typed = String(username).trim();
+
+    /* A company's own sign-in (its domain, its ?company= link, or the Company
+       Login tab) lets only that company's people in. Someone from another
+       company is answered exactly like a wrong password, so the page does not
+       confirm which usernames exist elsewhere. */
+    const scope = await require('../utils/companyUrl').loginCompany(req);
+    if (scope.error) return res.status(400).json({ message: scope.error });
+    const inScope = (u) => !u || !scope.company || u.companyId === scope.company.id;
+
     let user = await prisma.user.findUnique({ where: { username: typed } });
+    if (!inScope(user)) user = null;
     if (!user && typed.includes('@')) {
       /* An email address can belong to accounts in more than one company; the
          username is what tells them apart, so an ambiguous email is refused
-         rather than guessed at. */
+         rather than guessed at. On a company's own sign-in only its accounts
+         are considered. */
       const byEmail = await prisma.user.findMany({
-        where: { email: { equals: typed, mode: 'insensitive' } },
+        where: { email: { equals: typed, mode: 'insensitive' }, ...(scope.company ? { companyId: scope.company.id } : {}) },
         take: 2,
       });
       if (byEmail.length > 1) {

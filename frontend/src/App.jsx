@@ -161,6 +161,8 @@ function App() {
   /* A company's own sign-in link (?company=slug), or its own domain
      (crm.roofonwalls.com), shows its logo and name. */
   const [brand, setBrand] = useState(null);
+  // The company code typed on the Company Login tab.
+  const [loginCompanyCode, setLoginCompanyCode] = useState('');
   useEffect(() => {
     const slug = new URLSearchParams(window.location.search).get('company');
     fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
@@ -324,7 +326,9 @@ function App() {
         },
         // rememberMe decides how long the server keeps the session; it was
         // never sent, so every session lasted one day whatever the box said.
-        body: JSON.stringify({ username, password, rememberMe })
+        /* A company's own page (its link or domain) or the Company Login tab
+           signs in to that company only. */
+        body: JSON.stringify({ username, password, rememberMe, ...((brand?.slug || loginCompanyCode) ? { company: brand?.slug || loginCompanyCode } : {}) })
       });
 
       const data = await response.json();
@@ -726,6 +730,8 @@ function App() {
         <SignInCard
           theme={theme}
           brandName={brand?.name}
+          companyCode={loginCompanyCode}
+          onCompanyCodeChange={setLoginCompanyCode}
           username={username}
           onUsernameChange={setUsername}
           password={password}

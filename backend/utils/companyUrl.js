@@ -55,4 +55,23 @@ async function companyByHost(host) {
   return company && company.status === 'Active' ? company : null;
 }
 
-module.exports = { normalizeDomain, assertClaimable, companyBaseUrl, companyByHost, platformUrl };
+/**
+ * Which company a sign-in is for, if any: the company code typed on the
+ * Company Login tab or carried by a company's sign-in link (?company=), else
+ * the company whose own domain the page is on. A sign-in for a company only
+ * lets that company's people in.
+ *
+ * Returns { company }, {} for the platform's general sign-in, or { error }.
+ */
+async function loginCompany(req) {
+  const slug = String(req.body?.company || '').trim().toLowerCase();
+  if (slug) {
+    const company = await tenant.runAsSystem(() => prisma.company.findUnique({ where: { slug } }));
+    if (!company) return { error: 'No company uses that company code. Check it with your administrator.' };
+    return { company };
+  }
+  const company = await companyByHost(req.hostname);
+  return company ? { company } : {};
+}
+
+module.exports = { normalizeDomain, assertClaimable, companyBaseUrl, companyByHost, platformUrl, loginCompany };

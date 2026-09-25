@@ -166,6 +166,13 @@ exports.googleSignIn = async (req, res) => {
     }
 
     // A known account: the rest of the sign-in belongs to its company.
+    /* On a company's own sign-in page only that company's accounts get in. */
+    const scope = await require('../utils/companyUrl').loginCompany(req);
+    if (scope.error) return res.status(400).json({ message: scope.error });
+    if (user && scope.company && user.companyId !== scope.company.id) {
+      return res.status(403).json({ message: `This account is not part of ${scope.company.name}. Sign in on your own company's page.` });
+    }
+
     if (user) tenant.adopt(user.companyId);
 
     /* ---- 3. nobody yet: may we make one? -------------------------------- */
