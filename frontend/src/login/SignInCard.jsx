@@ -35,7 +35,7 @@ const METHODS = [
 export default function SignInCard({
   theme,
   brandName,
-  companyCode = '', onCompanyCodeChange = () => { },
+  companyCode = '', onCompanyCodeChange = () => {},
   username, onUsernameChange,
   password, onPasswordChange,
   rememberMe, onRememberChange,
@@ -68,7 +68,26 @@ export default function SignInCard({
       <h2 className="nx-card__title">Welcome Back</h2>
       <p className="nx-card__sub">Sign in to your {brandName || 'NexorCRM'} account</p>
 
-
+      <div className="nx-card__tabs" role="tablist" aria-label="Sign-in method">
+        {methods.map(({ id, label, icon: Icon, ready, why }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={method === id}
+            /* Below 560px the label is hidden and only the icon shows, so the
+               name has to live on the button itself or the tab is unreadable
+               to a screen reader exactly where it is unreadable to everyone. */
+            aria-label={label}
+            className={`nx-card__tab ${method === id ? 'is-on' : ''} ${ready ? '' : 'is-pending'}`}
+            title={ready ? label : why}
+            onClick={() => pick(id)}
+          >
+            <Icon size={13} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
 
       {notice && <p className={`nx-card__banner is-${noticeTone}`}>{notice}</p>}
       {error && <p className="nx-card__banner is-error" role="alert">{error}</p>}
@@ -84,77 +103,68 @@ export default function SignInCard({
         <>
           <form onSubmit={onSubmit} className="nx-card__form" ref={formRef}>
             {method === 'company' && (
-              <div className="nx-card__field-group">
-                <label htmlFor="login-company" className="nx-card__label">Company Code</label>
-                <div className="nx-card__field">
-                  <Building2 size={17} className="nx-card__field-icon" aria-hidden="true" />
-                  <input
-                    id="login-company"
-                    name="company"
-                    type="text"
-                    autoComplete="organization"
-                    placeholder="Company code, e.g. roofonwalls"
-                    value={companyCode}
-                    onChange={(e) => onCompanyCodeChange(e.target.value.trim().toLowerCase())}
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-            <div className="nx-card__field-group">
-              <label htmlFor="login-username" className="nx-card__label">Username / Email</label>
               <div className="nx-card__field">
-                <Mail size={17} className="nx-card__field-icon" aria-hidden="true" />
+                <Building2 size={17} className="nx-card__field-icon" aria-hidden="true" />
                 <input
-                  id="login-username"
-                  name="username"
+                  id="login-company"
+                  name="company"
                   type="text"
-                  autoComplete="username"
-                  placeholder="Enter your email or username"
-                  value={username}
-                  onChange={(e) => onUsernameChange(e.target.value)}
+                  autoComplete="organization"
+                  placeholder="Company code, e.g. roofonwalls"
+                  value={companyCode}
+                  onChange={(e) => onCompanyCodeChange(e.target.value.trim().toLowerCase())}
                   required
                   autoFocus
                 />
-                {username && (
-                  <button
-                    type="button"
-                    className="nx-card__field-btn"
-                    onClick={() => onUsernameChange('')}
-                    aria-label="Clear"
-                    tabIndex={-1}
-                  >
-                    <X size={16} />
-                  </button>
-                )}
               </div>
-            </div>
-
-            <div className="nx-card__field-group">
-              <label htmlFor="login-password" className="nx-card__label">Password</label>
-              <div className="nx-card__field">
-                <Lock size={17} className="nx-card__field-icon" aria-hidden="true" />
-                <input
-                  id="login-password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => onPasswordChange(e.target.value)}
-                  required
-                />
+            )}
+            <div className="nx-card__field">
+              <Mail size={17} className="nx-card__field-icon" aria-hidden="true" />
+              <input
+                id="login-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                placeholder="Enter your email or username"
+                value={username}
+                onChange={(e) => onUsernameChange(e.target.value)}
+                required
+                autoFocus
+              />
+              {username && (
                 <button
                   type="button"
                   className="nx-card__field-btn"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => onUsernameChange('')}
+                  aria-label="Clear"
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  <X size={16} />
                 </button>
-              </div>
+              )}
+            </div>
+
+            <div className="nx-card__field">
+              <Lock size={17} className="nx-card__field-icon" aria-hidden="true" />
+              <input
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => onPasswordChange(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="nx-card__field-btn"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
             </div>
 
             <div className="nx-card__row">
