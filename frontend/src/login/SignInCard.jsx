@@ -33,6 +33,7 @@ const METHODS = [
 
 export default function SignInCard({
   theme,
+  brandName,
   username, onUsernameChange,
   password, onPasswordChange,
   rememberMe, onRememberChange,
@@ -59,7 +60,7 @@ export default function SignInCard({
   return (
     <div className="nx-card">
       <h2 className="nx-card__title">Welcome Back</h2>
-      <p className="nx-card__sub">Sign in to your NexorCRM account</p>
+      <p className="nx-card__sub">Sign in to your {brandName || 'NexorCRM'} account</p>
 
       <div className="nx-card__tabs" role="tablist" aria-label="Sign-in method">
         {METHODS.map(({ id, label, icon: Icon, ready, why }) => (

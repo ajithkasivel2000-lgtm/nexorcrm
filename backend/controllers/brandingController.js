@@ -62,10 +62,13 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
   }
 });
 
+/* A company is named by ?company=slug, or, on its own domain
+   (crm.roofonwalls.com), by the address the page was opened on. */
 exports.publicBranding = (req, res) => tenant.runAsSystem(async () => {
   const slug = String(req.query.company || '').trim().toLowerCase();
-  if (!slug) return res.status(200).json(null);
-  const company = await prisma.company.findUnique({ where: { slug } });
+  const company = slug
+    ? await prisma.company.findUnique({ where: { slug } })
+    : await require('../utils/companyUrl').companyByHost(req.hostname);
   if (!company || company.status !== 'Active') return res.status(200).json(null);
   return res.status(200).json(brandingOf(company));
 });

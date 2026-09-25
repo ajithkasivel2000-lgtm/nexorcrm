@@ -87,6 +87,26 @@ sudo certbot --nginx -d os.nexorcrm.com
 The config already includes the websocket headers Socket.IO needs.
 The DNS A record for `os.nexorcrm.com` must point at this server.
 
+### Client companies on their own domain (crm.roofonwalls.com, crm.landmint.com)
+
+A client can use the CRM on its own address. The address bar stays on their domain, the
+sign-in page and buyer portal show their logo, and emails (password reset, buyer links) link there.
+
+1. **DNS** (at the client's domain registrar): an `A` record, name `crm`, value = this server's IP.
+2. **nginx and HTTPS** (first time: install the file; afterwards just add names to `server_name`):
+   ```bash
+   sudo cp deploy/nginx-client-domains.conf /etc/nginx/sites-available/client-domains
+   sudo ln -s /etc/nginx/sites-available/client-domains /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo certbot --nginx -d crm.roofonwalls.com -d crm.landmint.com
+   ```
+3. **In NexorCRM:** Platform → Companies → open the company → **Own domain** → enter
+   `crm.roofonwalls.com` → Save.
+
+Staff sign in at `https://crm.roofonwalls.com`; buyers use `https://crm.roofonwalls.com/portal`.
+Google/Microsoft sign-in, if used, needs the new address added in the Google Cloud console
+("Authorized JavaScript origins") and the Microsoft app registration (redirect URIs).
+
 ## 7. Backups
 
 ```bash

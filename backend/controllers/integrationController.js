@@ -237,6 +237,13 @@ exports.emailLog = async (req, res) => {
 
 const GATEWAY_SECRETS = ['keySecret', 'webhookSecret'];
 
+/** The buyer portal's address: the company's own domain, or ?company= on the platform's. */
+async function portalUrlFor(companyId, base) {
+  const company = await require('../utils/tenant').runAsSystem(() => prisma.company.findUnique({ where: { id: companyId } }));
+  if (company?.customDomain) return `https://${company.customDomain}/portal`;
+  return `${base}/portal?company=${encodeURIComponent(company?.slug || '')}`;
+}
+
 exports.getBuyerPayments = async (_req, res) => {
   try {
     const [gateway, reminders] = await Promise.all([singleton('paymentGatewaySetting'), singleton('collectionReminderSetting')]);
@@ -245,7 +252,7 @@ exports.getBuyerPayments = async (_req, res) => {
       gateway: hide(gateway, GATEWAY_SECRETS),
       reminders,
       webhookUrl: `${base}/api/webhooks/razorpay-payments/${gateway.companyId}`,
-      portalUrl: `${base}/portal?company=${encodeURIComponent((await require('../utils/tenant').runAsSystem(() => prisma.company.findUnique({ where: { id: gateway.companyId } })))?.slug || '')}`,
+      portalUrl: await portalUrlFor(gateway.companyId, base),
     });
   } catch (error) { sendError(res, error, 'Could not load buyer payment settings', 500); }
 };

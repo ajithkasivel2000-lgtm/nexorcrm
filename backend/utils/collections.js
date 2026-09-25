@@ -21,7 +21,9 @@ const RAZORPAY_API = process.env.RAZORPAY_API_BASE || 'https://api.razorpay.com/
 const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-const appBase = () => String(process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+/* The company's own domain when it has one, else the platform's address. */
+const appBase = async (companyId) => (await require('./companyUrl').companyBaseUrl(companyId))
+  || String(process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
 
 /* ---- the company's gateway ---------------------------------------------- */
 
@@ -93,7 +95,7 @@ async function createPaymentLink(booking, { milestoneId = null, amount = null, c
         notify: { sms: false, email: false }, // we send our own messages
         reminder_enable: false,
         notes: { companyId: booking.companyId, bookingId: booking.id, paymentLinkId: row.id },
-        callback_url: `${appBase()}/portal?company=${encodeURIComponent(company?.slug || '')}`,
+        callback_url: `${await appBase(booking.companyId)}/portal?company=${encodeURIComponent(company?.slug || '')}`,
         callback_method: 'get',
       },
     });
@@ -186,7 +188,7 @@ async function issueLoginLink(email, { createdBy = null, ttlMs = 30 * 60 * 1000 
   });
   const companyId = tenant.currentCompanyId();
   const company = await tenant.runAsSystem(() => prisma.company.findUnique({ where: { id: companyId } }));
-  return `${appBase()}/portal?company=${encodeURIComponent(company.slug)}&token=${token}`;
+  return `${await appBase(companyId)}/portal?company=${encodeURIComponent(company.slug)}&token=${token}`;
 }
 
 /** Exchange a link token for a buyer session (single use). Runs in resolving mode. */

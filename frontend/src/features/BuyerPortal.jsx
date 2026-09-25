@@ -38,7 +38,7 @@ export default function BuyerPortal() {
     const slug = params.get('company');
     return saved && (!slug || saved.slug === slug) ? saved : null;
   });
-  const [slug] = useState(() => params.get('company') || readStore()?.slug || '');
+  const [slug, setSlug] = useState(() => params.get('company') || readStore()?.slug || '');
   const [linkToken] = useState(() => params.get('token'));
   const [paid] = useState(() => params.get('razorpay_payment_link_status') === 'paid');
   const [branding, setBranding] = useState(null);
@@ -48,10 +48,14 @@ export default function BuyerPortal() {
   useEffect(() => {
     // Nothing sensitive stays in the address bar.
     if (window.location.search) window.history.replaceState({}, document.title, `/portal${slug ? `?company=${encodeURIComponent(slug)}` : ''}`);
-    if (slug) fetch(`/api/public/branding?company=${encodeURIComponent(slug)}`).then((r) => r.json()).then(setBranding).catch(() => {});
+    // On a company's own domain the address says which company this is.
+    fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
+      .then((r) => r.json())
+      .then((b) => { setBranding(b); if (!slug && b?.slug) setSlug(b.slug); })
+      .catch(() => {});
     if (!linkToken) return;
     call('/api/buyer/sign-in', { method: 'POST', body: { token: linkToken } })
-      .then((r) => { const s = { token: r.token, email: r.email, slug }; writeStore(s); setSession(s); })
+      .then((r) => { const s = { token: r.token, email: r.email, slug: slug || params.get('company') || '' }; writeStore(s); setSession(s); })
       .catch((e) => setError(e.message))
       .finally(() => setExchanging(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

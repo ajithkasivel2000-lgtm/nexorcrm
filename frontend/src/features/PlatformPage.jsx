@@ -136,6 +136,8 @@ function CompanyModal({ company, plans, onClose, onAction, onSaved }) {
         </div>
       </form>
 
+      <DomainCard company={company} onSaved={onSaved} />
+
       <div className="fx-card">
         <h3 className="fx-card__title">Subscription</h3>
         <p className="fx-card__hint">
@@ -159,6 +161,45 @@ function CompanyModal({ company, plans, onClose, onAction, onSaved }) {
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** The company's own web address, e.g. crm.roofonwalls.com. */
+function DomainCard({ company, onSaved }) {
+  const [domain, setDomain] = useState(company.customDomain || '');
+  // What is saved now; the company row passed in is the one the dialog opened with.
+  const [current, setCurrent] = useState(company.customDomain || '');
+  const [saving, setSaving] = useState(false);
+  const save = async (value) => {
+    setSaving(true);
+    try {
+      const saved = await api(`/api/platform/companies/${company.id}`, { method: 'PUT', body: { customDomain: value } });
+      setDomain(saved.customDomain || '');
+      setCurrent(saved.customDomain || '');
+      toast.success(saved.customDomain ? `Domain set: ${saved.customDomain}` : 'Domain removed.');
+      onSaved();
+    } catch (err) { toast.error(err.message); } finally { setSaving(false); }
+  };
+  return (
+    <form className="fx-card" onSubmit={(e) => { e.preventDefault(); save(domain); }}>
+      <h3 className="fx-card__title">Own domain</h3>
+      <p className="fx-card__hint">
+        Run this company's CRM on its own address, such as <code>crm.{company.slug}.com</code>. Their staff sign in there and
+        their buyers use <code>/portal</code> on it, with the company's logo, and emails link to it. Before saving: add a DNS
+        <strong> A record</strong> for the domain pointing to this server, add the domain to the nginx config and run certbot
+        (see deploy/DEPLOY.md).
+      </p>
+      <div className="fx-row">
+        <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="crm.example.com" aria-label="Own domain" />
+        <Button variant="primary" type="submit" loading={saving}>Save domain</Button>
+        {current && <Button type="button" disabled={saving} onClick={() => save('')}>Remove</Button>}
+      </div>
+      {current && (
+        <p className="fx-card__hint" style={{ marginTop: 'var(--nx-space-2)' }}>
+          Live at <a href={`https://${current}`} target="_blank" rel="noreferrer">https://{current}</a>
+        </p>
+      )}
+    </form>
   );
 }
 

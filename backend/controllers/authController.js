@@ -43,7 +43,14 @@ const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
  * genuine email carry a working token to a site they control. Development
  * falls back to the request, since there is no one else to fool there.
  */
-function appUrl(req) {
+async function appUrl(req, user) {
+  // A company on its own domain (crm.roofonwalls.com) gets links to that
+  // domain. It comes from the company record, which only the platform owner
+  // sets, never from the request.
+  if (user?.companyId) {
+    const own = await require('../utils/companyUrl').companyBaseUrl(user.companyId);
+    if (own && own.startsWith('https://')) return own;
+  }
   const configured = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
   if (configured) return configured;
   if (process.env.NODE_ENV === 'production') return null;
@@ -707,7 +714,7 @@ async function sendActivationEmail(req, user) {
     console.warn(`Activation email for ${user.username} skipped — set ACTIVATION_SECRET (16+ characters) to enable activation links.`);
     return;
   }
-  const baseUrl = appUrl(req);
+  const baseUrl = await appUrl(req, user);
   if (!baseUrl) {
     console.warn(`Activation email for ${user.username} skipped — set APP_URL so the link has somewhere safe to point.`);
     return;
@@ -766,7 +773,7 @@ async function issueResetLink(req, user) {
     console.warn(`Password reset requested for ${user.username} but the account has no email address on file.`);
     return;
   }
-  const baseUrl = appUrl(req);
+  const baseUrl = await appUrl(req, user);
   if (!baseUrl) {
     console.error('Password reset email not sent: APP_URL is not set, so there is no safe address for the link.');
     return;

@@ -1,6 +1,7 @@
 const prisma = require('../prismaClient');
 const { sendError } = require('../utils/apiError');
 const tenant = require('../utils/tenant');
+const companyUrl = require('../utils/companyUrl');
 const { provisionCompany, newPublicKey } = require('../utils/provisioning');
 
 /**
@@ -80,6 +81,13 @@ exports.updateCompany = (req, res) => tenant.runAsSystem(async () => {
     const data = {};
     if (req.body?.name) data.name = String(req.body.name).trim();
     if (req.body?.plan !== undefined) data.plan = req.body.plan || null;
+    if (req.body?.customDomain !== undefined) {
+      const domain = companyUrl.normalizeDomain(req.body.customDomain);
+      if (domain) {
+        try { companyUrl.assertClaimable(domain); } catch (error) { return res.status(400).json({ message: error.message }); }
+      }
+      data.customDomain = domain;
+    }
     if (req.body?.status) {
       if (!['Active', 'Suspended'].includes(req.body.status)) return res.status(400).json({ message: 'Status must be Active or Suspended.' });
       // The platform's own company cannot be suspended from inside it.
@@ -92,6 +100,7 @@ exports.updateCompany = (req, res) => tenant.runAsSystem(async () => {
     res.status(200).json(company);
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ message: 'Company not found' });
+    if (error.code === 'P2002') return res.status(409).json({ message: 'Another company already uses that domain.' });
     sendError(res, error, 'Could not update the company', 400);
   }
 });
@@ -123,7 +132,7 @@ exports.myCompany = async (req, res) => {
       endpoints: {
         websiteLeads: `${base}/api/public/leads`,
         campaignLeads: `${base}/api/public/campaign-leads?key=${company.publicKey}&name=&mobile=`,
-        signup: `${base}/?company=${company.slug}`,
+        signup: company.customDomain ? `https://${company.customDomain}/` : `${base}/?company=${company.slug}`,
         googleLeadFormWebhook: `${base}/api/webhooks/google-leads/<integration key>`,
         metaWebhook: `${base}/api/webhooks/meta`,
         exotelStatusCallback: `${base}/api/webhooks/exotel/<call id>`,

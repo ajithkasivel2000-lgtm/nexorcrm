@@ -158,13 +158,19 @@ function App() {
 
   // Password reset flow: 'login' | 'forgot' | 'reset'
   const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('signup') === '1' ? 'start' : 'login'));
-  /* A company's own sign-in link (?company=slug) shows its logo and name. */
+  /* A company's own sign-in link (?company=slug), or its own domain
+     (crm.roofonwalls.com), shows its logo and name. */
   const [brand, setBrand] = useState(null);
   useEffect(() => {
     const slug = new URLSearchParams(window.location.search).get('company');
-    if (!slug) return;
-    fetch(`/api/public/branding?company=${encodeURIComponent(slug)}`)
-      .then((r) => (r.ok ? r.json() : null)).then((b) => b && setBrand(b)).catch(() => {});
+    fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (!b) return;
+        setBrand(b);
+        if (b.brandColor) document.documentElement.style.setProperty('--nx-accent', b.brandColor);
+      })
+      .catch(() => {});
   }, []);
   const [forgotInput, setForgotInput] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -719,6 +725,7 @@ function App() {
       ) : view === 'login' ? (
         <SignInCard
           theme={theme}
+          brandName={brand?.name}
           username={username}
           onUsernameChange={setUsername}
           password={password}

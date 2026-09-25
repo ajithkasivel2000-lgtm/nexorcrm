@@ -1557,6 +1557,8 @@ model Company {
   id        String  @id @default(uuid())
   name      String
   slug      String  @unique
+  /// The company's own web address (crm.roofonwalls.com), set by the platform owner.
+  customDomain String? @unique
   status    String  @default("Active") // Active | Suspended
   plan      String?
   /// Identifies the company to the public lead endpoints and webhooks.

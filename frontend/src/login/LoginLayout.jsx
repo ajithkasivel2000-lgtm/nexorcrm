@@ -42,7 +42,8 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
   const [langOpen, setLangOpen] = useState(false);
 
   const dark = theme !== 'light';
-  // A company's own sign-in page (?company=slug) shows its logo instead.
+  // A company's own sign-in page (?company=slug, or its own domain) shows its
+  // logo, or its name when it has not uploaded one.
   const logo = brand?.logoUrl || (dark ? '/logo_light.png' : '/logo_dark.png');
 
   return (
@@ -50,7 +51,9 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
       <div className="nx-login__scene" aria-hidden="true" />
 
       <header className="nx-login__top">
-        <img src={logo} alt="NexorCRM" className="nx-login__logo" />
+        {brand && !brand.logoUrl
+          ? <span className="nx-login__brandname">{brand.name}</span>
+          : <img src={logo} alt={brand?.name || 'NexorCRM'} className="nx-login__logo" />}
 
         <nav className="nx-login__nav" aria-label="What NexorCRM does">
           {NAV.map((n) => (

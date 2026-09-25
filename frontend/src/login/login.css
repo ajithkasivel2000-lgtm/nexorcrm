@@ -95,6 +95,7 @@
 }
 
 .nx-login__logo { height: 42px; width: auto; flex-shrink: 0; }
+.nx-login__brandname { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: var(--nx-accent, #4F46E5); flex-shrink: 0; }
 
 .nx-login__nav {
   display: flex;
