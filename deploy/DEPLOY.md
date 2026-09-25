@@ -98,7 +98,7 @@ sign-in page and buyer portal show their logo, and emails (password reset, buyer
    sudo cp deploy/nginx-client-domains.conf /etc/nginx/sites-available/client-domains
    sudo ln -s /etc/nginx/sites-available/client-domains /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
-   sudo certbot --nginx -d crm.roofonwalls.com -d crm.landmint.com
+   sudo certbot --nginx -d crm.roofonwalls.com
    ```
 3. **In NexorCRM:** Platform → Companies → open the company → **Own domain** → enter
    `crm.roofonwalls.com` → Save.
