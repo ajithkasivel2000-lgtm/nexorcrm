@@ -4,13 +4,37 @@ This guide is for company administrators. Each section says where the feature li
 set up.
 
 ## Companies (platform administrators)
-**Companies** in the sidebar, visible only to usernames listed in `PLATFORM_ADMINS`.
+**Platform → Companies** in the sidebar, visible only to the platform owner: usernames listed in
+`PLATFORM_ADMINS` that belong to the owner's own company. Your own company's row says **Your company**;
+manage its users from User Admin.
 
 - **New company** creates a separate CRM with its own users, leads, settings and lists. It comes with
   default lead statuses, sources, departments and email templates, plus a first administrator who
-  must change their password on first sign-in.
+  must change their password on first sign-in. Afterwards a **Login details to send** box shows the
+  sign-in link, username and temporary password, with **Copy** and **Send on WhatsApp**. The password
+  is shown only then.
+- **👁 View** shows the company's details, counts, subscription, sign-in address and its
+  administrators' logins (username, email, last sign-in, whether the password is still temporary).
+  Passwords are never shown.
+- **✏️ Edit** changes company and billing details, and the administrator's username, name, email and
+  phone. **Set a new temporary password** (type one or click **Generate**) replaces a lost password:
+  they are signed out and must choose their own at next sign-in.
+- **Clicking a row** opens the plan, trial and **Own domain** settings.
 - **Suspend** signs a company's users out and blocks them until you reactivate it. Nothing is deleted.
+- **Delete Selected** permanently removes the ticked companies and all of their data (users, leads,
+  bookings, payments, documents). Only suspended companies can be deleted, never your own.
 - Each company's data is invisible to every other company, and the database layer enforces this.
+
+## Signing in to a company
+Each client company signs in on its own sign-in page, which only lets that company's people in:
+- its own domain, such as `https://crm.roofonwalls.com` (see *Client companies on their own domain*
+  in DEPLOY.md), or
+- its link, `https://os.nexorcrm.com/?company=<company code>`, or
+- the **Company Code** box on the general sign-in page.
+
+On those pages the company's name, logo and colour are shown. Someone from another company, including
+the platform owner, is refused like a wrong password. Left blank, the Company Code box signs in as
+usual. The company code is the "slug" shown under Platform → Companies.
 
 ## Plans, trials and billing
 - **New companies** start a 14-day free trial, either through **Start a free trial** on the sign-in page or when you create them under **Platform**.
