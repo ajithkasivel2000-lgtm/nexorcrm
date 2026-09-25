@@ -134,7 +134,7 @@ const withIds = base.$extends({
           const data = await assignIds(allocate, key, clonePayload(args.data));
           /* A session's id is the bearer token itself: 256 random bits, never
              a readable counter. */
-          if (key === 'session' && !data.id) data.id = crypto.randomBytes(32).toString('hex');
+          if ((key === 'session' || key === 'buyerSession') && !data.id) data.id = crypto.randomBytes(32).toString('hex');
 
           try {
             return await query({ ...args, data });

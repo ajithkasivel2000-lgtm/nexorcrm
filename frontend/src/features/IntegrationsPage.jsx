@@ -17,6 +17,7 @@ const TABS = [
   ['whatsapp', 'WhatsApp'],
   ['calling', 'Calling (Exotel)'],
   ['sources', 'Facebook & Google leads'],
+  ['buyers', 'Buyer payments'],
   ['reports', 'Scheduled reports'],
   ['email', 'Email log'],
 ];
@@ -43,6 +44,7 @@ function IntegrationsPageInner() {
         {tab === 'whatsapp' && <WhatsAppTab />}
         {tab === 'calling' && <ExotelTab />}
         {tab === 'sources' && <SourcesTab />}
+        {tab === 'buyers' && <BuyerPaymentsTab />}
         {tab === 'reports' && <ReportsTab />}
         {tab === 'email' && <EmailLogTab />}
       </div>
@@ -438,5 +440,96 @@ function BrandingCard({ slugLink }) {
       </div>
       <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Your branded sign-in page: <code>{slugLink}</code></p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------ buyer payments --- */
+
+function BuyerPaymentsTab() {
+  const [data, setData] = useState(null);
+  const [gw, setGw] = useState(null);
+  const [rm, setRm] = useState(null);
+  const [log, setLog] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const apply = (d) => { setData(d); setGw(d.gateway); setRm({ ...d.reminders, daysBefore: d.reminders.daysBefore.join(', ') }); };
+  useEffect(() => {
+    api('/api/integrations/buyer-payments').then(apply).catch((e) => toast.error(e.message));
+    api('/api/integrations/buyer-payments/reminders').then(setLog).catch(() => {});
+  }, []);
+  if (!data) return <p className="fx-muted">Loading…</p>;
+
+  const val = (e) => (e.target.type === 'checkbox' ? e.target.checked : e.target.value);
+  const setG = (k) => (e) => setGw((x) => ({ ...x, [k]: val(e) }));
+  const setR = (k) => (e) => setRm((x) => ({ ...x, [k]: val(e) }));
+  const save = async (body) => {
+    setSaving(true);
+    try { apply(await api('/api/integrations/buyer-payments', { method: 'PUT', body })); toast.success('Saved.'); } catch (e) { toast.error(e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <>
+      <form className="fx-card" onSubmit={(e) => { e.preventDefault(); save({ gateway: { enabled: gw.enabled, keyId: gw.keyId, keySecret: gw.keySecret, webhookSecret: gw.webhookSecret } }); }}>
+        <h3 className="fx-card__title">Online payments from buyers (Razorpay)</h3>
+        <p className="fx-card__hint">
+          Your company's own Razorpay account: buyers' money goes straight to you. Keys are under
+          <strong> Razorpay Dashboard → Account & Settings → API Keys</strong>. Use test keys first.
+        </p>
+        <Switch label="Accept online payments" checked={Boolean(gw.enabled)} onChange={setG('enabled')} />
+        <FormGrid columns={2}>
+          <Field label="Key ID" required><Input value={gw.keyId} onChange={setG('keyId')} placeholder="rzp_live_…" /></Field>
+          <Field label="Key secret" hint={gw.keySecretSet ? 'Saved. Leave blank to keep it.' : undefined}><Input type="password" value={gw.keySecret} onChange={setG('keySecret')} autoComplete="off" /></Field>
+          <Field label="Webhook secret" hint={gw.webhookSecretSet ? 'Saved. Leave blank to keep it.' : 'The secret you type when adding the webhook below.'}><Input type="password" value={gw.webhookSecret} onChange={setG('webhookSecret')} autoComplete="off" /></Field>
+        </FormGrid>
+        <h3 className="fx-card__title" style={{ marginTop: 'var(--nx-space-4)' }}>Webhook (Razorpay → Settings → Webhooks)</h3>
+        <p className="fx-card__hint">Add this URL with the webhook secret above and tick <code>payment_link.paid</code>, <code>payment_link.expired</code> and <code>payment_link.cancelled</code>. Paid links are then recorded on the booking automatically, with a receipt emailed to the buyer.</p>
+        <CopyLine value={data.webhookUrl} />
+        <div className="fx-card__actions"><Button variant="primary" type="submit" loading={saving}>Save payment settings</Button></div>
+      </form>
+
+      <div className="fx-card">
+        <h3 className="fx-card__title">Buyer portal</h3>
+        <p className="fx-card__hint">Buyers sign in with the email on their booking and get a one-time link. They see their payment plan, pay online, and download receipts and documents. Put this link on your website, or send each buyer their own link from the booking.</p>
+        <CopyLine value={data.portalUrl} />
+      </div>
+
+      <form className="fx-card" onSubmit={(e) => {
+        e.preventDefault();
+        save({ reminders: { ...rm, daysBefore: String(rm.daysBefore).split(/[,s]+/).filter(Boolean).map(Number) } });
+      }}>
+        <h3 className="fx-card__title">Payment reminders</h3>
+        <p className="fx-card__hint">Sent automatically between 9am and 8pm for every milestone with money outstanding. Each reminder goes once.</p>
+        <Switch label="Send payment reminders" checked={Boolean(rm.enabled)} onChange={setR('enabled')} />
+        <FormGrid columns={3}>
+          <Field label="Days before the due date" hint="e.g. 7, 1 (0 = on the day)"><Input value={rm.daysBefore} onChange={setR('daysBefore')} /></Field>
+          <Field label="When overdue, repeat every (days)"><Input type="number" min="1" max="60" value={rm.overdueEveryDays} onChange={setR('overdueEveryDays')} /></Field>
+          <Field label="Overdue reminders at most"><Input type="number" min="0" max="20" value={rm.maxOverdue} onChange={setR('maxOverdue')} /></Field>
+        </FormGrid>
+        <Switch label="By email" checked={Boolean(rm.email)} onChange={setR('email')} />
+        <Switch label="Include a pay-online link (when Razorpay is on)" checked={Boolean(rm.includePayLink)} onChange={setR('includePayLink')} />
+        <Switch label="By WhatsApp (approved template)" checked={Boolean(rm.whatsapp)} onChange={setR('whatsapp')} />
+        {rm.whatsapp && (
+          <FormGrid columns={2}>
+            <Field label="Template name" required hint="Body variables: {{1}} buyer, {{2}} milestone, {{3}} amount, {{4}} due date, {{5}} link"><Input value={rm.whatsappTemplate} onChange={setR('whatsappTemplate')} /></Field>
+            <Field label="Language code"><Input value={rm.whatsappLanguage} onChange={setR('whatsappLanguage')} placeholder="en" /></Field>
+          </FormGrid>
+        )}
+        <div className="fx-card__actions"><Button variant="primary" type="submit" loading={saving}>Save reminders</Button></div>
+      </form>
+
+      <h3 className="fx-card__title">Recent reminders</h3>
+      <DataTable
+        columns={[
+          { key: 'sentAt', label: 'When', render: (r) => fmtDate(r.sentAt) },
+          { key: 'bookingId', label: 'Booking', render: (r) => <span className="nx-page__id">{r.bookingId}</span> },
+          { key: 'slot', label: 'Reminder', render: (r) => r.slot.replace('before-0', 'on the day').replace('before-', '').replace(/^(d+)$/, '$1 days before').replace('overdue-', 'overdue #') },
+          { key: 'channel', label: 'By' },
+          { key: 'status', label: 'Status', render: (r) => <Pill tone={r.status === 'sent' ? 'success' : r.status === 'failed' ? 'danger' : 'neutral'} title={r.error || undefined}>{r.status}</Pill> },
+        ]}
+        rows={log}
+        selectable={false}
+        timestamps={false}
+        emptyMessage="No reminders sent yet."
+      />
+    </>
   );
 }

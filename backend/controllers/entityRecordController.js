@@ -53,7 +53,7 @@ async function resolve(req, res) {
   return RECORD_TYPES[recordType];
 }
 
-const PARENT_PAGES = { lead: 'leads', opportunity: 'opportunities', customer: 'customers', project: 'projects' };
+const PARENT_PAGES = { lead: 'leads', opportunity: 'opportunities', customer: 'customers', project: 'projects', booking: 'bookings' };
 
 async function mayReachParent(user, entityType, entityId, action) {
   if (!(await can(user, PARENT_PAGES[entityType], action))) return false;

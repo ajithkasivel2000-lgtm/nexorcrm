@@ -232,3 +232,55 @@ exports.emailLog = async (req, res) => {
     res.status(200).json(rows);
   } catch (error) { sendError(res, error, 'Could not load the email log', 500); }
 };
+
+/* ------------------------------------------- Buyer payments & reminders --- */
+
+const GATEWAY_SECRETS = ['keySecret', 'webhookSecret'];
+
+exports.getBuyerPayments = async (_req, res) => {
+  try {
+    const [gateway, reminders] = await Promise.all([singleton('paymentGatewaySetting'), singleton('collectionReminderSetting')]);
+    const base = String(process.env.APP_URL || '').replace(/\/+$/, '');
+    res.status(200).json({
+      gateway: hide(gateway, GATEWAY_SECRETS),
+      reminders,
+      webhookUrl: `${base}/api/webhooks/razorpay-payments/${gateway.companyId}`,
+      portalUrl: `${base}/portal?company=${encodeURIComponent((await require('../utils/tenant').runAsSystem(() => prisma.company.findUnique({ where: { id: gateway.companyId } })))?.slug || '')}`,
+    });
+  } catch (error) { sendError(res, error, 'Could not load buyer payment settings', 500); }
+};
+
+exports.updateBuyerPayments = async (req, res) => {
+  try {
+    const gateway = await singleton('paymentGatewaySetting');
+    const reminders = await singleton('collectionReminderSetting');
+    if (req.body?.gateway) {
+      const data = pick(req.body.gateway, ['enabled', 'keyId', 'keySecret', 'webhookSecret'], GATEWAY_SECRETS);
+      const next = { ...gateway, ...data };
+      if (next.enabled && (!next.keyId || !next.keySecret)) return res.status(400).json({ message: 'Enter the Razorpay key id and key secret to turn on online payments.' });
+      await prisma.paymentGatewaySetting.update({ where: { id: gateway.id }, data });
+    }
+    if (req.body?.reminders) {
+      const data = pick(req.body.reminders, ['enabled', 'email', 'whatsapp', 'whatsappTemplate', 'whatsappLanguage', 'includePayLink'], []);
+      const r = req.body.reminders;
+      if (r.daysBefore !== undefined) {
+        const days = [].concat(r.daysBefore).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 90);
+        data.daysBefore = [...new Set(days)].sort((a, b) => b - a);
+      }
+      if (r.overdueEveryDays !== undefined) data.overdueEveryDays = Math.min(60, Math.max(1, Number(r.overdueEveryDays) || 7));
+      if (r.maxOverdue !== undefined) data.maxOverdue = Math.min(20, Math.max(0, Number(r.maxOverdue) || 0));
+      if (data.whatsapp && !(data.whatsappTemplate ?? reminders.whatsappTemplate)) {
+        return res.status(400).json({ message: 'WhatsApp reminders need an approved template name.' });
+      }
+      await prisma.collectionReminderSetting.update({ where: { id: reminders.id }, data });
+    }
+    return exports.getBuyerPayments(req, res);
+  } catch (error) { sendError(res, error, 'Could not save buyer payment settings', 400); }
+};
+
+/** Recent reminders, for the settings screen. */
+exports.reminderLog = async (_req, res) => {
+  try {
+    res.status(200).json(await prisma.collectionReminderLog.findMany({ orderBy: { sentAt: 'desc' }, take: 100 }));
+  } catch (error) { sendError(res, error, 'Could not load the reminder log', 500); }
+};

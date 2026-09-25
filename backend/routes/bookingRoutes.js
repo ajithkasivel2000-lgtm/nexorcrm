@@ -18,6 +18,9 @@ router.post('/:id/cancel', authMiddleware, edit, c.cancel);
 router.post('/:id/payments', authMiddleware, edit, c.addPayment);
 // Removing money from the ledger is the one undoable-looking thing that is not.
 router.delete('/:id/payments/:paymentId', authMiddleware, requireSuperAdmin, c.deletePayment);
+router.post('/:id/portal-link', authMiddleware, view, c.portalLink);
+router.get('/:id/payment-links', authMiddleware, view, c.paymentLinks);
+router.post('/:id/payment-links', authMiddleware, edit, c.createPaymentLink);
 router.put('/:id/commission', authMiddleware, requireAdmin, c.updateCommission);
 
 module.exports = router;

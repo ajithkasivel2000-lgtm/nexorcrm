@@ -22,6 +22,7 @@ const { runReminderSweep: runActivityReminders } = require('../utils/reminders')
 const { retryQueuedMail } = require('../utils/mailer');
 const { runDueReports } = require('../utils/scheduledReports');
 const { sweepSubscription } = require('../utils/billing');
+const { runCollectionReminders } = require('../utils/collections');
 
 /** How often to look for expired windows. Not the window itself. */
 const SWEEP_INTERVAL_MS = 60 * 1000;
@@ -45,6 +46,8 @@ const TASKS = [
   ['scheduled-reports', runDueReports, (r) => r > 0],
   // Trials and grace periods that have run out are marked expired.
   ['subscription', (company) => sweepSubscription(company.id), (r) => Boolean(r)],
+  // Buyers reminded before and after each milestone falls due.
+  ['collection-reminders', () => runCollectionReminders(), (r) => r && r.sent > 0],
 ];
 
 async function sweepCompany(company) {

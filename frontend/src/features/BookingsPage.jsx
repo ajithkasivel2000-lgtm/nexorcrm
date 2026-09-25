@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FileDown, IndianRupee, Plus, Trash2, XCircle } from 'lucide-react';
+import { Copy, FileDown, IndianRupee, Link2, MessageCircle, Plus, Trash2, XCircle } from 'lucide-react';
 import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Checkbox, toast,
 } from '../ui';
 import useListData from '../components/Leads/useListData';
 import usePagePermissions from '../hooks/usePagePermissions';
 import loadPdfTools from '../utils/loadPdfTools';
-import { api, inr, fmtDate, toDateInput } from './api';
+import { api, inr, fmtDate, toDateInput, copyText } from './api';
+import { RecordDocuments } from './LeadComms';
 import './features.css';
 
 /**
@@ -402,6 +403,12 @@ function BookingDetail({ id, perms, onClose }) {
         </form>
       )}
 
+      {!cancelled && <BuyerTools booking={booking} canEdit={perms.canEdit} />}
+
+      <h3 className="fx-card__title" style={{ marginTop: 'var(--nx-space-5)' }}>Documents</h3>
+      <p className="fx-card__hint">Files here (agreement, allotment letter, receipts) are also shown to the buyer in their portal.</p>
+      <RecordDocuments entityType="booking" entityId={booking.id} readOnly={!perms.canEdit} />
+
       {booking.commission && (
         <div className="fx-card" style={{ marginTop: 'var(--nx-space-4)' }}>
           <h3 className="fx-card__title">Partner commission</h3>
@@ -418,6 +425,104 @@ function BookingDetail({ id, perms, onClose }) {
         </div>
       )}
     </Modal>
+  );
+}
+
+/* ------------------------------------------------ buyer portal & pay links --- */
+
+const LINK_TONE = { created: 'info', paid: 'success', expired: 'neutral', cancelled: 'neutral', failed: 'danger' };
+
+/** The buyer's portal link to share, and Razorpay payment links for their dues. */
+function BuyerTools({ booking, canEdit }) {
+  const [links, setLinks] = useState(null);
+  const [online, setOnline] = useState(false);
+  const [milestoneId, setMilestoneId] = useState('');
+  const [busy, setBusy] = useState('');
+  const due = booking.summary.milestones.filter((m) => m.outstanding > 0);
+
+  const load = useCallback(() => api(`/api/bookings/${booking.id}/payment-links`)
+    .then((r) => { setLinks(r.links); setOnline(r.online); })
+    .catch(() => setLinks([])), [booking.id]);
+  useEffect(() => { load(); }, [load]);
+
+  const share = (text) => {
+    const phone = String(booking.buyerMobile || '').replace(/D/g, '').slice(-10);
+    window.open(`https://wa.me/${phone ? `91${phone}` : ''}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
+
+  const portal = async (how) => {
+    setBusy('portal');
+    try {
+      const { url } = await api(`/api/bookings/${booking.id}/portal-link`, { method: 'POST' });
+      if (how === 'whatsapp') share(`Hello ${booking.buyerName}, you can see your payment plan, receipts and documents here (link valid for 7 days): ${url}`);
+      else if (await copyText(url)) toast.success('Portal link copied. It works once, for 7 days.');
+      else toast.error('Copy failed.');
+    } catch (e) { toast.error(e.message); } finally { setBusy(''); }
+  };
+
+  const request = async () => {
+    setBusy('link');
+    try {
+      const link = await api(`/api/bookings/${booking.id}/payment-links`, { method: 'POST', body: { milestoneId: milestoneId || undefined } });
+      toast.success('Payment link ready.');
+      await load();
+      if (link.shortUrl) await copyText(link.shortUrl);
+    } catch (e) { toast.error(e.message); } finally { setBusy(''); }
+  };
+
+  return (
+    <div className="fx-card" style={{ marginTop: 'var(--nx-space-4)' }}>
+      <h3 className="fx-card__title">Buyer portal & online payment</h3>
+      <p className="fx-card__hint">
+        {booking.buyerEmail
+          ? <>The buyer signs in with <strong>{booking.buyerEmail}</strong> to see this booking, pay online and download receipts.</>
+          : "Add the buyer's email to the booking to give them portal access."}
+      </p>
+      {booking.buyerEmail && (
+        <div className="fx-row">
+          <Button size="sm" icon={Copy} loading={busy === 'portal'} onClick={() => portal('copy')}>Copy portal link</Button>
+          <Button size="sm" icon={MessageCircle} disabled={Boolean(busy)} onClick={() => portal('whatsapp')}>Send on WhatsApp</Button>
+        </div>
+      )}
+
+      {canEdit && booking.summary.balance > 0 && (
+        online ? (
+          <div className="fx-row" style={{ marginTop: 'var(--nx-space-3)' }}>
+            <div style={{ minWidth: 260 }}>
+              <Select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)} advanceOnPick={false}
+                options={[{ value: '', label: 'Next due milestone' }, ...due.map((m) => ({ value: m.id, label: `${m.name} — ${inr(m.outstanding)}` }))]} />
+            </div>
+            <Button size="sm" variant="primary" icon={Link2} loading={busy === 'link'} onClick={request}>Create payment link</Button>
+          </div>
+        ) : <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Online payment is off. An administrator can connect Razorpay in Settings → Integrations → Buyer payments.</p>
+      )}
+
+      {links?.length > 0 && (
+        <div className="fx-scroll" style={{ marginTop: 'var(--nx-space-3)' }}>
+          <table className="fx-table">
+            <thead><tr><th>Created</th><th>For</th><th className="num">Amount</th><th>Status</th><th /></tr></thead>
+            <tbody>
+              {links.map((l) => (
+                <tr key={l.id}>
+                  <td>{fmtDate(l.createdAt)}</td>
+                  <td>{l.description}</td>
+                  <td className="num">{inr(l.amount)}</td>
+                  <td><Pill tone={LINK_TONE[l.status] || 'neutral'}>{l.status === 'created' ? 'Waiting' : l.status}</Pill></td>
+                  <td>
+                    {l.status === 'created' && l.shortUrl && (
+                      <>
+                        <Button variant="ghost" size="sm" icon={Copy} aria-label="Copy link" onClick={async () => toast[(await copyText(l.shortUrl)) ? 'success' : 'error']('Link copied.')} />
+                        <Button variant="ghost" size="sm" icon={MessageCircle} aria-label="Send on WhatsApp" onClick={() => share(`Hello ${booking.buyerName}, please pay ${inr(l.amount)} (${l.description}) securely here: ${l.shortUrl}`)} />
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

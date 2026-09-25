@@ -1667,18 +1667,20 @@ model PaymentMilestone {
 
 /// Money received against a booking.
 model Payment {
-  companyId  String
-  id         String   @id @default(uuid())
-  bookingId  String
-  amount     Decimal
-  paidOn     DateTime @default(now())
-  mode       String? // Cheque | NEFT | UPI | Cash | Loan
-  reference  String?
-  receiptNo  String?
-  notes      String?
-  recordedBy String?
-  createdAt  DateTime @default(now())
-  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  companyId        String
+  id               String   @id @default(uuid())
+  bookingId        String
+  amount           Decimal
+  paidOn           DateTime @default(now())
+  mode             String? // Cheque | NEFT | UPI | Cash | Loan
+  reference        String?
+  receiptNo        String?
+  notes            String?
+  recordedBy       String?
+  /// Razorpay payment id when paid online: a webhook replay cannot record it twice.
+  gatewayPaymentId String?  @unique
+  createdAt        DateTime @default(now())
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([bookingId])
@@ -1871,5 +1873,106 @@ model SavedReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([companyId])
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * Buyer portal, online payments from buyers, collection reminders
+ * ---------------------------------------------------------------------------
+ */
+
+/// The company's OWN Razorpay account, for collecting from buyers (money goes
+/// to the builder). Separate from the platform's subscription billing keys.
+model PaymentGatewaySetting {
+  companyId     String   @unique
+  id            String   @id @default(uuid())
+  enabled       Boolean  @default(false)
+  keyId         String   @default("")
+  keySecret     String   @default("")
+  webhookSecret String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// A Razorpay Payment Link sent to a buyer for (part of) a booking's dues.
+model PaymentLink {
+  companyId      String
+  id             String    @id @default(uuid())
+  bookingId      String
+  milestoneId    String?
+  description    String
+  amount         Decimal
+  razorpayLinkId String?   @unique
+  shortUrl       String?
+  status         String    @default("created") // created | paid | expired | cancelled | failed
+  paymentId      String?
+  createdBy      String? // username, or "buyer" / "reminder"
+  paidAt         DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([bookingId, status])
+}
+
+/// A one-time sign-in link for the buyer portal (stored hashed).
+model BuyerLoginToken {
+  companyId String
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([companyId])
+}
+
+/// A signed-in buyer. The id is the bearer token (random, never a counter).
+model BuyerSession {
+  companyId  String
+  id         String   @id @default(uuid())
+  email      String
+  expiry     DateTime
+  lastActive DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([email])
+}
+
+/// When and how buyers are reminded about dues.
+model CollectionReminderSetting {
+  companyId        String   @unique
+  id               String   @id @default(uuid())
+  enabled          Boolean  @default(false)
+  daysBefore       Int[]    @default([7, 1])
+  overdueEveryDays Int      @default(7)
+  maxOverdue       Int      @default(4)
+  email            Boolean  @default(true)
+  whatsapp         Boolean  @default(false)
+  whatsappTemplate String   @default("")
+  whatsappLanguage String   @default("en")
+  includePayLink   Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+/// One reminder sent: the unique key makes sending twice impossible.
+model CollectionReminderLog {
+  companyId   String
+  id          String   @id @default(uuid())
+  bookingId   String
+  milestoneId String
+  slot        String // "before-7", "before-1", "overdue-1", ...
+  channel     String // email | whatsapp
+  status      String   @default("sent")
+  error       String?
+  sentAt      DateTime @default(now())
+
+  @@unique([bookingId, milestoneId, slot, channel])
   @@index([companyId])
 }

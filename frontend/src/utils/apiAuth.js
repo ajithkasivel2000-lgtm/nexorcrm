@@ -43,6 +43,9 @@ const PUBLIC_ENDPOINTS = [
   // could not be verified") is shown to the user rather than being mistaken
   // for an expired session and turned into a sign-out and a page reload.
   '/api/auth/google',
+  // The buyer portal signs in with its own token (X-Buyer-Token); a staff
+  // token must not ride along, and a buyer's 401 must not sign staff out.
+  '/api/buyer',
 ];
 // Logout is deliberately NOT on this list: it should carry the token so the
 // backend revokes the exact session row this browser holds.

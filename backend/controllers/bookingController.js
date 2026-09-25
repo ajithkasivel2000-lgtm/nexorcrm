@@ -1,5 +1,6 @@
 const prisma = require('../prismaClient');
 const { sendError } = require('../utils/apiError');
+const collections = require('../utils/collections');
 const {
   PLAN_TEMPLATES, buildMilestones, templateSteps, summarize, commissionFor, round2,
 } = require('../utils/bookings');
@@ -337,5 +338,42 @@ exports.collections = async (req, res) => {
     res.status(200).json({ overdueTotal: round2(overdueTotal), dueTotal: round2(dueTotal), rows });
   } catch (error) {
     sendError(res, error, 'Could not load collections', 500);
+  }
+};
+
+/* ---- collecting from the buyer ------------------------------------------ */
+
+/** A sign-in link to the buyer portal, for staff to send on WhatsApp. Valid 7 days. */
+exports.portalLink = async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!booking.buyerEmail) return res.status(400).json({ message: "Add the buyer's email to the booking first — the portal signs buyers in by email." });
+    const url = await collections.issueLoginLink(booking.buyerEmail, { createdBy: actorOf(req), ttlMs: 7 * 86400000 });
+    res.status(200).json({ url, email: booking.buyerEmail });
+  } catch (error) {
+    sendError(res, error, 'Could not make a portal link', 500);
+  }
+};
+
+exports.paymentLinks = async (req, res) => {
+  try {
+    const links = await prisma.paymentLink.findMany({ where: { bookingId: req.params.id }, orderBy: { createdAt: 'desc' } });
+    res.status(200).json({ links, online: Boolean(await collections.gateway()) });
+  } catch (error) {
+    sendError(res, error, 'Could not load payment links', 500);
+  }
+};
+
+exports.createPaymentLink = async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({ where: { id: req.params.id }, include: WITH_LEDGER });
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    const amount = req.body?.amount ? Number(req.body.amount) : null;
+    const link = await collections.createPaymentLink(booking, { milestoneId: req.body?.milestoneId || null, amount, createdBy: actorOf(req) });
+    res.status(201).json(link);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    sendError(res, error, 'Could not create the payment link', 500);
   }
 };

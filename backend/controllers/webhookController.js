@@ -249,3 +249,44 @@ exports.exotelStatus = (req, res) => tenant.runAsSystem(async () => {
   }
   return res.sendStatus(200);
 });
+
+/* ------------------------------------------- Razorpay (buyer payments) --- */
+
+/**
+ * POST /api/webhooks/razorpay-payments/:companyId
+ *
+ * The company's own Razorpay account reports payment-link events here, signed
+ * with the webhook secret the company saved. A paid link is recorded on the
+ * booking; recording is idempotent, so Razorpay's retries are harmless.
+ */
+exports.razorpayPayments = async (req, res) => {
+  const companyId = String(req.params.companyId || '');
+  try {
+    const company = await tenant.runAsSystem(() => prisma.company.findUnique({ where: { id: companyId } }));
+    if (!company) return res.sendStatus(404);
+    const result = await tenant.runWithCompany(companyId, async () => {
+      const collections = require('../utils/collections');
+      const settings = await prisma.paymentGatewaySetting.findFirst();
+      if (!collections.verifyWebhookSignature(req.rawBody, req.headers['x-razorpay-signature'], settings?.webhookSecret)) return 401;
+
+      const event = req.body?.event;
+      const linkEntity = req.body?.payload?.payment_link?.entity;
+      if (!linkEntity?.id) return 200; // not a payment-link event: nothing to do
+      const link = await prisma.paymentLink.findFirst({ where: { razorpayLinkId: linkEntity.id } });
+      if (!link) return 200;
+
+      if (event === 'payment_link.paid') {
+        const payment = req.body?.payload?.payment?.entity || {};
+        if (!payment.id) return 400;
+        await collections.recordLinkPayment(link, { paymentId: payment.id, amountPaise: payment.amount || linkEntity.amount_paid, method: payment.method });
+      } else if (event === 'payment_link.expired' || event === 'payment_link.cancelled') {
+        await prisma.paymentLink.updateMany({ where: { id: link.id, status: 'created' }, data: { status: event.split('.')[1] } });
+      }
+      return 200;
+    });
+    return res.sendStatus(result);
+  } catch (error) {
+    console.error('Razorpay payments webhook failed:', error.message);
+    return res.sendStatus(500); // Razorpay retries
+  }
+};

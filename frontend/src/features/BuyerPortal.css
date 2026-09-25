@@ -1,0 +1,46 @@
+.bp {
+  min-height: 100vh;
+  background: var(--nx-bg-app, #f6f7fb);
+  color: var(--nx-text, #111827);
+}
+.bp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--nx-bg-surface, #fff);
+  border-bottom: 1px solid var(--nx-border, #e5e7eb);
+}
+.bp-brand { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.bp-brand img { height: 32px; width: auto; max-width: 160px; object-fit: contain; }
+.bp-main { max-width: 920px; margin: 0 auto; padding: 20px 16px 48px; }
+.bp-card { max-width: 480px; margin: 40px auto; }
+.bp-card h2, .bp-booking h2 { margin: 0 0 6px; font-size: 20px; }
+.bp-sent { display: flex; gap: 8px; align-items: flex-start; padding: 12px; border-radius: 8px; background: var(--nx-success-bg, #ecfdf5); }
+.bp-paid { display: flex; gap: 8px; align-items: center; border-color: var(--nx-success, #16a34a); }
+.bp-booking { margin-bottom: 20px; }
+.bp-booking__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.bp-booking .fx-card__title { margin-top: 20px; }
+.bp-action { text-align: right; white-space: nowrap; }
+.bp-docs { list-style: none; margin: 0; padding: 0; }
+.bp-docs li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--nx-border, #e5e7eb); }
+.bp-docs li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bp-contact { margin-top: 24px; text-align: center; }
+.bp-main, .bp-booking { min-width: 0; }
+.bp-booking .fx-scroll { max-width: 100%; }
+@media (max-width: 560px) {
+  .bp-main { padding: 16px 16px 40px; }
+  .bp .fx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .bp .fx-stat__value { font-size: 18px; overflow-wrap: anywhere; }
+  .bp .fx-card { padding: 14px; }
+  .bp-action .nx-btn { white-space: nowrap; }
+}
+/* body is a centring flexbox (for the sign-in card); the portal takes the full width. */
+#root:has(> .bp) { width: 100%; min-width: 0; align-self: stretch; }
+.bp { width: 100%; }
+.bp-next { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 16px 0 4px; padding: 14px; border-radius: 10px; background: var(--nx-accent-soft, #eef2ff); }
+.bp-next strong { font-size: 20px; }
+@media (max-width: 560px) {
+  .bp .bp-hide-sm { display: none; }
+  .bp-next .nx-btn { width: 100%; justify-content: center; }
+}

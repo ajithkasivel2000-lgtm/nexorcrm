@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
 import CrashNotice from './components/CrashNotice'
@@ -18,6 +18,11 @@ import './ui/legacy-modal.css'
 import App from './App.jsx'
 import { ToastHost } from './ui/Toast.jsx'
 import installApiAuth from './utils/apiAuth.js'
+
+/* /portal is the buyer portal: its own page with its own sign-in, never the
+   staff app. */
+const isBuyerPortal = ['/portal', '/portal/'].includes(window.location.pathname)
+const BuyerPortal = lazy(() => import('./features/BuyerPortal.jsx'))
 
 // Must run before any component fetches, so protected API calls carry the user.
 installApiAuth()
@@ -39,7 +44,7 @@ createRoot(document.getElementById('root')).render(
     {/* A crash in one screen shows this instead of a blank page (and is
         reported when Sentry is on). */}
     <Sentry.ErrorBoundary fallback={<CrashNotice />}>
-      <App />
+      {isBuyerPortal ? <Suspense fallback={null}><BuyerPortal /></Suspense> : <App />}
     </Sentry.ErrorBoundary>
     {/* Mounted beside App rather than inside it: App returns early for the
         signed-out view, and a toast raised on the login screen still has to

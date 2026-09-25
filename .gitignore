@@ -13,6 +13,8 @@ backend/uploads/
 *.log
 *.zip
 *.sql
+# ...but database migrations are code and must ship with it.
+!backend/prisma/migrations/*/migration.sql
 .vite/
 logs.txt
 build_output.txt

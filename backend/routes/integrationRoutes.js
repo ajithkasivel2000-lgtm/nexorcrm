@@ -24,6 +24,9 @@ settings.put('/reports/:id', integrations.updateReport);
 settings.delete('/reports/:id', integrations.deleteReport);
 settings.post('/reports/:id/send', integrations.sendReportNow);
 settings.get('/email-log', integrations.emailLog);
+settings.get('/buyer-payments', integrations.getBuyerPayments);
+settings.put('/buyer-payments', integrations.updateBuyerPayments);
+settings.get('/buyer-payments/reminders', integrations.reminderLog);
 
 /** /api/leads/:id/... — WhatsApp and calls, for whoever may open the lead. */
 const leadComms = express.Router({ mergeParams: true });
@@ -40,6 +43,7 @@ hooks.get('/meta', hookLimit, webhooks.metaVerify);
 hooks.post('/meta', hookLimit, webhooks.metaEvent);
 hooks.post('/google-leads/:key', hookLimit, webhooks.googleLead);
 hooks.post('/razorpay', hookLimit, require('../controllers/billingController').webhook);
+hooks.post('/razorpay-payments/:companyId', hookLimit, webhooks.razorpayPayments);
 // Exotel posts form-encoded unless told otherwise.
 hooks.post('/exotel/:callId', hookLimit, express.urlencoded({ extended: false }), webhooks.exotelStatus);
 

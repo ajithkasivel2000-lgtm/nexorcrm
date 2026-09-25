@@ -77,6 +77,7 @@ const PREFIXES = {
   callLog: 'CAL',
   scheduledReport: 'RPT',
   emailOutbox: 'EML',
+  paymentLink: 'PLK',
 };
 
 /**

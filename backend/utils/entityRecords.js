@@ -19,6 +19,9 @@ const ENTITY_MODELS = {
   // Activities, tasks, notes, contacts and documents on a project are the same
   // records as on a lead, so they use the same tables and the same endpoints.
   project: 'project',
+  // Documents on a booking (agreement, allotment letter) are also what the
+  // buyer sees in their portal.
+  booking: 'booking',
 };
 
 /**

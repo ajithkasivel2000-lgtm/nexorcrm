@@ -167,6 +167,7 @@ app.use('/api/partner', partnerRoutes.portal);
 app.use('/api/partner-accounts', partnerRoutes.accounts);
 app.use('/api/billing', billingRoutes);
 app.use('/api/report-builder', reportBuilderRoutes);
+app.use('/api/buyer', require('./routes/buyerRoutes'));
 app.get('/api/branding', require('./middleware/authMiddleware').authMiddleware, require('./controllers/brandingController').current);
 
 // Public website API (no auth required)

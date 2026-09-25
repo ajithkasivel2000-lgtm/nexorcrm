@@ -81,6 +81,28 @@ appear on the lead.
   sheet uses the project's GST, stamp duty, registration and other charges.
 - The **Collections** tab lists everything overdue or due soon.
 - **Channel partner commission** is calculated at booking and moves from Pending to Approved to Paid.
+- **Documents** on a booking (agreement, allotment letter) are also shown to the buyer in their portal.
+
+## Buyer portal, online payments and payment reminders
+Set up in **Settings → Integrations → Buyer payments** (administrators).
+- **Online payments:** enter your company's own Razorpay **Key ID** and **Key secret**, so buyers'
+  money goes straight to you. In Razorpay → Settings → Webhooks, add the webhook URL shown on that
+  tab, type a secret (enter the same secret in the CRM), and tick `payment_link.paid`,
+  `payment_link.expired` and `payment_link.cancelled`. Try it with test keys first.
+- **Payment links:** on a booking, **Create payment link** makes a Razorpay link for the next due
+  milestone (or one you pick), which you can copy or send on WhatsApp. When the buyer pays, the payment
+  is recorded on the booking automatically, the salesperson is notified and the buyer is emailed a
+  receipt. The same payment can never be recorded twice.
+- **Buyer portal:** buyers open `https://<your address>/portal?company=<your company code>` (the
+  link is on the settings tab) and sign in with the email on their booking. There is no password:
+  they get a one-time link by email, valid for 30 minutes. From a booking, staff can also
+  **Copy portal link** or **Send on WhatsApp** (valid for 7 days). Buyers see their unit, payment
+  plan, balance and overdue amount, and can pay online and download receipts and shared documents.
+- **Payment reminders:** when switched on, buyers are emailed (and optionally sent an approved
+  WhatsApp template) before each milestone is due (default 7 days and 1 day before) and every 7 days
+  while it is overdue (up to 4 times). Reminders go out between 9am and 8pm, each one only once,
+  and include a pay-online link and a portal link. **Recent reminders** on the same tab shows what
+  was sent.
 
 ## Channel partner portal
 On a channel partner's page, **Partner portal access** creates a login for them. Partners sign in at
