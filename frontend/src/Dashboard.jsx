@@ -14,8 +14,17 @@ const sidebarMenus = [
   {
     title: 'GENERAL', items: [
       { name: 'Dashboard', path: '/', icon: <Home size={18} />, pageId: 'dashboard' },
-      { name: 'Leads', path: '/leads', icon: <Filter size={18} />, pageId: 'leads' },
-      { name: 'Campaign Leads', path: '/campaign-leads', icon: <Filter size={18} />, pageId: 'leads' },
+      /* One Leads entry: every lead, and those that came in from campaigns. */
+      {
+        name: 'Leads',
+        icon: <Filter size={18} />,
+        hasChevron: true,
+        pageId: 'leads',
+        subItems: [
+          { name: 'All Leads', path: '/leads', pageId: 'leads' },
+          { name: 'Campaign Leads', path: '/campaign-leads', pageId: 'leads' },
+        ],
+      },
       { name: 'Import Leads', path: '/import-leads', icon: <FileText size={18} />, pageId: 'import-leads' },
       { name: 'Opportunity', path: '/opportunities', icon: <Target size={18} />, pageId: 'opportunities' },
       { name: 'Customer', path: '/customers', icon: <Users size={18} />, pageId: 'customers' },
