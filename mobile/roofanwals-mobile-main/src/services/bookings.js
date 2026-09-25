@@ -14,6 +14,17 @@ export const bookingsService = {
   async addPayment(id, payment) {
     return (await api.post(`/bookings/${id}/payments`, payment)).data;
   },
+  /** A one-time buyer portal sign-in link (valid 7 days) to send the buyer. */
+  async portalLink(id) {
+    return (await api.post(`/bookings/${id}/portal-link`)).data;
+  },
+  async paymentLinks(id) {
+    return (await api.get(`/bookings/${id}/payment-links`)).data;
+  },
+  /** A Razorpay payment link for the next due milestone (or milestoneId). */
+  async createPaymentLink(id, milestoneId) {
+    return (await api.post(`/bookings/${id}/payment-links`, milestoneId ? { milestoneId } : {})).data;
+  },
 };
 
 export const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, RefreshControl,
+  View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Share,
 } from 'react-native';
 import { bookingsService, inr, shortDate } from '../../services/bookings';
 import { DocumentsPanel } from '../../components/LeadComms';
@@ -20,9 +20,29 @@ export default function BookingDetailScreen({ route, navigation }) {
   const [mode, setMode] = useState('NEFT');
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
+  const [links, setLinks] = useState({ links: [], online: false });
+  const [sharing, setSharing] = useState('');
 
   const load = useCallback(() => bookingsService.get(id).then(setB).catch((e) => Alert.alert('Booking', e?.response?.data?.message || e.message)).finally(() => setRefreshing(false)), [id]);
-  useEffect(() => { navigation.setOptions({ title: name || 'Booking' }); load(); }, [id]);
+  const loadLinks = useCallback(() => bookingsService.paymentLinks(id).then(setLinks).catch(() => {}), [id]);
+  useEffect(() => { navigation.setOptions({ title: name || 'Booking' }); load(); loadLinks(); }, [id]);
+
+  const errorOf = (e) => e?.response?.data?.message || e.message;
+  const sharePortal = async () => {
+    setSharing('portal');
+    try {
+      const { url } = await bookingsService.portalLink(id);
+      await Share.share({ message: `Hello ${b.buyerName}, you can see your payment plan, receipts and documents here (link valid for 7 days): ${url}` });
+    } catch (e) { Alert.alert('Buyer portal', errorOf(e)); } finally { setSharing(''); }
+  };
+  const sharePayLink = async (existing) => {
+    setSharing(existing?.id || 'new');
+    try {
+      const link = existing || await bookingsService.createPaymentLink(id);
+      await Share.share({ message: `Hello ${b.buyerName}, please pay ${inr(link.amount)} (${link.description}) securely here: ${link.shortUrl}` });
+      loadLinks();
+    } catch (e) { Alert.alert('Payment link', errorOf(e)); } finally { setSharing(''); }
+  };
 
   const record = async () => {
     const n = Number(amount);
@@ -119,7 +139,40 @@ export default function BookingDetailScreen({ route, navigation }) {
         </>
       )}
 
-      {b.leadId ? <View style={{ marginTop: spacing.md }}><DocumentsPanel entityType="lead" entityId={b.leadId} /></View> : null}
+      {b.status !== 'Cancelled' && (
+        <>
+          <Text style={s.title}>Buyer portal & online payment</Text>
+          <View style={s.card}>
+            {b.buyerEmail
+              ? <Text style={s.muted}>The buyer signs in with {b.buyerEmail} to see this booking, pay online and download receipts.</Text>
+              : <Text style={s.muted}>Add the buyer's email to the booking (on the web) to give them portal access.</Text>}
+            {b.buyerEmail ? (
+              <TouchableOpacity style={[s.chip, { alignItems: 'center' }]} onPress={sharePortal} disabled={Boolean(sharing)}>
+                {sharing === 'portal' ? <ActivityIndicator color={colors.brand.primary} /> : <Text style={s.text}>Share portal link</Text>}
+              </TouchableOpacity>
+            ) : null}
+            {open && (links.online ? (
+              <TouchableOpacity style={s.btn} onPress={() => sharePayLink(null)} disabled={Boolean(sharing)}>
+                {sharing === 'new' ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Share payment link for next due</Text>}
+              </TouchableOpacity>
+            ) : <Text style={s.muted}>Online payment is off. An administrator can connect Razorpay in Settings → Integrations on the web.</Text>)}
+            {links.links.map((l) => (
+              <View key={l.id} style={s.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.text}>{inr(l.amount)} · {l.status === 'created' ? 'waiting' : l.status}</Text>
+                  <Text style={s.muted}>{l.description}</Text>
+                </View>
+                {l.status === 'created' && l.shortUrl ? (
+                  <TouchableOpacity style={s.chip} onPress={() => sharePayLink(l)} disabled={Boolean(sharing)}><Text style={s.text}>Share</Text></TouchableOpacity>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      <View style={{ marginTop: spacing.md }}><DocumentsPanel entityType="booking" entityId={b.id} title="Booking documents (the buyer sees these)" /></View>
+      {b.leadId ? <View style={{ marginTop: spacing.md }}><DocumentsPanel entityType="lead" entityId={b.leadId} title="Lead documents" /></View> : null}
       <View style={{ height: 32 }} />
     </ScrollView>
   );

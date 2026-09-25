@@ -120,7 +120,7 @@ export function CallsPanel({ leadId }) {
 }
 
 /** Files on the lead: upload from the phone, open or share. */
-export function DocumentsPanel({ entityType = 'lead', entityId }) {
+export function DocumentsPanel({ entityType = 'lead', entityId, title = 'Documents' }) {
   const { s, colors } = useStyles();
   const [docs, setDocs] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -146,7 +146,7 @@ export function DocumentsPanel({ entityType = 'lead', entityId }) {
   return (
     <View style={s.section}>
       <View style={s.rowBetween}>
-        <Text style={s.title}>Documents</Text>
+        <Text style={s.title}>{title}</Text>
         <TouchableOpacity style={s.btnGhost} onPress={upload} disabled={busy}>
           {busy ? <ActivityIndicator color={colors.brand.primary} /> : <Text style={s.btnGhostText}>+ Upload</Text>}
         </TouchableOpacity>
