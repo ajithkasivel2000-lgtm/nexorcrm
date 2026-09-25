@@ -1,0 +1,172 @@
+/* A client company's own sign-in page (CompanyLoginLayout.jsx).
+   Left: the company's colour, logo and name. Right: the sign-in card.
+   On a phone the colour panel is dropped and a slim header carries the logo. */
+
+.nx-colog {
+  flex-direction: row;
+  background: var(--lg-base);
+}
+
+.nx-colog.is-dark { --lg-base: #0b1120; }
+
+/* ---- the company panel ---------------------------------------------------- */
+
+.nx-colog__brand {
+  flex: 0 0 44%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  color: var(--co-on-accent);
+  background:
+    radial-gradient(700px 420px at 20% 10%, rgba(255, 255, 255, .18), transparent 60%),
+    radial-gradient(600px 400px at 90% 95%, rgba(0, 0, 0, .22), transparent 60%),
+    var(--co-accent);
+  overflow: hidden;
+}
+
+.nx-colog__brand::after {
+  /* A soft ring for depth, in the company's own colour. */
+  content: '';
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  right: -180px;
+  bottom: -200px;
+  border-radius: 50%;
+  border: 60px solid rgba(255, 255, 255, .08);
+  pointer-events: none;
+}
+
+.nx-colog__brand-inner { position: relative; z-index: 1; max-width: 420px; }
+
+.nx-colog__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  min-height: 96px;
+  padding: 14px 20px;
+  margin-bottom: 28px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .22);
+}
+.nx-colog__logo img { display: block; max-height: 88px; max-width: 280px; object-fit: contain; }
+
+.nx-colog__initials {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--co-accent);
+}
+.nx-colog__initials.is-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
+  border-radius: 9px;
+  background: var(--co-accent);
+  color: var(--co-on-accent);
+}
+
+.nx-colog__eyebrow {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+
+.nx-colog__name {
+  margin: 0;
+  font-size: clamp(34px, 3.6vw, 52px);
+  line-height: 1.08;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.nx-colog__blurb {
+  margin: 16px 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+  opacity: .9;
+}
+
+/* ---- the sign-in side ----------------------------------------------------- */
+
+.nx-colog__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+}
+
+.nx-colog__top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.nx-colog__mini { display: none; align-items: center; gap: 10px; margin-right: auto; min-width: 0; }
+.nx-colog__mini img { height: 34px; max-width: 140px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px 6px; }
+.nx-colog__mini strong { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--lg-ink); }
+
+.nx-colog__theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--lg-card-line);
+  background: var(--lg-card);
+  color: var(--lg-ink);
+  cursor: pointer;
+}
+
+.nx-colog__panel {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+.nx-colog__panel > * { width: 100%; max-width: 440px; }
+
+/* The card's main button and links in the company's colour. */
+.nx-colog .nx-card__submit { background: var(--co-accent); color: var(--co-on-accent); }
+.nx-colog .nx-card__link,
+.nx-colog.is-light .nx-card__link { color: var(--co-accent); }
+.nx-colog .nx-card__field:focus-within { border-color: var(--co-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--co-accent) 22%, transparent); }
+
+.nx-colog__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--lg-ink-faint);
+}
+.nx-colog__powered { opacity: .85; }
+
+/* ---- phone ---------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .nx-colog { flex-direction: column; }
+  .nx-colog__brand { display: none; }
+  .nx-colog__mini { display: flex; }
+  .nx-colog__main { padding: 16px; }
+  .nx-colog__panel { align-items: flex-start; padding: 16px 0; }
+  .nx-colog__foot { justify-content: center; text-align: center; }
+}
+
+/* body centres its content; this page takes the whole window. */
+#root:has(> .nx-colog) { width: 100%; max-width: none; min-width: 0; align-self: stretch; padding: 0; margin: 0; }
+.nx-colog { width: 100%; }

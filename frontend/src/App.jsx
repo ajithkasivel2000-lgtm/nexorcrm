@@ -4,6 +4,7 @@ import { Eye, EyeOff, User, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Preloader from './components/Preloader';
 import LoginLayout from './login/LoginLayout';
+import CompanyLoginLayout from './login/CompanyLoginLayout';
 import SignInCard from './login/SignInCard';
 import './ui/globalConfirm';
 
@@ -702,8 +703,11 @@ function App() {
     );
   }
 
+  /* A client company's page (its link or domain) gets its own sign-in page;
+     the platform keeps the NexorCRM one. */
+  const SignedOutLayout = brand ? CompanyLoginLayout : LoginLayout;
   return (
-    <LoginLayout theme={theme} onToggleTheme={toggleTheme} brand={brand}>
+    <SignedOutLayout theme={theme} onToggleTheme={toggleTheme} brand={brand}>
       {view === 'start' ? (
         <CompanySignupCard
           onBack={() => setView('login')}
@@ -1031,7 +1035,7 @@ function App() {
           )}
         </div>
       )}
-    </LoginLayout>
+    </SignedOutLayout>
   );
 }
 
