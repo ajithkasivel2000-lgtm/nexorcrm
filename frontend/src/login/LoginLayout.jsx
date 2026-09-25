@@ -102,10 +102,21 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
       <main className="nx-login__main">
         <section className="nx-login__pitch">
           <p className="nx-login__eyebrow">Welcome to</p>
-          <h1 className="nx-login__wordmark">
-            <span>Nexor</span><strong>CRM</strong>
-          </h1>
-          <p className="nx-login__tagline">an innovative crm</p>
+          {/* A company's own sign-in page leads with its logo and name. */}
+          {brand ? (
+            <>
+              {brand.logoUrl && <img src={brand.logoUrl} alt="" className="nx-login__brandlogo" />}
+              <h1 className="nx-login__wordmark nx-login__wordmark--brand">{brand.name}</h1>
+              <p className="nx-login__tagline">powered by NexorCRM</p>
+            </>
+          ) : (
+            <>
+              <h1 className="nx-login__wordmark">
+                <span>Nexor</span><strong>CRM</strong>
+              </h1>
+              <p className="nx-login__tagline">an innovative crm</p>
+            </>
+          )}
           <span className="nx-login__rule" />
           <p className="nx-login__blurb">
             Manage your leads, customers, projects and teams in one powerful platform.
@@ -125,7 +136,7 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
 
           <blockquote className="nx-login__quote">
             <p>Smarter Relationships.<br /><em>Stronger Growth.</em></p>
-            <cite>Nexor CRM</cite>
+            <cite>{brand?.name || 'Nexor CRM'}</cite>
           </blockquote>
         </section>
 
