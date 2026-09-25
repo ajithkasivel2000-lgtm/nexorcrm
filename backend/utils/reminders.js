@@ -51,6 +51,7 @@ async function getSettings() {
     return {
       enabled: true, leadMinutes: 180, repeatMinutes: 30, maxReminders: 0,
       overdueEnabled: true, overdueRepeatMinutes: 60, escalateAfterMinutes: 120,
+      maxOverdueReminders: 4,
       channelInApp: true, channelPush: true, channelEmail: false,
     };
   }
@@ -92,7 +93,22 @@ function slotFor(due, now, settings) {
 
   if (!settings.overdueEnabled) return null;
   const step = Math.max(1, settings.overdueRepeatMinutes);
-  return 'overdue-' + Math.floor(Math.abs(minutesLeft) / step) * step;
+  /* The overdue slot, named by minutes late as before: 0, then step, 2*step…
+     The key must keep its old format — it is the dedup key against ReminderLog
+     rows already sent, and renaming it would re-fire one duplicate per
+     activity still mid-chase when this ships. */
+  const slotIndex = Math.floor(Math.abs(minutesLeft) / step);
+
+  /* A cap on the overdue series, like the pre-due series has with
+     maxReminders. Without it the sweep chased an activity nobody had closed
+     every interval, forever. slotIndex 0 is the first overdue reminder, so a
+     cap of N allows slotIndexes 0…N-1 — N reminders in total. 0 keeps the old
+     uncapped behaviour; the default (4) is about a working day of chasing at
+     the default interval. */
+  const cap = settings.maxOverdueReminders;
+  if (Number.isFinite(cap) && cap > 0 && slotIndex >= cap) return null;
+
+  return 'overdue-' + slotIndex * step;
 }
 
 /** owner/assignedTo hold a username on some rows and an id on others. */
@@ -117,9 +133,26 @@ async function escalationTargets(owner) {
   }
   if (out.length === 0) {
     /* Nobody named as a manager, so the people whose job it is by role. The
-       superadmin is left out: it is not a person who works leads. */
+       superadmin is left out: it is not a person who works leads.
+
+       The lookup has to match how this app actually stores administrators.
+       The original company's admins carry status 'Admin' (or 'superadmin' for
+       the platform account), but a company created through "Start a free
+       trial" gets status 'superadmin' — see provisionCompany() — so an 'Admin'
+       -only query found nobody and overdue escalations silently went nowhere
+       in exactly the companies that sign themselves up. The same people are
+       also reachable by userlevel >= 9 (requireAdmin's fallback), and archived
+       or deactivated accounts are skipped: they cannot be told anything. */
     const admins = await prisma.user.findMany({
-      where: { status: { in: ['Admin', 'Manager'] }, NOT: { username: 'admin' } },
+      where: {
+        OR: [
+          { status: { in: ['Admin', 'Manager'] } },
+          { status: 'superadmin' },
+          { userlevel: { gte: 9 } },
+        ],
+        archivedAt: null,
+        NOT: { username: 'admin' },
+      },
       select: { id: true, username: true, email: true, status: true },
       take: 5,
     });

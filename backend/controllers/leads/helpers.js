@@ -20,6 +20,59 @@ const LEAD_DATE_FIELDS = [
 ];
 
 /**
+ * What a request body may write onto a Lead row.
+ *
+ * The lead write endpoints used to spread the whole request body into the
+ * Prisma data, so a crafted payload could set any column: `id` (moving the
+ * primary key and breaking its log/history relations), `createdAt`, the
+ * reassignment bookkeeping (`allocator`, `assignedAt`, `lastActivityAt`) that
+ * the follow-up clock depends on, or `ownerId` directly — skipping the
+ * allocator stamp and log a real handover goes through (syncOwnerId derives
+ * ownerId from `owner`; no client needs to send it).
+ *
+ * Everything on this list is a column the screens genuinely edit. Anything
+ * not on it is dropped before the query is built.
+ */
+const LEAD_WRITABLE_FIELDS = new Set([
+  // Identity and contact.
+  'name', 'email', 'alternateEmail',
+  'mobile', 'mobileCountryCode', 'alternateNo', 'alternateNoCountryCode',
+  'occupation', 'companyName', 'euid',
+  // Pipeline and ownership. `owner` only — see syncOwnerId for ownerId.
+  'status', 'project', 'owner', 'allocatedDate',
+  'rating', 'budgetLimit',
+  // Where the lead came from.
+  'primarySource', 'secondarySource', 'tertiarySource',
+  'channelPartnerName', 'channelPartnerId', 'referrerDetails', 'sourceUrl',
+  // Call and follow-up.
+  'openReason', 'callStatus', 'callRemarks', 'followUpDate',
+  'rejectionType', 'reasonDetails', 'invalidReason',
+  'competitorName', 'competitorOffer',
+  // Site visit, conversion and notes.
+  'siteVisitStatus', 'siteVisitDate', 'siteVisitNote',
+  'siteVisitConfirmedDate', 'siteVisitConfirmedNote',
+  'siteVisitDoneDate', 'siteVisitDoneNote',
+  'bookingStatus', 'virtualVisit', 'virtualVisitDate',
+  'otherNotes', 'additionalRemarks',
+]);
+
+/**
+ * Copy of `body` holding only the fields a client may write on a lead.
+ *
+ * Applied at the top of every lead write handler (create, update, status,
+ * fields), so no path can forget it. Server-set values — the log entries,
+ * the resolved ownerId, allocator and duplicate status — are attached after
+ * this, by the handlers themselves.
+ */
+const pickLeadFields = (body) => {
+  const out = {};
+  for (const key of Object.keys(body || {})) {
+    if (LEAD_WRITABLE_FIELDS.has(key)) out[key] = body[key];
+  }
+  return out;
+};
+
+/**
  * Prisma rejects a string for a DateTime column, so every date on an incoming
  * update has to be coerced before it reaches the query. An empty string — what
  * a cleared date input sends — means "no date", which is null, not ''.
@@ -225,4 +278,4 @@ const resolveProjectId = async (projectNameOrId) => {
   }
 };
 
-module.exports = { LEAD_DATE_FIELDS, coerceLeadDates, LEAD_FIELD_LABELS, LOG_VALUE_MAX, displayLeadValue, sameLeadValue, buildLeadChangeLogs, resolveUser, syncOwnerId, resolveProjectId };
+module.exports = { LEAD_DATE_FIELDS, LEAD_WRITABLE_FIELDS, pickLeadFields, coerceLeadDates, LEAD_FIELD_LABELS, LOG_VALUE_MAX, displayLeadValue, sameLeadValue, buildLeadChangeLogs, resolveUser, syncOwnerId, resolveProjectId };

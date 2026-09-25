@@ -929,6 +929,18 @@ exports.logout = async (req, res) => {
     const username = req.user?.username || null;
     const sessionId = req.sessionId || null;
 
+    // Where this account lives, so the signed-out page can be the company's
+    // own branded one rather than the platform's. Read before the session is
+    // ended; a missing company just means the generic page.
+    let companySlug = null;
+    if (req.user?.companyId) {
+      const company = await prisma.company.findUnique({
+        where: { id: req.user.companyId },
+        select: { slug: true },
+      }).catch(() => null);
+      companySlug = company?.slug || null;
+    }
+
     if (username) {
       const ipAddress = requestIp(req) || '127.0.0.1';
       await prisma.systemLog.create({
@@ -945,7 +957,7 @@ exports.logout = async (req, res) => {
         data: { lastActiveIp: ipAddress },
       }).catch(() => {});
     }
-    res.status(200).json({ message: 'Logout successful' });
+    res.status(200).json({ message: 'Logout successful', company: companySlug });
   } catch (error) {
     sendError(res, error, 'Server error during logout', 500);
   }

@@ -82,7 +82,7 @@ const call = async (sess, path, opts = {}) => {
     // --- suspending a company locks it out
     r = await call(root, `/api/platform/companies/${created.companyId}`, { method: 'PUT', body: JSON.stringify({ status: 'Suspended' }) });
     check('platform admin suspends company', r.status === 200, r.status);
-    r = await call(acme, '/api/leads'); check('suspended company is locked out', r.status === 403, r.status);
+    r = await call(acme, '/api/leads'); check('suspended company is locked out (signed out)', r.status === 401, r.status);
   } catch (error) {
     console.error(error);
     results.push(false);

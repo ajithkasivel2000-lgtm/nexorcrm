@@ -146,8 +146,8 @@ const made = { projectId: null, users: [], integrationId: null, partnerId: null,
     if (r.body?.id) made.users.push(r.body.id);
     r = await call(null, '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: pname, password: 'Partner-Pass-1!' }) });
     const ps = r.body?.token; check('partner can sign in', Boolean(ps), r.status);
-    r = await call(ps, '/api/leads'); check('partner walled off from CRM leads', r.status === 403, r.status);
-    r = await call(ps, '/api/opportunities'); check('partner walled off from opportunities', r.status === 403, r.status);
+    r = await call(ps, '/api/leads'); check('partner walled off from CRM leads (signed out)', r.status === 401, r.status);
+    r = await call(ps, '/api/opportunities'); check('partner walled off from opportunities (signed out)', r.status === 401, r.status);
     r = await call(ps, '/api/partner/leads', { method: 'POST', body: JSON.stringify({ name: 'Partner Lead', mobile: '9876500004', project: project.projectName }) });
     check('partner submits a lead', r.status === 201, `${r.status} ${r.body?.message || ''}`);
     if (r.body?.id) made.leadIds.push(r.body.id);

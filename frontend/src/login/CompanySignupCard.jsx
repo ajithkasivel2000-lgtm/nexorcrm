@@ -13,7 +13,7 @@ export default function CompanySignupCard({ onBack, onCreated }) {
 
   useEffect(() => {
     // The plans are shown so people know what the trial turns into.
-    fetch('/api/public/plans').then((r) => (r.ok ? r.json() : [])).then(setPlans).catch(() => {});
+    fetch('/api/public/plans').then((r) => (r.ok ? r.json() : [])).then(setPlans).catch(() => { });
   }, []);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

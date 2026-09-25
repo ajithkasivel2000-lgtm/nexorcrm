@@ -20,9 +20,12 @@
  */
 
 const SECRET_KEYS = ['token', 'sessionId'];
-const DISPLAY_KEYS = ['loggedInUser', 'userStatus', 'forcePasswordChange'];
+// companySlug: where this account signed in from (a company's own branded
+// page), so an ended session can return there instead of the generic page.
+// Display value, not a credential.
+const DISPLAY_KEYS = ['loggedInUser', 'userStatus', 'forcePasswordChange', 'companySlug'];
 
-export function setAuth({ token, username, sessionId, status }, remember = false) {
+export function setAuth({ token, username, sessionId, status, companySlug }, remember = false) {
   const secretStore = remember ? window.localStorage : window.sessionStorage;
   const otherStore = remember ? window.sessionStorage : window.localStorage;
   // A previous remembered login must not leave a stale token behind when the
@@ -34,6 +37,11 @@ export function setAuth({ token, username, sessionId, status }, remember = false
   // Display values: always in localStorage for the screens that read them.
   if (username) window.localStorage.setItem('loggedInUser', username);
   if (status) window.localStorage.setItem('userStatus', status);
+  // The slug names the branded sign-in page to return to on logout/401. An
+  // account from the platform company has none, so the value is replaced,
+  // never merged — a new sign-in on the generic page must clear the old one.
+  if (companySlug) window.localStorage.setItem('companySlug', companySlug);
+  else window.localStorage.removeItem('companySlug');
 }
 
 export function getToken() {

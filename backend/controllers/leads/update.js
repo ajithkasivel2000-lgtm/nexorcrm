@@ -9,7 +9,7 @@ const { copyFields } = require('../../utils/mailRecipients');
 const { startAssignmentTimer, recordLeadActivity, cancelPendingFor, isTerminalStatus } = require('../../utils/leadAssignment');
 const { syncSiteVisitFromLead } = require('../../utils/siteVisitSync');
 const { sendMail } = require('../../utils/mailer');
-const { coerceLeadDates, buildLeadChangeLogs, resolveUser, syncOwnerId } = require('./helpers');
+const { coerceLeadDates, buildLeadChangeLogs, resolveUser, syncOwnerId, pickLeadFields } = require('./helpers');
 
 exports.updateLeadStatus = async (req, res) => {
   try {
@@ -24,7 +24,10 @@ exports.updateLeadStatus = async (req, res) => {
 
     const isSiteVisitUpdate = !!(req.body.siteVisitDate || (req.body.siteVisitStatus && req.body.siteVisitStatus !== 'Opportunity') || req.body.status === 'Site Visit');
 
-    let updateData = { ...req.body };
+    // Only the fields a client may set survive. Spreading req.body used to
+    // let a payload write any column — id, createdAt, allocator, lastActivityAt
+    // — and the whitelist is the one place that stops it (see pickLeadFields).
+    let updateData = pickLeadFields(req.body);
     let logEntryData = null;
 
     // Validate mobile if being updated
@@ -42,11 +45,10 @@ exports.updateLeadStatus = async (req, res) => {
     const badEmail = coerceEmails(updateData, [['email', 'Email'], ['alternateEmail', 'Alternate Email']]);
     if (badEmail) return res.status(400).json({ message: badEmail });
 
-    // Who is making the change. Not columns on the lead, so they come out of
-    // the payload before it reaches Prisma either way.
-    const actor = updateData.username || updateData.changedBy || 'admin';
-    delete updateData.username;
-    delete updateData.changedBy;
+    // Who is making the change: the verified session user, not a body field a
+    // caller could set to anyone. The old `username`/`changedBy` body keys are
+    // dropped by the whitelist above.
+    const actor = req.user?.username || req.headers['x-username'] || 'admin';
 
     if (req.body.status || req.body.logEntry) {
       // The log said "by admin" whoever did it, which made it useless for the
@@ -56,8 +58,7 @@ exports.updateLeadStatus = async (req, res) => {
         title: req.body.logEntry?.title || 'Lead Status Updated',
         subtitle: req.body.logEntry?.subtitle
           || `${from} → ${req.body.status} by ${actor}`,
-      };
-      delete updateData.logEntry;
+      }
     }
 
     // Reassignment writes `owner`; `ownerId` mirrors it and is what list
@@ -307,7 +308,9 @@ exports.updateLeadStatus = async (req, res) => {
 
 exports.updateLeadFields = async (req, res) => {
   try {
-    const { logEntry, ...updateData } = req.body;
+    // Whitelist first, so logEntry (a control field, not a column) and any
+    // crafted key are dropped together; see pickLeadFields.
+    const updateData = pickLeadFields(req.body);
 
     // Validate mobile if being updated
     if (updateData.mobile !== undefined && updateData.mobile !== null && updateData.mobile !== '') {
@@ -462,7 +465,9 @@ exports.updateLeadFields = async (req, res) => {
 
 exports.updateLead = async (req, res) => {
   try {
-    const { logEntry, ...updateData } = req.body;
+    // Whitelist first, so logEntry (a control field, not a column) and any
+    // crafted key are dropped together; see pickLeadFields.
+    const updateData = pickLeadFields(req.body);
 
     // Validate mobile if being updated
     if (updateData.mobile !== undefined && updateData.mobile !== null && updateData.mobile !== '') {
@@ -501,11 +506,14 @@ exports.updateLead = async (req, res) => {
       where: { id: req.params.id },
       data: {
         ...updateData,
-        ...(logEntry && {
+        // logEntry is a control field, not a column, so the whitelist dropped
+        // it — read it from the original request body, where LeadStatusCell
+        // and the profile's modals send it.
+        ...(req.body.logEntry && {
           logs: {
             create: {
-              title: logEntry.title || 'Lead Updated',
-              subtitle: logEntry.subtitle || 'by admin'
+              title: req.body.logEntry.title || 'Lead Updated',
+              subtitle: req.body.logEntry.subtitle || 'by admin'
             }
           }
         })

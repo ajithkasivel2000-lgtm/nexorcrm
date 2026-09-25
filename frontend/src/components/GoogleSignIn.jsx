@@ -96,6 +96,8 @@ export default function GoogleSignIn({ theme = 'dark', onError, onBusyChange, on
             username: data.user.username,
             sessionId: data.sessionId,
             status: data.user?.status,
+            // The account's branded sign-in page, to return to on logout.
+            companySlug: data.company || null,
           },
           false,
         );

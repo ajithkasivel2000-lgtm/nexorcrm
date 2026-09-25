@@ -38,6 +38,20 @@ exports.metaVerify = (req, res) => tenant.runAsSystem(async () => {
 /** Which app secret signs this payload: the company's own, or the platform's. */
 const appSecretFor = (settings) => settings?.appSecret || process.env.META_APP_SECRET || '';
 
+/**
+ * The app secret for a Facebook Lead Ads webhook, in the order Meta's own
+ * setup implies: the integration's own secret (its page may be delivered by a
+ * different Meta app than the company's WhatsApp number), then the WhatsApp
+ * setting's, then the platform-wide one. Borrowing the WhatsApp secret alone
+ * silently dropped every lead for a company running Lead Ads without
+ * WhatsApp connected.
+ */
+const leadAdsSecretFor = async (integration) => {
+  if (integration?.appSecret) return integration.appSecret;
+  const wa = await prisma.whatsAppSetting.findFirst({ select: { appSecret: true } });
+  return wa?.appSecret || process.env.META_APP_SECRET || '';
+};
+
 async function handleWhatsAppChange(value, rawBody, signature) {
   const phoneNumberId = value?.metadata?.phone_number_id;
   if (!phoneNumberId) return;
@@ -102,8 +116,8 @@ async function handleLeadgenChange(value, rawBody, signature) {
   if (!integration || !integration.enabled) return;
 
   await tenant.runWithCompany(integration.companyId, async () => {
-    const wa = await prisma.whatsAppSetting.findFirst();
-    if (!verifyMetaSignature(rawBody, signature, appSecretFor(wa))) {
+    const appSecret = await leadAdsSecretFor(integration);
+    if (!verifyMetaSignature(rawBody, signature, appSecret)) {
       console.warn(`Lead Ads webhook for page ${pageId} failed signature check; ignored.`);
       return;
     }

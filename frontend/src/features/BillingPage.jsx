@@ -34,10 +34,10 @@ function loadCheckout() {
 
 /* Checked before anything loads: without it the page mounted for a moment
    while permissions loaded, and its refused requests surfaced as error pop-ups. */
-export default function BillingPage(props) {
-  const allowed = ["Admin","superadmin"].includes(localStorage.getItem('userStatus'));
+export default function BillingPage() {
+  const allowed = ["Admin", "superadmin"].includes(localStorage.getItem('userStatus'));
   if (!allowed) return <Page title="Billing & Plan"><p className="fx-muted">Only administrators can manage billing.</p></Page>;
-  return <BillingPageInner {...props} />;
+  return <BillingPageInner />;
 }
 
 function BillingPageInner() {
@@ -135,7 +135,9 @@ function BillingPageInner() {
                     <div className="fx-stat__value">{rupees(plan.pricePaise)}<span className="fx-muted"> /month + {plan.gstPercent}% GST</span></div>
                     <p className="fx-muted" style={{ margin: 'var(--nx-space-2) 0' }}>{plan.maxUsers ? `Up to ${plan.maxUsers} users` : 'Unlimited users'} · {plan.description}</p>
                     <ul style={{ margin: '0 0 var(--nx-space-3)', paddingLeft: 18, fontSize: 'var(--nx-text-sm)', color: 'var(--nx-text-secondary)' }}>
-                      {plan.features.map((f) => <li key={f}>{f}</li>)}
+                      {/* Keyed by position, not text: the same feature text can
+                          legitimately appear twice and a text key then collides. */}
+                      {plan.features.map((f, i) => <li key={i}>{f}</li>)}
                     </ul>
                     {current
                       ? <Pill tone="success" dot>Current plan</Pill>

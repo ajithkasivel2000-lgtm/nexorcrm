@@ -261,10 +261,17 @@ exports.microsoftSignIn = async (req, res) => {
       data: { username: user.username, event: 'LOGIN', ipAddress },
     }).catch(() => {});
 
+    // The account's branded sign-in page, so the browser can return there on
+    // logout instead of the platform's generic page.
+    const accountCompany = user.companyId
+      ? await prisma.company.findUnique({ where: { id: user.companyId }, select: { slug: true } }).catch(() => null)
+      : null;
+
     return res.status(200).json({
       message: 'Login successful',
       token: `sess_${session.id}`,
       sessionId: session.id,
+      company: accountCompany?.slug || null,
       user: { username: user.username, status: user.status },
     });
   } catch (error) {

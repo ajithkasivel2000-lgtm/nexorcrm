@@ -247,7 +247,7 @@ function SourcesTab() {
 }
 
 function NewSourceModal({ provider, onClose, onSaved }) {
-  const [form, setForm] = useState({ name: provider === 'facebook' ? 'Facebook Lead Ads' : 'Google Ads', pageId: '', pageAccessToken: '', project: '', primarySource: 'Digital Marketing' });
+  const [form, setForm] = useState({ name: provider === 'facebook' ? 'Facebook Lead Ads' : 'Google Ads', pageId: '', pageAccessToken: '', appSecret: '', project: '', primarySource: 'Digital Marketing' });
   const [projects, setProjects] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -265,6 +265,7 @@ function NewSourceModal({ provider, onClose, onSaved }) {
           <>
             <Field label="Facebook page ID" required><Input value={form.pageId} onChange={set('pageId')} /></Field>
             <Field label="Page access token" required hint="A long-lived page token with leads_retrieval permission."><Input type="password" value={form.pageAccessToken} onChange={set('pageAccessToken')} autoComplete="off" /></Field>
+            <Field label="App secret" hint="The Meta app secret of the app that delivers this page's webhooks — the same one as the WhatsApp tab unless this page runs on its own app. Meta rejects every lead form without a verifiable secret."><Input type="password" value={form.appSecret} onChange={set('appSecret')} autoComplete="off" /></Field>
           </>
         )}
         <Field label="Project for these leads" hint="Decides which rota assigns them. Leave empty for General.">

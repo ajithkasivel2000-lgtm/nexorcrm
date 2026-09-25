@@ -93,12 +93,12 @@ exports.updateExotel = async (req, res) => {
 
 /* ------------------------------------------------------- Lead sources --- */
 
-const INTEGRATION_FIELDS = ['provider', 'name', 'enabled', 'pageId', 'pageAccessToken', 'project', 'primarySource'];
+const INTEGRATION_FIELDS = ['provider', 'name', 'enabled', 'pageId', 'pageAccessToken', 'appSecret', 'project', 'primarySource'];
 
 exports.listLeadIntegrations = async (_req, res) => {
   try {
     const rows = await prisma.leadIntegration.findMany({ orderBy: { createdAt: 'asc' } });
-    res.status(200).json(rows.map((r) => hide(r, ['pageAccessToken'])));
+    res.status(200).json(rows.map((r) => hide(r, ['pageAccessToken', 'appSecret'])));
   } catch (error) { sendError(res, error, 'Could not load lead sources', 500); }
 };
 
@@ -112,10 +112,10 @@ exports.createLeadIntegration = async (req, res) => {
     }
     if (data.provider === 'google') {
       data.webhookKey = crypto.randomBytes(18).toString('hex');
-      delete data.pageId; delete data.pageAccessToken;
+      delete data.pageId; delete data.pageAccessToken; delete data.appSecret;
     }
     const row = await prisma.leadIntegration.create({ data });
-    res.status(201).json(hide(row, ['pageAccessToken']));
+    res.status(201).json(hide(row, ['pageAccessToken', 'appSecret']));
   } catch (error) {
     if (error.code === 'P2002') return res.status(409).json({ message: 'That Facebook page is already connected (possibly to another company).' });
     sendError(res, error, 'Could not create the lead source', 400);
@@ -124,9 +124,9 @@ exports.createLeadIntegration = async (req, res) => {
 
 exports.updateLeadIntegration = async (req, res) => {
   try {
-    const data = pick(req.body, ['name', 'enabled', 'pageAccessToken', 'project', 'primarySource'], ['pageAccessToken']);
+    const data = pick(req.body, ['name', 'enabled', 'pageAccessToken', 'appSecret', 'project', 'primarySource'], ['pageAccessToken', 'appSecret']);
     const row = await prisma.leadIntegration.update({ where: { id: req.params.id }, data });
-    res.status(200).json(hide(row, ['pageAccessToken']));
+    res.status(200).json(hide(row, ['pageAccessToken', 'appSecret']));
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ message: 'Lead source not found' });
     sendError(res, error, 'Could not update the lead source', 400);

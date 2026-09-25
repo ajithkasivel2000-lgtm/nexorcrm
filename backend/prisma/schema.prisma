@@ -1496,12 +1496,17 @@ model ReminderSetting {
   /// How often to repeat after that, up to the due time.
   repeatMinutes        Int      @default(30)
   /// A cap per activity, so a long window cannot become a stream. 0 = no cap.
-  maxReminders         Int      @default(0)
-  /// Keep reminding after the due time has passed.
-  overdueEnabled       Boolean  @default(true)
-  overdueRepeatMinutes Int      @default(60)
+  maxReminders         Int      @default(0)  /// Keep reminding after the due time has passed.
+  overdueEnabled Boolean  @default(true)
+  overdueRepeatMinutes Int  @default(60)
   /// How long past due before the owner's manager is told as well. 0 = never.
-  escalateAfterMinutes Int      @default(120)
+  escalateAfterMinutes Int  @default(120)
+  /// How many overdue reminders an activity may earn before the chasing stops.
+  /// 0 = no cap (keeps going until the activity is closed). The default keeps
+  /// the worst case to a working day at the default interval, instead of
+  /// repeating forever — the same guard CollectionReminderSetting.maxOverdue
+  /// already applies to buyer payment reminders.
+  maxOverdueReminders Int  @default(4)
   /// Which channels a reminder uses. The bell is the one that always works.
   channelInApp         Boolean  @default(true)
   channelPush          Boolean  @default(true)
@@ -1753,6 +1758,12 @@ model LeadIntegration {
   enabled         Boolean   @default(true)
   pageId          String?   @unique
   pageAccessToken String?
+  /// The Meta app secret that signs this page's Lead Ads webhooks. Meta signs
+  /// with the secret of the app delivering the webhook — usually the same app
+  /// as the company's WhatsApp number, so this is optional and the verification
+  /// falls back to the WhatsApp setting and then the platform-wide
+  /// META_APP_SECRET. Set it here when this page's app is a different one.
+  appSecret       String?
   webhookKey      String?   @unique
   project         String?
   primarySource   String?

@@ -98,6 +98,8 @@ export default function MicrosoftSignIn({ onError, onBusyChange }) {
           username: data.user.username,
           sessionId: data.sessionId,
           status: data.user?.status,
+          // The account's branded sign-in page, to return to on logout.
+          companySlug: data.company || null,
         },
         false,
       );

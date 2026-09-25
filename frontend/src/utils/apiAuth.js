@@ -43,6 +43,12 @@ const PUBLIC_ENDPOINTS = [
   // could not be verified") is shown to the user rather than being mistaken
   // for an expired session and turned into a sign-out and a page reload.
   '/api/auth/google',
+  // Microsoft sign-in has the same shape — MSAL mints the ID token in a popup
+  // and the server verifies it — so its failures belong on the card too, not
+  // behind a forced sign-out. The 2FA step also mints no session of its own
+  // until the code is verified, so its 401s (a wrong code) must stay inline.
+  '/api/auth/microsoft',
+  '/api/auth/2fa/verify',
   // The buyer portal signs in with its own token (X-Buyer-Token); a staff
   // token must not ride along, and a buyer's 401 must not sign staff out.
   '/api/buyer',
@@ -112,8 +118,13 @@ export default function installApiAuth() {
         && getToken()
       ) {
         window.__apiAuthSigningOut = true;
+        // A company's own sign-in page is where this session started; return
+        // there (read before the wipe below takes it away).
+        const slug = window.localStorage.getItem('companySlug');
         clearAuth();
-        window.location.href = '/?session=ended';
+        window.location.href = slug
+          ? `/?company=${encodeURIComponent(slug)}&session=ended`
+          : '/?session=ended';
         return;
       }
 

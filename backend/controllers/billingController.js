@@ -134,16 +134,20 @@ exports.cancel = async (req, res) => {
 
 /* ---- Razorpay webhook ---------------------------------------------------- */
 
+/* ACK only after the work succeeds: the handler used to answer 200 first, so a
+   recordPayment failure was reported to Razorpay as delivered and never
+   retried — a paying company could sit past_due until someone read the log.
+   Every write below is idempotent on the payment id, so a replayed webhook
+   after a 500 is safe. */
 exports.webhook = (req, res) => tenant.runAsSystem(async () => {
   if (!billing.verifyWebhookSignature(req.rawBody, req.headers['x-razorpay-signature'])) return res.sendStatus(400);
-  res.sendStatus(200);
   try {
     const event = req.body?.event;
     const sub = req.body?.payload?.subscription?.entity;
     const payment = req.body?.payload?.payment?.entity;
-    if (!sub?.id) return;
+    if (!sub?.id) return res.sendStatus(200);
     const company = await prisma.company.findUnique({ where: { razorpaySubscriptionId: sub.id } });
-    if (!company) return;
+    if (!company) return res.sendStatus(200);
     const plan = await billing.planFor(company);
     const periodEnd = sub.current_end ? new Date(sub.current_end * 1000) : undefined;
     const periodStart = sub.current_start ? new Date(sub.current_start * 1000) : new Date();
@@ -155,8 +159,10 @@ exports.webhook = (req, res) => tenant.runAsSystem(async () => {
     } else if (event === 'subscription.cancelled' || event === 'subscription.completed') {
       await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled', currentPeriodEnd: periodEnd || company.currentPeriodEnd } });
     }
+    return res.sendStatus(200);
   } catch (error) {
     console.error('Razorpay webhook failed:', error.message);
+    return res.sendStatus(500); // Razorpay retries
   }
 });
 
@@ -219,6 +225,9 @@ exports.companyBilling = (req, res) => tenant.runAsSystem(async () => {
 
     if (action === 'activate') {
       // A payment received outside Razorpay (bank transfer): record it and activate.
+      // An amount needs a plan to price it against — activating without one
+      // recorded a ₹0 invoice and made the company 'active' for nothing.
+      if (!plan) return res.status(400).json({ message: 'Choose a plan to activate against (the invoice needs a price).' });
       const period = Math.max(1, parseInt(days, 10) || 30);
       const start = company.currentPeriodEnd && company.currentPeriodEnd > new Date() ? company.currentPeriodEnd : new Date();
       const invoice = await billing.recordPayment(company, plan, {

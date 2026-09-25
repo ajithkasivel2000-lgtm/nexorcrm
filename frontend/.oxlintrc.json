@@ -16,6 +16,25 @@
   },
   "env": {
     "browser": true,
-    "es2024": true
-  }
+    "es2024": true,
+    "node": true
+  },
+  "overrides": [
+    {
+      "files": [
+        "vite.config.js"
+      ],
+      "env": {
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "src/main.jsx"
+      ],
+      "rules": {
+        "react/only-export-components": "off"
+      }
+    }
+  ]
 }

@@ -107,10 +107,35 @@ exports.getLeads = async (req, res) => {
       }
     }
 
-    const leads = await prisma.lead.findMany({ where: filters, orderBy: { updatedAt: 'desc' }, include: { logs: true } });
+    /* Logs are included only for the campaign screen's "Campaign Lead
+       Created" marker (utils/campaignLead.js), so they are fetched as a
+       small projection of just this page's leads rather than every column of
+       every log of every lead in the company — on a list that routinely runs
+       to hundreds of rows, each with a growing log, that was the heaviest
+       part of the request. title drives hasCampaignLog; subtitle is where
+       campaignOf reads the campaign's name from. */
+    const leads = await prisma.lead.findMany({ where: filters, orderBy: { updatedAt: 'desc' } });
+    let logsByLead = new Map();
+    if (leads.length) {
+      try {
+        const campaignLogs = await prisma.leadLog.findMany({
+          where: { leadId: { in: leads.map((l) => l.id) }, title: 'Campaign Lead Created' },
+          select: { leadId: true, title: true, subtitle: true },
+        });
+        logsByLead = campaignLogs.reduce((acc, l) => {
+          if (!acc.has(l.leadId)) acc.set(l.leadId, []);
+          acc.get(l.leadId).push({ title: l.title, subtitle: l.subtitle });
+          return acc;
+        }, new Map());
+      } catch (error) {
+        // A marker miss only costs the campaign filter its rows, never the list.
+        console.error('Could not read campaign markers for the lead list:', error.message);
+      }
+    }
 
-    // Resolve owner IDs to display names
-    const allUsers = await prisma.user.findMany();
+    // Resolve owner IDs to display names — id and username only; this list
+    // needs the display name, not the rows themselves.
+    const allUsers = await prisma.user.findMany({ select: { id: true, username: true, firstName: true } });
     const userMap = {};
     allUsers.forEach(u => {
       userMap[u.id] = u.username || u.firstName || u.id;
@@ -118,7 +143,7 @@ exports.getLeads = async (req, res) => {
     });
 
     // Resolve project IDs to project names
-    const allProjects = await prisma.project.findMany();
+    const allProjects = await prisma.project.findMany({ select: { id: true, projectName: true } });
     const projectMap = {};
     allProjects.forEach(p => {
       projectMap[p.id] = p.projectName;
@@ -151,6 +176,11 @@ exports.getLeads = async (req, res) => {
       const clock = pending.get(lead.id);
       return {
         ...lead,
+        /* The campaign marker only (see above): enough for
+           utils/campaignLead.js's hasCampaignLog, not each lead's full log.
+           A lead with no marker row carries an empty list, which reads the
+           same to every consumer. */
+        logs: logsByLead.get(lead.id) || [],
         ownerName: displayOwnerName,
         owner: displayOwnerName,
         projectName: displayProjectName,

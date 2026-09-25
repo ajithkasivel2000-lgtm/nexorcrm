@@ -284,6 +284,12 @@ exports.googleSignIn = async (req, res) => {
           : 'Signed in with Google',
     });
 
+    // The account's branded sign-in page, so the browser can return there on
+    // logout instead of the platform's generic page.
+    const accountCompany = user.companyId
+      ? await prisma.company.findUnique({ where: { id: user.companyId }, select: { slug: true } }).catch(() => null)
+      : null;
+
     res.status(200).json({
       message: 'Login successful',
       token: `sess_${session.id}`,
@@ -291,6 +297,7 @@ exports.googleSignIn = async (req, res) => {
       // A Google account has no password to change, so this is never forced.
       mustChangePassword: false,
       createdAccount: created,
+      company: accountCompany?.slug || null,
       user: {
         id: user.id,
         username: user.username,

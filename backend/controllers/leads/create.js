@@ -8,11 +8,14 @@ const { notifyImportedLeads } = require('../../utils/leadNotify');
 const { findDuplicateLead, DUPLICATE_STATUSES } = require('../../utils/leadDuplicate');
 const { PRESALES_RRQ_TYPE, SALES_RRQ_TYPE, resolveRrqType } = require('../../utils/rrqTypes');
 const { startAssignmentTimer } = require('../../utils/leadAssignment');
-const { resolveUser, resolveProjectId } = require('./helpers');
+const { resolveUser, resolveProjectId, pickLeadFields } = require('./helpers');
 
 exports.createLead = async (req, res) => {
   try {
-    let leadData = { ...req.body };
+    // Only the fields a client may set survive. Spreading req.body used to
+    // let a payload write any column — id, createdAt, allocator — and the
+    // whitelist is the one place that stops it (see pickLeadFields).
+    let leadData = pickLeadFields(req.body);
 
     const badEmail = coerceEmails(leadData, [['email', 'Email'], ['alternateEmail', 'Alternate Email']]);
     if (badEmail) return res.status(400).json({ message: badEmail });
@@ -445,6 +448,8 @@ exports.importLeads = async (req, res) => {
       // - owner stores the User UUID (ID, not name)
       // - ownerId stores the UUID
       // - project stores the Project ID (ID, not name)
+      // Rows built here rather than picked from the request: the CSV mapper
+      // above already constructs every value explicitly.
       const newLead = await prisma.lead.create({
         data: {
           name,

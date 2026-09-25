@@ -19,6 +19,7 @@ const HELP = [
   ['Repeat every', 'How often it reminds after that, up to the due time. At 30 minutes a 6:00pm follow-up reminds at 3:00, 3:30, 4:00, 4:30, 5:00 and 5:30.'],
   ['Maximum reminders', 'A cap per activity, so a long window cannot become a stream. 0 means no cap — the series simply runs to the due time.'],
   ['Overdue reminders', 'Keep reminding after the due time has passed, on their own interval. Turn this off to stop at the due time.'],
+  ['Overdue cap', 'How many overdue reminders an activity may earn before the chasing stops — the first one counts. 0 keeps chasing until the activity is closed or rescheduled.'],
   ['Escalate after', 'How long past due before the owner’s reporting manager is told as well — and the administrators, if nobody is named as their manager. 0 never escalates.'],
   ['What stops a reminder', 'Completing, cancelling or converting the activity. Nothing is scheduled in advance, so a finished activity is simply never found again. Rescheduling starts a fresh series from the new time.'],
   ['Channels', 'The bell always works. Push needs the browser to have notifications turned on for this site.'],
@@ -55,6 +56,7 @@ const ReminderSettings = () => {
     updateData.maxReminders = whole(updateData.maxReminders) || 0;
     updateData.overdueRepeatMinutes = whole(updateData.overdueRepeatMinutes);
     updateData.escalateAfterMinutes = whole(updateData.escalateAfterMinutes) || 0;
+    updateData.maxOverdueReminders = whole(updateData.maxOverdueReminders) || 0;
 
     if (!Number.isInteger(updateData.leadMinutes) || updateData.leadMinutes < 1) {
       window.appAlert('Remind before must be a whole number of minutes, at least 1.');
@@ -221,6 +223,15 @@ const ReminderSettings = () => {
                   value={settings.overdueRepeatMinutes}
                   onChange={set('overdueRepeatMinutes')}
                   hint="How often to chase an activity that is already late."
+                />
+
+                <RecordField
+                  label="Overdue Cap"
+                  type="number"
+                  suffix="Reminders"
+                  value={settings.maxOverdueReminders}
+                  onChange={set('maxOverdueReminders')}
+                  hint="Stops the chasing after this many overdue reminders per activity. 0 means no cap."
                 />
 
                 <RecordField

@@ -94,7 +94,7 @@ async function verifySession(token) {
   tenant.adopt(session.companyId);
   const company = await prisma.company.findUnique({ where: { id: session.companyId } });
   if (!company || company.status !== 'Active') {
-    return { error: { status: 403, message: 'This company account is suspended. Contact your provider.' } };
+    return { error: { status: 401, message: 'This company account is suspended. Contact your provider.' } };
   }
   const subscription = accessFor(company);
 
@@ -109,7 +109,7 @@ async function verifySession(token) {
       const idleMs = Date.now() - new Date(session.lastActive).getTime();
       if (idleMs > userInactivityTimeout * 60 * 1000) {
         // The dead row goes now; the sweep would catch it later anyway.
-        prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+        prisma.session.delete({ where: { id: session.id } }).catch(() => { });
         return { error: { status: 401, message: 'You were signed out after a period of inactivity. Please sign in again.' } };
       }
     }
@@ -122,7 +122,7 @@ async function verifySession(token) {
   // Banned, suspended, archived, awaiting activation or locked: no API access.
   const blocked = accountBlockReason(user);
   if (blocked) {
-    return { error: { status: 403, message: blocked } };
+    return { error: { status: 401, message: blocked } };
   }
 
   // Keep the session's own activity marker moving, so the sessions tab shows
@@ -130,7 +130,7 @@ async function verifySession(token) {
   prisma.session.update({
     where: { id: session.id },
     data: { lastActive: new Date() },
-  }).catch(() => {});
+  }).catch(() => { });
 
   return { user, sessionId: session.id, companyId: session.companyId, subscription };
 }
@@ -175,7 +175,7 @@ function authMiddleware(req, res, next) {
         return res.status(402).json({ message: result.subscription.reason, code: 'SUBSCRIPTION_INACTIVE' });
       }
       if (isPartnerUser(result.user) && !PARTNER_PATHS.some((p) => req.originalUrl.startsWith(p))) {
-        return res.status(403).json({ message: 'Channel partner accounts can only use the partner portal.' });
+        return res.status(401).json({ message: 'Channel partner accounts can only use the partner portal. Please sign in again.' });
       }
       return tenant.runWithCompany(result.companyId, () => next());
     })

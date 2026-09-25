@@ -14,6 +14,7 @@ const LIMITS = {
   maxReminders: [0, 500],                  // 0 = no cap
   overdueRepeatMinutes: [1, 60 * 24 * 7],
   escalateAfterMinutes: [0, 60 * 24 * 30], // 0 = never escalate
+  maxOverdueReminders: [0, 500],           // 0 = no cap; 4 by default
 };
 
 const INTEGER_FIELDS = Object.keys(LIMITS);

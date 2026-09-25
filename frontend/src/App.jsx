@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-// Trigger HMR update
 import { Eye, EyeOff, User, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Preloader from './components/Preloader';
@@ -158,7 +157,10 @@ function App() {
   const [rememberMe, setRememberMe] = useState(false);
 
   // Password reset flow: 'login' | 'forgot' | 'reset'
-  const [view, setView] = useState(() => (new URLSearchParams(window.location.search).get('signup') === '1' ? 'start' : 'login'));
+  // ?signup=1 is handled once on mount below, where openSignup() reads it —
+  // starting here on 'start' instead made the mount effect override it with
+  // the staff registration form, so the trial card could never appear.
+  const [view, setView] = useState('login');
   /* A company's own sign-in link (?company=slug), or its own domain
      (crm.roofonwalls.com), shows its logo and name. */
   const [brand, setBrand] = useState(null);
@@ -299,12 +301,19 @@ function App() {
     // The fetch wrapper attaches the session token, so the backend revokes
     // the exact row this browser holds. The token is cleared only after the
     // call — clearing it first would log out anonymously and leave the row live.
+    let companySlug = null;
     try {
-      await fetch('/api/auth/logout', {
+      const res = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}'
       });
+      // The account's company, so a person who signed in on a company's own
+      // branded page (?company=roofonwalls or its domain) is returned there —
+      // sending everyone to plain / dropped them on the platform's generic
+      // NexorCRM sign-in instead of the page they started from.
+      const data = await res.json().catch(() => ({}));
+      companySlug = data.company || null;
     } catch (e) {
       console.error('Logout error:', e);
     }
@@ -313,7 +322,7 @@ function App() {
     // Wipes both stores, userStatus and forcePasswordChange with them.
     disconnectRealtime();
     clearAuth();
-    window.location.href = '/';
+    window.location.href = companySlug ? `/?company=${encodeURIComponent(companySlug)}` : '/';
   };
 
   const handleLogin = async (e) => {
@@ -377,8 +386,15 @@ function App() {
     }
   };
 
-  /** Store the session and go to the user's home page. */
-  const finishLogin = (data) => {
+  /**
+   * Store the session and go to the user's home page.
+   *
+   * `remember` overrides the sign-in form's checkbox: the trial-signup flow
+   * posts rememberMe: true with its login (a new company's owner should not
+   * lose the session when the tab closes) but never touches this state, so
+   * the token must follow what was sent, not what the checkbox says.
+   */
+  const finishLogin = (data, remember) => {
     // Remember me → localStorage (survives the browser closing); otherwise
     // sessionStorage (dies with the tab). The backend session row matches:
     // cookie-expiry days for remembered, one day otherwise.
@@ -392,8 +408,11 @@ function App() {
         username: data.user?.username || username,
         sessionId: data.sessionId,
         status: data.user?.status,
+        // The branded page this sign-in belongs to (brand comes from the
+        // ?company= slug or the company's own domain); null on the generic page.
+        companySlug: brand?.slug || null,
       },
-      rememberMe,
+      remember !== undefined ? remember : rememberMe,
     );
     if (data.mustChangePassword) {
       localStorage.setItem('forcePasswordChange', '1');
@@ -540,6 +559,7 @@ function App() {
               username: data.user?.username || signupUsername.trim(),
               sessionId: data.sessionId,
               status: data.user?.status,
+              companySlug: brand?.slug || null,
             },
             false,
           );
@@ -749,7 +769,9 @@ function App() {
               body: JSON.stringify({ ...creds, rememberMe: true }),
             });
             const data = await response.json().catch(() => ({}));
-            if (response.ok && data.token) finishLogin(data);
+            // Same rememberMe the request carried, so the token lands where
+            // the session row's lifetime says it should.
+            if (response.ok && data.token) finishLogin(data, true);
             else { setView('login'); setError(data.message || 'Your company is ready — please sign in.'); }
           }}
         />
@@ -766,6 +788,9 @@ function App() {
           brandName={brand?.name}
           companyCode={loginCompanyCode}
           onCompanyCodeChange={setLoginCompanyCode}
+          // A company's own page is already that company's sign-in; the code
+          // box is only for the platform's general page.
+          showCompanyCode={!brand}
           username={username}
           onUsernameChange={setUsername}
           password={password}
