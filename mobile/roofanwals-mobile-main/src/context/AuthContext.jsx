@@ -14,7 +14,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const savedUrl = await AsyncStorage.getItem('custom_server_url');
+        let savedUrl = await AsyncStorage.getItem('custom_server_url');
+        // The backend's port moved from 7012 to 7003 (as in production); a
+        // server address saved on the old port would otherwise stop working.
+        if (savedUrl && /:7012(\/|$)/.test(savedUrl)) {
+          savedUrl = savedUrl.replace(':7012', ':7003');
+          await AsyncStorage.setItem('custom_server_url', savedUrl);
+        }
         if (savedUrl) {
           setBaseUrl(savedUrl);
         }
