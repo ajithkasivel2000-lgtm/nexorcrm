@@ -33,9 +33,6 @@
       "expo-sharing"
     ],
     "extra": {
-      "eas": {
-        "projectId": "nexorcrm"
-      },
       "apiUrl": "https://os.nexorcrm.com/api"
     }
   }
