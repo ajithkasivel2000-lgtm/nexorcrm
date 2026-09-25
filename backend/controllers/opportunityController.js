@@ -331,7 +331,7 @@ exports.updateOpportunity = async (req, res) => {
     const before = await prisma.opportunity.findUnique({ where: { id: req.params.id } });
     if (!before) return res.status(404).json({ message: 'Opportunity not found' });
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null; // identity is the session, never a header
 
     /* A stage change is its own event, not just another edited field. */
     const movedStage = 'stage' in updateData && updateData.stage !== before.stage;

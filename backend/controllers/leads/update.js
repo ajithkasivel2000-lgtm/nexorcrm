@@ -48,7 +48,7 @@ exports.updateLeadStatus = async (req, res) => {
     // Who is making the change: the verified session user, not a body field a
     // caller could set to anyone. The old `username`/`changedBy` body keys are
     // dropped by the whitelist above.
-    const actor = req.user?.username || req.headers['x-username'] || 'admin';
+    const actor = req.user?.username || 'system'; // identity is the session, never a header
 
     if (req.body.status || req.body.logEntry) {
       // The log said "by admin" whoever did it, which made it useless for the
@@ -352,7 +352,7 @@ exports.updateLeadFields = async (req, res) => {
       }
     }
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null;
     const changeLogs = buildLeadChangeLogs(existingLead, updateData, actor, ownerLabels);
 
     // Reassignment writes `owner`; `ownerId` mirrors it and is what list
@@ -498,7 +498,7 @@ exports.updateLead = async (req, res) => {
     const existingForOwner = 'owner' in updateData
       ? await prisma.lead.findUnique({ where: { id: req.params.id } })
       : null;
-    const actorForOwner = req.user?.username || req.headers['x-username'] || 'admin';
+    const actorForOwner = req.user?.username || 'system';
 
     const handover = await syncOwnerId(updateData, existingForOwner, actorForOwner);
 

@@ -11,6 +11,13 @@ const monitoring = require('./utils/monitoring');
 monitoring.initMonitoring();
 monitoring.installProcessHandlers();
 
+/* Browser origins allowed to call this API cross-origin (utils/corsPolicy.js).
+   Same-origin production traffic needs no CORS; the list admits the Vite dev
+   server, the platform's own address, every company's custom domain, and
+   CORS_EXTRA_ORIGINS. Webhooks (Meta, Razorpay, Exotel) are server-to-server
+   and send no Origin header, so they pass regardless. */
+const { corsOptions, isOriginAllowed } = require('./utils/corsPolicy');
+
 const leadRoutes = require('./routes/leadRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
 const customerRoutes = require('./routes/customerRoutes');
@@ -71,7 +78,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions()));
 
 /* Team-chat photos arrive as base64 inside a JSON body. express.json()'s
    default cap is 100kb, so every photo request died with a 413 before the
@@ -200,9 +207,10 @@ const HOST = process.env.HOST || undefined;
 // Anything a route threw and did not answer: logged, reported, clean 500.
 app.use(monitoring.errorHandler);
 
-/* One HTTP server carries the REST API and the Socket.IO live updates. */
+/* One HTTP server carries the REST API and the Socket.IO live updates, with
+   the same origin policy on the socket as on the REST routes. */
 const server = http.createServer(app);
-initRealtime(server);
+initRealtime(server, { isOriginAllowed });
 
 server.on('error', (error) => {
   console.error(`Could not start on port ${PORT}: ${error.message}`);

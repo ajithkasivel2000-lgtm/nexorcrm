@@ -75,7 +75,7 @@ exports.updateProject = async (req, res) => {
     const before = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!before) return res.status(404).json({ message: 'Project not found' });
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null; // identity is the session, never a header
 
     const statusMoved = 'projectStatus' in updateData
       && updateData.projectStatus !== before.projectStatus;

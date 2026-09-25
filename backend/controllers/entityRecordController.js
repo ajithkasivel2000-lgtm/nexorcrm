@@ -19,7 +19,7 @@ const {
 } = require('../utils/entityRecords');
 
 /** Who is asking. The routes sit behind authMiddleware, so this is set. */
-const who = (req) => req.user?.username || req.headers['x-username'] || null;
+const who = (req) => req.user?.username || null; // authMiddleware sets req.user
 
 /**
  * Checks the URL before it is used to reach the database.

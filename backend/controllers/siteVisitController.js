@@ -16,7 +16,7 @@ const { announce } = require('../utils/siteVisitNotify');
  */
 
 /** The actor, from the session the auth middleware already resolved. */
-const actorOf = (req) => req.user?.username || req.headers['x-username'] || 'system';
+const actorOf = (req) => req.user?.username || 'system';
 
 /** Announce after responding: notifications must never fail a save. */
 const announceLater = (visit, event) => setImmediate(async () => {

@@ -15,7 +15,7 @@ const UNIT_STATES = ['Available', 'Hold', 'Reserved', 'Booked', 'Sold', 'Blocked
 /** States that mean the unit is spoken for. */
 const COMMITTED = ['Booked', 'Sold'];
 
-const who = (req) => req.user?.username || req.headers['x-username'] || null;
+const who = (req) => req.user?.username || null; // authMiddleware sets req.user
 
 /** Columns a client may set on a building. */
 const BUILDING_FIELDS = [

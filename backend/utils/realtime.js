@@ -22,10 +22,28 @@ const tenant = require('./tenant');
 
 let io = null;
 
-function initRealtime(httpServer) {
+/**
+ * @param {http.Server} httpServer
+ * @param {{ isOriginAllowed?: (origin: string) => Promise<boolean> }} [opts]
+ *   isOriginAllowed gates browser origins the same way the REST API's CORS
+ *   does (utils/corsPolicy.js). Without it every origin is admitted — the old
+ *   `origin: true` behaviour, which let a page anywhere open a socket.
+ */
+function initRealtime(httpServer, opts = {}) {
   io = new Server(httpServer, {
     path: '/socket.io',
-    cors: { origin: true, credentials: false },
+    cors: {
+      origin: async (origin, callback) => {
+        try {
+          if (!opts.isOriginAllowed || await opts.isOriginAllowed(origin)) return callback(null, true);
+          return callback(null, false);
+        } catch (error) {
+          return callback(error);
+        }
+      },
+      methods: ['GET', 'POST'],
+      credentials: false,
+    },
     serveClient: false,
   });
 

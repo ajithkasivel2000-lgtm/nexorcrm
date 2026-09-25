@@ -69,7 +69,7 @@ exports.setForUser = async (req, res) => {
       });
     }
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null; // identity is the session, never a header
 
     if (clear) {
       await clearPermission(user.id, page);
@@ -119,7 +119,7 @@ exports.setManyForUser = async (req, res) => {
       return res.status(400).json({ message: `Not pages in this application: ${bad.join(', ')}.` });
     }
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null; // identity is the session, never a header
     for (const [page, actions] of Object.entries(pages)) {
       // eslint-disable-next-line no-await-in-loop
       await setPermission(user.id, page, actions, actor);
@@ -177,7 +177,7 @@ exports.applyRoleDefaults = async (req, res) => {
       return res.status(400).json({ message: `No default permissions are defined for the ${user.status} role.` });
     }
 
-    const actor = req.user?.username || req.headers['x-username'] || null;
+    const actor = req.user?.username || null; // identity is the session, never a header
     await clearAll(user.id);
     for (const [page, actions] of Object.entries(defaults)) {
       // eslint-disable-next-line no-await-in-loop

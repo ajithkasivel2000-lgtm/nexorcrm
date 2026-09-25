@@ -12,7 +12,10 @@ const { answerQuestion } = require('../utils/assistantAnswer');
 const { SUGGESTIONS } = require('../utils/assistantKnowledge');
 
 /** Who is asking. The routes are behind authMiddleware, so this is set. */
-const who = (req) => req.user?.username || req.headers['x-username'] || null;
+/* The routes sit behind authMiddleware, so req.user is always set here. The
+   old x-username fallback is gone: that header is caller-controlled, and
+   trusting it let a request choose whose name it acted as. */
+const who = (req) => req.user?.username || null;
 
 /** A conversation's name, taken from the first thing asked in it. */
 function titleFrom(question) {

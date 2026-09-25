@@ -140,18 +140,31 @@ exports.login = async (req, res) => {
       sweepSessions();
     }
     
-    // Bootstrap fallback: only when the database holds no users at all, so a
-    // brand-new deployment can sign in once. It used to trigger whenever the
-    // given username simply was not found, which let anyone in as "admin"
-    // even on a populated database.
+    // Bootstrap fallback: a brand-new deployment has no users, so the first
+    // company's admin cannot be created through the UI or seeded yet. It used
+    // to be a well-known password ("password123") on an empty database — any
+    // window before first setup let a stranger take the platform over.
+    //
+    // Now it demands SETUP_TOKEN: a value the operator generates, keeps in the
+    // server's environment, and sends in the login body. Nobody without read
+    // access to the environment can pass, and the guessable part is gone.
     if (!user) {
       const userCount = await prisma.user.count();
-      if (userCount === 0 && username === 'admin' && password === 'password123') {
+      const setupToken = String(process.env.SETUP_TOKEN || '').trim();
+      const presented = String(req.body.setupToken || '').trim();
+      const tokenOk = setupToken.length >= 16
+        && presented.length === setupToken.length
+        && crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(setupToken));
+      if (userCount === 0 && tokenOk) {
         // A brand-new platform: the bootstrap admin belongs to the first company.
         tenant.adopt(tenant.DEFAULT_COMPANY_ID);
         const ipAddress = requestIp(req) || '127.0.0.1';
         await prisma.systemLog.create({
           data: { username: 'admin', event: 'LOGIN', ipAddress }
+        }).catch(() => {});
+        // A one-off bootstrap marker, so first setup is visible in the log.
+        await prisma.systemLog.create({
+          data: { username: 'admin', event: 'BOOTSTRAP_LOGIN', ipAddress }
         }).catch(() => {});
         // The bootstrap admin gets a real session row like anyone else — its
         // id is the token, and authMiddleware verifies it the same way.

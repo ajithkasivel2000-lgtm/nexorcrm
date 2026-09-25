@@ -21,8 +21,9 @@ const CHAT_BODY_MAX_BYTES = 10 * 1024 * 1024;   // headroom for base64's 4/3 ove
 
 const DATA_URL_RE = /^data:(image\/(?:png|jpe?g|gif|webp|bmp));base64,([A-Za-z0-9+/=\s]+)$/;
 
-/** Who is asking. The routes sit behind authMiddleware, so this is set. */
-const who = (req) => req.user?.username || req.headers['x-username'] || null;
+/* Who is asking. The routes sit behind authMiddleware, so this is set — and
+   the caller-controlled x-username header is never consulted. */
+const who = (req) => req.user?.username || null;
 
 /** This person's membership of this room, or null. */
 async function membership(roomId, username) {

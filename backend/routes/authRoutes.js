@@ -19,9 +19,10 @@ router.post('/login', loginLimit, resolvingRoute, authController.login);
 router.post('/register', signupLimit, resolvingRoute, authController.register);
 // What the signup form should enforce, before anyone has an account.
 router.get('/activation-rules', resolvingRoute, authController.activationRules);
-// The emailed link's target.
+// The emailed link's target. POST only: mail scanners and link prefetchers
+// follow GET links, and a prefetch must not activate an account before its
+// owner has seen the email. The SPA's activation screen issues the POST.
 router.post('/activate/:token', resolvingRoute, authController.activateAccount);
-router.get('/activate/:token', resolvingRoute, authController.activateAccount);
 
 /* Which sign-in methods this server offers. Deliberately public and
    unauthenticated: the login page has to ask before anyone has signed in, and
