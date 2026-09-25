@@ -9,6 +9,12 @@ platform.use(authMiddleware, c.requirePlatformAdmin);
 platform.get('/companies', c.listCompanies);
 platform.post('/companies', c.createCompany);
 platform.put('/companies/:id', c.updateCompany);
+// View / Edit a client company and its administrators' logins.
+const companyView = require('../controllers/platformCompanyController');
+platform.get('/companies/:id/details', companyView.details);
+platform.put('/companies/:id/details', companyView.updateDetails);
+platform.put('/companies/:id/admins/:userId', companyView.updateAdmin);
+platform.post('/companies/:id/admins/:userId/reset-password', companyView.resetAdminPassword);
 platform.post('/companies/:id/rotate-key', c.rotateCompanyKey);
 platform.post('/companies/:id/billing', billing.companyBilling);
 platform.get('/plans', billing.listPlans);

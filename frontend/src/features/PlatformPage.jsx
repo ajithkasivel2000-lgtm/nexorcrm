@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Copy, Eye, KeyRound, MessageCircle, Pencil, Plus } from 'lucide-react';
 import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Switch, Textarea, toast,
 } from '../ui';
-import { api, fmtDate } from './api';
+import { api, copyText, fmtDate } from './api';
 import './features.css';
 
 /**
@@ -40,6 +40,8 @@ function Companies() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
+  const [changing, setChanging] = useState(null);
 
   const load = useCallback(() => {
     api('/api/platform/companies').then(setRows).catch((e) => { setError(e.message); setRows([]); });
@@ -88,6 +90,8 @@ function Companies() {
         onRowClick={(r) => setEditing(r)}
         actions={(r) => (
           <div className="nx-page__row-actions">
+            <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
+            <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
             {r.status === 'Active'
               ? <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Suspended'); }}>Suspend</Button>
               : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
@@ -103,6 +107,12 @@ function Companies() {
           onSaved={() => { setEditing(null); load(); }}
         />
       )}
+      {viewing && (
+        <CompanyViewModal company={viewing} onClose={() => setViewing(null)} onEdit={() => { setChanging(viewing); setViewing(null); }} />
+      )}
+      {changing && (
+        <CompanyEditModal company={changing} onClose={() => setChanging(null)} onSaved={load} />
+      )}
       {creating && (
         <NewCompanyModal plans={plans} onClose={() => setCreating(false)} onCreated={(result) => { setCreating(false); setCreated(result); load(); }} />
       )}
@@ -111,6 +121,7 @@ function Companies() {
           <p><strong>{created.company.name}</strong> is ready, on a free trial, with its default lists.</p>
           <p>Its administrator <strong>{created.admin.username}</strong> signs in with the password you set and is asked to change it straight away.</p>
           <p className="fx-muted">Company key for their website forms: <code>{created.company.publicKey}</code></p>
+          {created.login && <LoginMessage {...created.login} />}
         </Modal>
       )}
     </>
@@ -203,6 +214,206 @@ function DomainCard({ company, onSaved }) {
   );
 }
 
+/* ------------------------------------------------ view / edit a company --- */
+
+const SIGNED_IN = (d) => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never');
+
+/** A random temporary password that meets the password rules. */
+function makePassword() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  const body = Array.from(bytes.slice(0, 8), (b) => letters[b % letters.length]).join('');
+  return `${body}@${10 + (bytes[8] % 90)}`;
+}
+
+/** The message to send a client admin, with copy and WhatsApp buttons. */
+function LoginMessage({ url, username, password }) {
+  const text = `Your CRM is ready: ${url}\nUsername: ${username}${password ? `\nTemporary password: ${password}\nYou'll be asked to set your own password when you first sign in.` : ''}`;
+  return (
+    <div className="fx-card" style={{ marginTop: 'var(--nx-space-3)' }}>
+      <h3 className="fx-card__title">Login details to send</h3>
+      <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'inherit', fontSize: 'var(--nx-text-sm)' }}>{text}</pre>
+      {password && <p className="fx-card__hint" style={{ marginTop: 'var(--nx-space-2)' }}>Copy it now: the password is not shown again.</p>}
+      <div className="fx-card__actions">
+        <Button size="sm" icon={Copy} onClick={async () => ((await copyText(text)) ? toast.success('Copied.') : toast.error('Copy failed.'))}>Copy</Button>
+        <Button size="sm" icon={MessageCircle} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener')}>Send on WhatsApp</Button>
+      </div>
+    </div>
+  );
+}
+
+function useCompanyDetails(id) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const load = useCallback(() => api(`/api/platform/companies/${id}/details`).then(setData).catch((e) => setError(e.message)), [id]);
+  useEffect(() => { load(); }, [load]);
+  return [data, error, load];
+}
+
+function Detail({ label, children }) {
+  return (
+    <div>
+      <div className="fx-stat__label">{label}</div>
+      <div style={{ marginTop: 2, overflowWrap: 'anywhere' }}>{children || '—'}</div>
+    </div>
+  );
+}
+
+/** View: everything about a client company and its admin logins, read-only. */
+function CompanyViewModal({ company, onClose, onEdit }) {
+  const [data, error] = useCompanyDetails(company.id);
+  const c = data?.company;
+  const state = c && (c.access?.allowed === false ? 'expired' : c.subscriptionStatus);
+  return (
+    <Modal open onClose={onClose} size="lg" title={company.name}
+      footer={<><Button onClick={onClose}>Close</Button>{data && <Button variant="primary" icon={Pencil} onClick={onEdit}>Edit</Button>}</>}>
+      {error && <p className="fx-error">{error}</p>}
+      {!data && !error && <p className="fx-muted">Loading…</p>}
+      {data && (
+        <>
+          <div className="fx-stats">
+            <div className="fx-stat"><div className="fx-stat__label">Users</div><div className="fx-stat__value">{data.counts.users}</div></div>
+            <div className="fx-stat"><div className="fx-stat__label">Leads</div><div className="fx-stat__value">{data.counts.leads}</div></div>
+            <div className="fx-stat"><div className="fx-stat__label">Projects</div><div className="fx-stat__value">{data.counts.projects}</div></div>
+            <div className="fx-stat"><div className="fx-stat__label">Bookings</div><div className="fx-stat__value">{data.counts.bookings}</div></div>
+          </div>
+
+          <div className="fx-card">
+            <h3 className="fx-card__title">Company</h3>
+            <FormGrid columns={2}>
+              <Detail label="Name">{c.name}</Detail>
+              <Detail label="Code (slug)"><code>{c.slug}</code></Detail>
+              <Detail label="Account"><Pill tone={c.status === 'Active' ? 'success' : 'danger'}>{c.status}</Pill></Detail>
+              <Detail label="Subscription"><Pill tone={SUB_TONE[state] || 'neutral'} dot>{SUB_LABEL[state] || state}</Pill> {c.plan || ''}{c.trialEndsAt ? ` · trial ends ${fmtDate(c.trialEndsAt)}` : ''}{c.currentPeriodEnd ? ` · paid until ${fmtDate(c.currentPeriodEnd)}` : ''}</Detail>
+              <Detail label="Sign-in address"><a href={data.signInUrl} target="_blank" rel="noreferrer">{data.signInUrl}</a></Detail>
+              <Detail label="Own domain">{c.customDomain}</Detail>
+              <Detail label="Legal name">{c.legalName}</Detail>
+              <Detail label="GSTIN">{c.gstin}</Detail>
+              <Detail label="Billing email">{c.billingEmail}</Detail>
+              <Detail label="Phone">{c.phone}</Detail>
+              <Detail label="Billing address">{c.billingAddress}</Detail>
+              <Detail label="Customer since">{fmtDate(c.createdAt)}</Detail>
+            </FormGrid>
+          </div>
+
+          <div className="fx-card">
+            <h3 className="fx-card__title">Administrator logins</h3>
+            {data.admins.length === 0 && <p className="fx-muted">No administrator accounts.</p>}
+            {data.admins.map((a) => (
+              <FormGrid key={a.id} columns={2}>
+                <Detail label="Username"><strong>{a.username}</strong></Detail>
+                <Detail label="Name">{[a.firstName, a.lastName].filter(Boolean).join(' ')}</Detail>
+                <Detail label="Email">{a.email}</Detail>
+                <Detail label="Phone">{a.phone}</Detail>
+                <Detail label="Last sign-in">{SIGNED_IN(a.lastLoginAt)}</Detail>
+                <Detail label="Password">
+                  {a.mustChangePassword ? <Pill tone="warning">Temporary: must change at next sign-in</Pill> : <Pill tone="success">Set by them</Pill>}
+                  {a.locked && <> <Pill tone="danger">Locked</Pill></>}
+                </Detail>
+              </FormGrid>
+            ))}
+            <p className="fx-card__hint" style={{ marginTop: 'var(--nx-space-3)' }}>Passwords are stored scrambled and can't be shown. Use Edit to set a new temporary one.</p>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/** Edit: company details, admin login details, and a new temporary password. */
+function CompanyEditModal({ company, onClose, onSaved }) {
+  const [data, error, reload] = useCompanyDetails(company.id);
+  return (
+    <Modal open onClose={onClose} size="lg" title={`Edit ${company.name}`} footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
+      {error && <p className="fx-error">{error}</p>}
+      {!data && !error && <p className="fx-muted">Loading…</p>}
+      {data && (
+        <>
+          <CompanyDetailsForm company={data.company} onSaved={() => { reload(); onSaved(); }} />
+          {data.admins.map((a) => (
+            <AdminEditor key={a.id} companyId={company.id} admin={a} signInUrl={data.signInUrl} onSaved={() => { reload(); onSaved(); }} />
+          ))}
+        </>
+      )}
+    </Modal>
+  );
+}
+
+function CompanyDetailsForm({ company, onSaved }) {
+  const [form, setForm] = useState({
+    name: company.name || '', legalName: company.legalName || '', gstin: company.gstin || '',
+    billingEmail: company.billingEmail || '', phone: company.phone || '', billingAddress: company.billingAddress || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  return (
+    <form className="fx-card" onSubmit={async (e) => {
+      e.preventDefault(); setSaving(true);
+      try { await api(`/api/platform/companies/${company.id}/details`, { method: 'PUT', body: form }); toast.success('Company saved.'); onSaved(); } catch (err) { toast.error(err.message); } finally { setSaving(false); }
+    }}>
+      <h3 className="fx-card__title">Company details</h3>
+      <FormGrid columns={2}>
+        <Field label="Company name" required><Input value={form.name} onChange={set('name')} /></Field>
+        <Field label="Legal name"><Input value={form.legalName} onChange={set('legalName')} /></Field>
+        <Field label="GSTIN"><Input value={form.gstin} onChange={set('gstin')} placeholder="29ABCDE1234F1Z5" /></Field>
+        <Field label="Billing email"><Input type="email" value={form.billingEmail} onChange={set('billingEmail')} /></Field>
+        <Field label="Phone"><Input value={form.phone} onChange={set('phone')} /></Field>
+        <Field label="Billing address" className="nx-field--full"><Textarea rows={2} value={form.billingAddress} onChange={set('billingAddress')} /></Field>
+      </FormGrid>
+      <div className="fx-card__actions"><Button variant="primary" type="submit" loading={saving}>Save company</Button></div>
+    </form>
+  );
+}
+
+function AdminEditor({ companyId, admin, signInUrl, onSaved }) {
+  const [form, setForm] = useState({
+    username: admin.username || '', firstName: admin.firstName || '', lastName: admin.lastName || '',
+    email: admin.email || '', phone: admin.phone || '',
+  });
+  const [password, setPassword] = useState('');
+  const [sent, setSent] = useState(null);
+  const [busy, setBusy] = useState('');
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const base = `/api/platform/companies/${companyId}/admins/${admin.id}`;
+  return (
+    <div className="fx-card">
+      <h3 className="fx-card__title">Administrator login: {admin.username}</h3>
+      <form onSubmit={async (e) => {
+        e.preventDefault(); setBusy('save');
+        try { await api(base, { method: 'PUT', body: form }); toast.success('Administrator saved.'); onSaved(); } catch (err) { toast.error(err.message); } finally { setBusy(''); }
+      }}>
+        <FormGrid columns={2}>
+          <Field label="Username" required hint="Changing it signs them out; tell them the new one."><Input value={form.username} onChange={set('username')} autoComplete="off" /></Field>
+          <Field label="Email" required hint="Password-reset links go here."><Input type="email" value={form.email} onChange={set('email')} /></Field>
+          <Field label="First name" required><Input value={form.firstName} onChange={set('firstName')} /></Field>
+          <Field label="Last name"><Input value={form.lastName} onChange={set('lastName')} /></Field>
+          <Field label="Phone"><Input value={form.phone} onChange={set('phone')} /></Field>
+        </FormGrid>
+        <div className="fx-card__actions"><Button variant="primary" type="submit" loading={busy === 'save'}>Save administrator</Button></div>
+      </form>
+
+      <h3 className="fx-card__title" style={{ marginTop: 'var(--nx-space-4)' }}>Set a new temporary password</h3>
+      <p className="fx-card__hint">For when they have lost theirs. They are signed out everywhere and must choose their own at next sign-in.</p>
+      <form className="fx-row" onSubmit={async (e) => {
+        e.preventDefault();
+        if (!await window.appConfirm(`Set a new password for ${admin.username}? Their current password stops working.`)) return;
+        setBusy('reset');
+        try {
+          toast.success((await api(`${base}/reset-password`, { method: 'POST', body: { password } })).message);
+          setSent({ url: signInUrl, username: form.username, password });
+          setPassword('');
+          onSaved();
+        } catch (err) { toast.error(err.message); } finally { setBusy(''); }
+      }}>
+        <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New temporary password" aria-label="New temporary password" autoComplete="new-password" />
+        <Button type="button" icon={KeyRound} onClick={() => setPassword(makePassword())}>Generate</Button>
+        <Button variant="primary" type="submit" loading={busy === 'reset'} disabled={!password}>Set password</Button>
+      </form>
+      {sent && <LoginMessage {...sent} />}
+    </div>
+  );
+}
+
 function NewCompanyModal({ plans, onClose, onCreated }) {
   const [form, setForm] = useState({ name: '', slug: '', planKey: 'growth', username: '', email: '', firstName: '', password: '' });
   const [saving, setSaving] = useState(false);
@@ -214,13 +425,15 @@ function NewCompanyModal({ plans, onClose, onCreated }) {
       <form id="new-company" onSubmit={async (e) => {
         e.preventDefault(); setSaving(true); setError('');
         try {
-          onCreated(await api('/api/platform/companies', {
+          const result = await api('/api/platform/companies', {
             method: 'POST',
             body: {
               name: form.name, slug: form.slug || undefined, planKey: form.planKey,
               admin: { username: form.username, email: form.email, firstName: form.firstName, password: form.password },
             },
-          }));
+          });
+          // Shown once, so it can be sent: the password is never shown again.
+          onCreated({ ...result, login: { url: `${window.location.origin}/?company=${result.company.slug}`, username: result.admin.username, password: form.password } });
         } catch (err) { setError(err.message); } finally { setSaving(false); }
       }}>
         <FormGrid columns={2}>
