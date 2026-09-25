@@ -81,7 +81,7 @@ export default function ProfileTab({ user, onRefresh }) {
             style={styles.inputFlex} 
             value={form.serverUrl} 
             onChangeText={(v) => handleChange('serverUrl', v)} 
-            placeholder="http://192.168.1.10:7012/api" 
+            placeholder="http://192.168.1.10:7003/api" 
             autoCapitalize="none"
           />
         </View>

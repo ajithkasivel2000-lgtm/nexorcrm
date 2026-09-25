@@ -2,13 +2,13 @@
  * HTTP end-to-end checks for the report builder. RUNNING backend + THROWAWAY
  * database only. Creates its own users and leads in the default company and
  * removes them afterwards.
- *   E2E_BASE_URL (default http://localhost:7012), E2E_ROOT, E2E_ROOT_PASSWORD
+ *   E2E_BASE_URL (default http://localhost:7003), E2E_ROOT, E2E_ROOT_PASSWORD
  */
 const bcrypt = require('bcryptjs');
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ROOT = process.env.E2E_ROOT || 'admin';
 const ROOT_PASSWORD = process.env.E2E_ROOT_PASSWORD || 'UiTest-Pass-123!';
 const results = [];

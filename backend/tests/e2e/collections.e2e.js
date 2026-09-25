@@ -6,7 +6,7 @@
  *   RAZORPAY_API_BASE=http://127.0.0.1:7091   (this script plays Razorpay there)
  * and this process pointed at the same database (DATABASE_URL).
  *
- *   E2E_BASE_URL   default http://localhost:7012
+ *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_ADMIN      an administrator in the default company (default subodh)
  *   E2E_FAKE_PORT  default 7091
  */
@@ -15,7 +15,7 @@ const http = require('http');
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ADMIN = process.env.E2E_ADMIN || 'subodh';
 const FAKE_PORT = Number(process.env.E2E_FAKE_PORT || 7091);
 const CO = t.DEFAULT_COMPANY_ID;

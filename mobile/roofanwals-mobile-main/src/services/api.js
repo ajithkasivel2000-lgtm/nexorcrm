@@ -8,7 +8,7 @@ import { Platform, Alert } from 'react-native';
  *
  * - Physical device (Expo Go on phone):
  *     Use the Metro bundler's host IP (same machine as the backend)
- *     e.g. exp://192.168.1.14:8081  →  http://192.168.1.14:7012/api
+ *     e.g. exp://192.168.1.14:8081  →  http://192.168.1.14:7003/api
  *
  * - Android emulator:
  *     10.0.2.2 maps to the host machine's localhost
@@ -21,15 +21,15 @@ function getBaseUrl() {
   const hostUri = Constants.expoConfig?.hostUri ?? Constants.manifest?.debuggerHost;
   if (hostUri) {
     const host = hostUri.split(':')[0]; // strip port, keep IP
-    return `http://${host}:7012/api`;
+    return `http://${host}:7003/api`;
   }
   // Release builds have no Metro host, so fall back to the URL baked in at
   // build time (app.json -> extra.apiUrl) before the emulator-only defaults.
   const configured = Constants.expoConfig?.extra?.apiUrl;
   if (configured) return configured;
   // Fallback when hostUri is unavailable
-  if (Platform.OS === 'android') return 'http://10.0.2.2:7012/api';
-  return 'http://localhost:7012/api';
+  if (Platform.OS === 'android') return 'http://10.0.2.2:7003/api';
+  return 'http://localhost:7003/api';
 }
 
 const BASE_URL = getBaseUrl();

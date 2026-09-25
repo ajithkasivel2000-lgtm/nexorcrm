@@ -2,14 +2,14 @@
  * HTTP end-to-end checks against a RUNNING backend and a THROWAWAY database.
  * Never point these at production: they create and delete test data.
  *
- *   E2E_BASE_URL   default http://localhost:7012
+ *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_EMPLOYEE / E2E_MANAGER / E2E_ADMIN / E2E_ROOT   existing usernames of
  *     those roles in the default company (E2E_ROOT must be in PLATFORM_ADMINS)
  *   E2E_LEAD       a lead id owned by someone other than E2E_EMPLOYEE
  */
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const U = { employee: process.env.E2E_EMPLOYEE || 'kumar', manager: process.env.E2E_MANAGER || 'ajith', admin: process.env.E2E_ADMIN || 'subodh', root: process.env.E2E_ROOT || 'admin' };
 const LEAD = process.env.E2E_LEAD || 'LED-2026-001';
 const TAG = 'e2e-test';

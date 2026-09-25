@@ -6,7 +6,7 @@
  *   RAZORPAY_WEBHOOK_SECRET=test_webhook_secret_xyz PLATFORM_ADMINS=admin
  * and the same two secrets in this process's environment.
  *
- *   E2E_BASE_URL   default http://localhost:7012
+ *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_ROOT       a platform admin username (default admin)
  *   E2E_ROOT_PASSWORD
  */
@@ -15,7 +15,7 @@ const bcrypt = require('bcryptjs');
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ROOT = process.env.E2E_ROOT || 'admin';
 const ROOT_PASSWORD = process.env.E2E_ROOT_PASSWORD || 'UiTest-Pass-123!';
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test_key_secret_abc';

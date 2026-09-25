@@ -6,7 +6,7 @@
  * Needs a RUNNING backend on a THROWAWAY database (APP_URL=https://os.nexorcrm.test),
  * and this process pointed at the same database (DATABASE_URL).
  *
- *   E2E_BASE_URL   default http://localhost:7012
+ *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_ROOT / E2E_ROOT_PASSWORD   the platform admin (default admin / UiTest-Pass-123!)
  */
 const http = require('http');
@@ -14,7 +14,7 @@ const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 const { provisionCompany } = require('../../utils/provisioning');
 
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ROOT = process.env.E2E_ROOT || 'admin';
 const ROOT_PASSWORD = process.env.E2E_ROOT_PASSWORD || 'UiTest-Pass-123!';
 const results = [];

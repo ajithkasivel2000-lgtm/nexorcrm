@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // The backend the dev server forwards to; API_TARGET overrides (e.g. a test backend).
-const API = process.env.API_TARGET || 'http://localhost:7012'
+const API = process.env.API_TARGET || 'http://localhost:7003'
 
 // https://vite.dev/config/
 export default defineConfig({

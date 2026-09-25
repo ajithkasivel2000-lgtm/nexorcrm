@@ -73,9 +73,9 @@ The app connects to the NexorCRM backend at:
 
 | Platform         | URL                          |
 |-----------------|------------------------------|
-| Android Emulator | `http://10.0.2.2:7012/api`   |
-| iOS Simulator    | `http://localhost:7012/api`   |
-| Physical Device  | Use your PC's local IP e.g. `http://192.168.x.x:7012/api` |
+| Android Emulator | `http://10.0.2.2:7003/api`   |
+| iOS Simulator    | `http://localhost:7003/api`   |
+| Physical Device  | Use your PC's local IP e.g. `http://192.168.x.x:7003/api` |
 
 > **Note:** For physical devices, update the `BASE_URL` in `src/services/api.js` with your PC's local network IP.
 

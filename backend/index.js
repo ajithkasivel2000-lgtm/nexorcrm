@@ -173,9 +173,9 @@ app.get('/api/branding', require('./middleware/authMiddleware').authMiddleware, 
 // Public website API (no auth required)
 app.use('/api/public', websiteRoutes);
 
-/* 7012 is what the dev proxy in frontend/vite.config.js points /api at, so
+/* 7003 is what the dev proxy in frontend/vite.config.js points /api at, so
    the two defaults agree and `npm run dev` works with no .env at all. */
-const PORT = process.env.PORT || 7012;
+const PORT = process.env.PORT || 7003;
 
 /* Production serves the built frontend from the same process, so one port
    carries the whole app. In development frontend/dist does not exist and Vite

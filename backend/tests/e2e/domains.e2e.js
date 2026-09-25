@@ -7,7 +7,7 @@
  *   APP_URL=https://os.nexorcrm.test   PLATFORM_ADMINS=admin
  * and this process given the same APP_URL and database (DATABASE_URL).
  *
- *   E2E_BASE_URL   default http://localhost:7012
+ *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_ROOT       a platform admin in the default company (default admin)
  *   E2E_ADMIN      a company admin who is NOT a platform admin (default subodh)
  */
@@ -16,7 +16,7 @@ const http = require('http');
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 
-const B = process.env.E2E_BASE_URL || 'http://localhost:7012';
+const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ROOT = process.env.E2E_ROOT || 'admin';
 const ADMIN = process.env.E2E_ADMIN || 'subodh';
 const CO = t.DEFAULT_COMPANY_ID;
