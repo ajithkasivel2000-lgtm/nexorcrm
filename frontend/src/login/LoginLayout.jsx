@@ -143,7 +143,8 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
           <li><Building2 size={14} aria-hidden="true" />Trusted by growing businesses</li>
           <li><Settings2 size={14} aria-hidden="true" />Version {version}</li>
         </ul>
-        <p className="nx-login__copy">© {new Date().getFullYear()} Nexor CRM. All rights reserved.</p>
+        {/* A company's own sign-in page carries its name. */}
+        <p className="nx-login__copy">© {new Date().getFullYear()} {brand?.name || 'Nexor CRM'}. All rights reserved.</p>
       </footer>
     </div>
   );

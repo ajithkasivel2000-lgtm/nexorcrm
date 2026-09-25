@@ -676,7 +676,8 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         </div>
 
         <footer className="dashboard-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Copyright 2026 © NexorCRM</span>
+          {/* The signed-in company's name, and this year. */}
+          <span>Copyright {new Date().getFullYear()} © {brand?.name || 'NexorCRM'}</span>
           <span style={{ marginRight: '70px' }}>powered by Infitoolz</span>
         </footer>
       </main>
