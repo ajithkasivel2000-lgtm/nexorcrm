@@ -15,7 +15,7 @@
  * expired, so keeping the UI on screen would only produce a wall of errors.
  * The user is dropped on the login screen with a note saying why.
  */
-import { getToken, getUsername, clearAuth } from './sessionStore';
+import { getToken, clearAuth } from './sessionStore';
 import { notifyDataChanged, resourceFromPath } from './dataBus';
 import { installRequestCache, isShareable, shared } from './requestCache';
 
@@ -82,12 +82,10 @@ export default function installApiAuth() {
 
     const token = getToken();
     if (token && !isPublicEndpoint(url)) {
+      // The token is the identity: the backend resolves the user from it
+      // (middleware/authMiddleware.js) and never from a caller-settable name
+      // header, which is why no X-Username is injected here.
       if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
-      // Kept alongside the header so the backend can log who a request came
-      // from before the token is verified, and for screens that only need a
-      // display name. Identity itself is the token, not this header.
-      const username = getUsername();
-      if (username && !headers.has('x-username')) headers.set('x-username', username);
     }
 
     const method = String(

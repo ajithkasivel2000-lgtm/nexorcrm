@@ -2,8 +2,8 @@
  * Client for the /api/ai endpoints.
  *
  * Streaming uses fetch + ReadableStream rather than EventSource, because
- * EventSource cannot send headers — and every AI route is authenticated by the
- * x-username header that utils/apiAuth.js attaches.
+ * EventSource cannot send the Authorization header that every AI route
+ * requires; the fetch wrapper attaches it from the session.
  */
 
 /** Has the server been given an ANTHROPIC_API_KEY? */

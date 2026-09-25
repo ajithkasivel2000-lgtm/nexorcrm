@@ -122,15 +122,19 @@ function App() {
     setChangeError('');
     if (!currentPassword || !newPw) { setChangeError('Enter your current and new password.'); return; }
     if (newPw !== confirmPw) { setChangeError('Passwords do not match.'); return; }
-    if (newPw.length < 10 || !/[0-9]/.test(newPw) || !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>?]/.test(newPw)) {
+    // Same character class the server validates (authController.validatePassword):
+    // the slash was missing here, so a password containing / was refused by
+    // the client while the server would have accepted it.
+    if (newPw.length < 10 || !/[0-9]/.test(newPw) || !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPw)) {
       setChangeError('Min 10 characters, at least one number and one special character.');
       return;
     }
     setChangeBusy(true);
     try {
+      // The session token rides along via the fetch wrapper; no name header.
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Username': localStorage.getItem('loggedInUser') || '' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword: newPw, sessionId: getSessionId() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
@@ -164,8 +168,6 @@ function App() {
   /* A company's own sign-in link (?company=slug), or its own domain
      (crm.roofonwalls.com), shows its logo and name. */
   const [brand, setBrand] = useState(null);
-  // The company code typed on the Company Login tab.
-  const [loginCompanyCode, setLoginCompanyCode] = useState('');
   useEffect(() => {
     const slug = new URLSearchParams(window.location.search).get('company');
     fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
@@ -339,9 +341,8 @@ function App() {
         },
         // rememberMe decides how long the server keeps the session; it was
         // never sent, so every session lasted one day whatever the box said.
-        /* A company's own page (its link or domain) or the Company Login tab
-           signs in to that company only. */
-        body: JSON.stringify({ username, password, rememberMe, ...((brand?.slug || loginCompanyCode) ? { company: brand?.slug || loginCompanyCode } : {}) })
+        /* A company's own page (its link or domain) signs in to that company only. */
+        body: JSON.stringify({ username, password, rememberMe, ...(brand?.slug ? { company: brand.slug } : {}) })
       });
 
       const data = await response.json();
@@ -786,11 +787,6 @@ function App() {
         <SignInCard
           theme={theme}
           brandName={brand?.name}
-          companyCode={loginCompanyCode}
-          onCompanyCodeChange={setLoginCompanyCode}
-          // A company's own page is already that company's sign-in; the code
-          // box is only for the platform's general page.
-          showCompanyCode={!brand}
           username={username}
           onUsernameChange={setUsername}
           password={password}

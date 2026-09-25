@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribeDataChanged } from '../utils/dataBus';
+import { currentUsername } from '../utils/currentUser';
 import {
   ArrowLeft, Check, CheckCheck, LogOut, MessageSquarePlus, Search, Send, Trash2, Users, UserPlus, X, Image as ImageIcon
 } from 'lucide-react';
 import {
-  addMembers, createRoom, currentUser, deleteRoom, getContacts, getRoom, listMessages, listRooms,
+  addMembers, createRoom, deleteRoom, getContacts, getRoom, listMessages, listRooms,
   markRead, removeMember, sendMessage,
 } from './teamChatClient';
 import './TeamChat.css';
@@ -49,7 +50,7 @@ function whenLabel(value) {
 }
 
 export default function TeamChat() {
-  const me = currentUser();
+  const me = currentUsername();
 
   const [rooms, setRooms] = useState([]);
   const [activeId, setActiveId] = useState(null);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { currentUsername } from '../utils/currentUser';
 import {
-  ask, currentUser, deleteConversation, getConversation, getSuggestions, listConversations,
+  ask, deleteConversation, getConversation, getSuggestions, listConversations,
 } from './assistantClient';
 
 /**
@@ -24,7 +25,7 @@ export default function useAssistant({ active = true } = {}) {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState('');
 
-  const signedIn = Boolean(currentUser());
+  const signedIn = Boolean(currentUsername());
   // Guards the one-time restore below, so reopening the widget does not
   // re-load the conversation over one already on screen.
   const restored = useRef(false);

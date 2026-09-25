@@ -1,26 +1,17 @@
 /**
  * Talking to the team-chat API.
  *
- * Every call carries the signed-in username in X-Username, which is how this
- * CRM authenticates — see backend/middleware/authMiddleware.js.
+ * Identity travels as the session token, which the fetch wrapper
+ * (utils/apiAuth.js) attaches to every same-origin /api/ call — the backend
+ * resolves the user from it, never from a header the caller could choose.
  */
 const base = '/api/team-chat';
 
-export function currentUser() {
-  try {
-    return localStorage.getItem('loggedInUser') || null;
-  } catch {
-    return null;
-  }
-}
-
 async function call(path, { method = 'GET', body } = {}) {
-  const username = currentUser();
   const res = await fetch(base + path, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(username ? { 'X-Username': username } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });

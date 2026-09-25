@@ -13,8 +13,11 @@ const prisma = require('../prismaClient');
  * can post a fake outcome against a call they did not place.
  */
 
+// One row per company; oldest wins if a duplicate ever appears (see settings.js).
+const SINGLETON_ORDER = [{ createdAt: 'asc' }, { id: 'asc' }];
+
 async function getExotelSettings() {
-  return prisma.exotelSetting.findFirst();
+  return prisma.exotelSetting.findFirst({ orderBy: SINGLETON_ORDER });
 }
 
 const secret = () => String(process.env.WEBHOOK_SECRET || process.env.ACTIVATION_SECRET || '');

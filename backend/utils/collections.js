@@ -28,7 +28,8 @@ const appBase = async (companyId) => (await require('./companyUrl').companyBaseU
 /* ---- the company's gateway ---------------------------------------------- */
 
 async function gateway() {
-  const s = await prisma.paymentGatewaySetting.findFirst();
+  // One row per company; oldest wins if a duplicate ever appears (see settings.js).
+  const s = await prisma.paymentGatewaySetting.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   return s && s.enabled && s.keyId && s.keySecret ? s : null;
 }
 
@@ -233,7 +234,7 @@ function buyerAuth(req, res, next) {
 /* ---- reminders ----------------------------------------------------------- */
 
 async function reminderSettings() {
-  return prisma.collectionReminderSetting.findFirst();
+  return prisma.collectionReminderSetting.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
 }
 
 /** Which reminder slot, if any, a milestone is in today. */

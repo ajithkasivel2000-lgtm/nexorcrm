@@ -26,6 +26,13 @@ const cache = new Map();
    one company's session timeout must never answer for another's. */
 const scoped = (key) => `${currentCompanyId() || '-'}:${key}`;
 
+/* Each settings table is one row per company. findFirst() without an orderBy
+   leaves the choice of row to the database's plan; a duplicate created by a
+   race or a repair script would then flip-flop between values. Ordering by
+   createdAt asc (id as the tiebreaker) makes the OLDEST row the authority,
+   deterministically, everywhere. */
+const SINGLETON_ORDER = [{ createdAt: 'asc' }, { id: 'asc' }];
+
 async function cached(name, loader, fallback) {
   const key = scoped(name);
   const hit = cache.get(key);
@@ -60,7 +67,7 @@ const SESSION_DEFAULTS = {
 
 function getSessionSettings() {
   return cached('sessionSetting', async () => {
-    const row = await prisma.sessionSetting.findFirst();
+    const row = await prisma.sessionSetting.findFirst({ orderBy: SINGLETON_ORDER });
     return { ...SESSION_DEFAULTS, ...(row || {}) };
   }, { ...SESSION_DEFAULTS });
 }
@@ -73,7 +80,7 @@ const SECURITY_DEFAULTS = { bannedIPs: [], disallowedUsernames: [] };
 
 function getSecuritySettings() {
   return cached('securitySetting', async () => {
-    const row = await prisma.securitySetting.findFirst();
+    const row = await prisma.securitySetting.findFirst({ orderBy: SINGLETON_ORDER });
     return { ...SECURITY_DEFAULTS, ...(row || {}) };
   }, { ...SECURITY_DEFAULTS });
 }
@@ -139,7 +146,7 @@ const USER_DEFAULTS = {
 
 function getGlobalUserSettings() {
   return cached('globalUserSetting', async () => {
-    const row = await prisma.globalUserSetting.findFirst();
+    const row = await prisma.globalUserSetting.findFirst({ orderBy: SINGLETON_ORDER });
     return { ...USER_DEFAULTS, ...(row || {}) };
   }, { ...USER_DEFAULTS });
 }
@@ -185,7 +192,7 @@ const REGISTRATION_DEFAULTS = {
 
 function getRegistrationSettings() {
   return cached('registrationSetting', async () => {
-    const row = await prisma.registrationSetting.findFirst();
+    const row = await prisma.registrationSetting.findFirst({ orderBy: SINGLETON_ORDER });
     return { ...REGISTRATION_DEFAULTS, ...(row || {}) };
   }, { ...REGISTRATION_DEFAULTS });
 }

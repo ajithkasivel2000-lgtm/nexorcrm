@@ -70,22 +70,6 @@ model Customer {
   @@index([companyId])
 }
 
-model Leads {
-  companyId         String
-  id                String   @id @default(uuid())
-  name              String
-  email             String
-  mobile            String
-  mobileCountryCode String   @default("+91")
-  source            String
-  project           String?
-  message           String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([companyId])
-}
-
 model GlobalUserSetting {
   companyId               String
   id                      String   @id @default(uuid())

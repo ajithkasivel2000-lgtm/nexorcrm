@@ -32,7 +32,8 @@ const tlsVerified = allowSelfSigned();
 
 /** The company's mail settings and a transporter, or null when mail is off. */
 async function getTransport() {
-  const settings = await prisma.mailSetting.findFirst();
+  // One row per company; oldest wins if a duplicate ever appears (see settings.js).
+  const settings = await prisma.mailSetting.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   if (!settings || settings.enabled === false || !settings.smtpHost) return null;
   const useAuth = settings.smtpAuth ? settings.smtpAuth === 'True' : Boolean(settings.smtpUsername);
   const company = await runAsSystem(() => prisma.company.findUnique({ where: { id: currentCompanyId() || '' }, select: { name: true } })).catch(() => null);

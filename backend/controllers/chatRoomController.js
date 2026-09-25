@@ -59,8 +59,11 @@ exports.contacts = async (req, res) => {
     res.status(200).json(
       rows
         .filter((u) => u.username && u.username !== username)
-        // A banned account cannot sign in, so it cannot read what it is sent.
-        .filter((u) => String(u.status || '').toLowerCase() !== 'banned')
+        // Accounts that cannot sign in cannot read what they are sent, so
+        // they are not offered as chat partners: banned, and archived (soft-
+        // deleted) people stay out of the list the same way. Suspended and
+        // awaiting-activation accounts keep appearing — they may return.
+        .filter((u) => !['banned', 'archived'].includes(String(u.status || '').toLowerCase()))
         .map((u) => ({
           username: u.username,
           name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username,

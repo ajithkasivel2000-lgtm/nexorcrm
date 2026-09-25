@@ -653,7 +653,7 @@ const UserAdminEdit = ({ user, onBack }) => {
                   icon={KeyRound}
                   onClick={() => act(async () => {
                     if (!await window.appConfirm('Require this user to set a new password at next sign-in?')) return null;
-                    return json(await fetch(`/api/users/${user.id}/force-password-change`, { method: 'POST', headers: { 'X-Username': loggedInUser } }));
+                    return json(await fetch(`/api/users/${user.id}/force-password-change`, { method: 'POST', headers: {} }));
                   }, 'The user must change their password at next sign-in.')}
                 >
                   Force Password Change
@@ -671,13 +671,13 @@ const UserAdminEdit = ({ user, onBack }) => {
             {(fullUser.lockedUntil && new Date(fullUser.lockedUntil) > new Date()) || (fullUser.user_login_attempts || 0) > 0 ? (
               <Button
                 icon={Unlock}
-                onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/unlock`, { method: 'POST', headers: { 'X-Username': loggedInUser } })), 'Account unlocked.')}
+                onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/unlock`, { method: 'POST', headers: {} })), 'Account unlocked.')}
                 disabled={!canManage}
               >
                 Unlock Account
               </Button>
             ) : <p style={{ fontSize: 13, color: 'var(--nx-text-muted)' }}>Account is not locked and has no failed attempts on record.</p>}
-            <LifecycleStatusCard fullUser={fullUser} loggedInUser={loggedInUser} canManage={canManage} onChanged={() => { loadUser(); loadOverview(); }} />
+            <LifecycleStatusCard fullUser={fullUser} canManage={canManage} onChanged={() => { loadUser(); loadOverview(); }} />
           </div>
         </section>
       </section>
@@ -685,7 +685,7 @@ const UserAdminEdit = ({ user, onBack }) => {
   );
 
   /* ---- Sessions ---- */
-  const SessionsTab = () => <SessionsPanel userId={user.id} username={fullUser.username} loggedInUser={loggedInUser} canManage={canManage} onChanged={loadOverview} />;
+  const SessionsTab = () => <SessionsPanel userId={user.id} username={fullUser.username} canManage={canManage} onChanged={loadOverview} />;
 
   /* ---- Activity (login history + audit trail) ---- */
   const ActivityTab = () => (
@@ -696,10 +696,10 @@ const UserAdminEdit = ({ user, onBack }) => {
   );
 
   /* ---- Notifications ---- */
-  const NotificationsTab = () => <PreferencesPanel userId={user.id} loggedInUser={loggedInUser} canManage={canManage} onSaved={loadUser} showNotificationPrefs />;
+  const NotificationsTab = () => <PreferencesPanel userId={user.id} canManage={canManage} onSaved={loadUser} showNotificationPrefs />;
 
   /* ---- Preferences ---- */
-  const PreferencesTab = () => <PreferencesPanel userId={user.id} loggedInUser={loggedInUser} canManage={canManage} onSaved={loadUser} />;
+  const PreferencesTab = () => <PreferencesPanel userId={user.id} canManage={canManage} onSaved={loadUser} />;
 
   return (
     <Page>
@@ -852,8 +852,8 @@ const UserAdminEdit = ({ user, onBack }) => {
                     disabled={!canManage}
                     onClick={() => act(async () => {
                       if (!await window.appConfirm('Reset this user\'s security state?')) return null;
-                      await json(await fetch(`/api/users/${user.id}/unlock`, { method: 'POST', headers: { 'X-Username': loggedInUser } }));
-                      return json(await fetch(`/api/users/${user.id}/revoke-sessions`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({}) }));
+                      await json(await fetch(`/api/users/${user.id}/unlock`, { method: 'POST', headers: {} }));
+                      return json(await fetch(`/api/users/${user.id}/revoke-sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }));
                     }, 'Security state reset.')}
                   >
                     Reset
@@ -870,10 +870,10 @@ const UserAdminEdit = ({ user, onBack }) => {
                       onClick={() => act(async () => {
                         if (fullUser.archivedAt) {
                           if (!await window.appConfirm('Restore this account from the archive?')) return null;
-                          return json(await fetch(`/api/users/${user.id}/unarchive`, { method: 'POST', headers: { 'X-Username': loggedInUser } }));
+                          return json(await fetch(`/api/users/${user.id}/unarchive`, { method: 'POST', headers: {} }));
                         }
                         if (!await window.appConfirm('Archive this account? Login will be blocked but the record kept.')) return null;
-                        return json(await fetch(`/api/users/${user.id}/archive`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({}) }));
+                        return json(await fetch(`/api/users/${user.id}/archive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }));
                       }, fullUser.archivedAt ? 'Account restored.' : 'Account archived.')}
                     >
                       {fullUser.archivedAt ? 'Restore' : 'Archive…'}
@@ -899,7 +899,6 @@ const UserAdminEdit = ({ user, onBack }) => {
         <AssignManagerModal
           userId={user.id}
           self={fullUser}
-          loggedInUser={loggedInUser}
           onClose={closeModal}
           onDone={() => { loadUser(); loadOverview(); }}
         />
@@ -909,7 +908,6 @@ const UserAdminEdit = ({ user, onBack }) => {
         <ResetPasswordModal
           userId={user.id}
           username={fullUser.username}
-          loggedInUser={loggedInUser}
           onClose={closeModal}
           onDone={(data) => {
             window.appAlert(data.temporaryPassword
@@ -924,7 +922,7 @@ const UserAdminEdit = ({ user, onBack }) => {
         <Modal open onClose={closeModal} title="Revoke sessions" description="Sign this user out of their devices." size="sm"
           footer={<>
             <Button onClick={closeModal}>Cancel</Button>
-            <Button variant="danger" icon={LogOut} loading={busy} onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/revoke-sessions`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({}) })), 'All sessions revoked.')}>
+            <Button variant="danger" icon={LogOut} loading={busy} onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/revoke-sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })), 'All sessions revoked.')}>
               Revoke all
             </Button>
           </>}>
@@ -936,7 +934,7 @@ const UserAdminEdit = ({ user, onBack }) => {
         <Modal open onClose={closeModal} title={`Send notification to ${fullUser.username}`} size="md"
           onSubmit={() => {
             if (busy || !form.title || !form.title.trim()) return;
-            act(async () => json(await fetch(`/api/users/${user.id}/notify`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, body: form.body }) })), 'Notification sent.');
+            act(async () => json(await fetch(`/api/users/${user.id}/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, body: form.body }) })), 'Notification sent.');
           }}
           footer={<>
             <Button onClick={closeModal}>Cancel</Button>
@@ -945,7 +943,7 @@ const UserAdminEdit = ({ user, onBack }) => {
               icon={Send}
               loading={busy}
               disabled={!form.title || !form.title.trim()}
-              onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/notify`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, body: form.body }) })), 'Notification sent.')}
+              onClick={() => act(async () => json(await fetch(`/api/users/${user.id}/notify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, body: form.body }) })), 'Notification sent.')}
             >
               Send
             </Button>
@@ -967,7 +965,7 @@ const UserAdminEdit = ({ user, onBack }) => {
           username={fullUser.username}
           onClose={closeModal}
           onSubmit={(payload) => act(async () => json(await fetch(`/api/users/${user.id}/lifecycle-status`, {
-            method: 'PUT', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
           })), 'Account status updated.')}
         />
       )}
@@ -990,7 +988,7 @@ const UserAdminEdit = ({ user, onBack }) => {
 
 
 /** Assign/change the reporting manager, with the server's cycle check. */
-function AssignManagerModal({ userId, self, loggedInUser, onClose, onDone }) {
+function AssignManagerModal({ userId, self, onClose, onDone }) {
   const [users, setUsers] = useState([]);
   const [pick, setPick] = useState(self.reporting_to || '');
   const [err, setErr] = useState('');
@@ -1008,7 +1006,7 @@ function AssignManagerModal({ userId, self, loggedInUser, onClose, onDone }) {
     setSaving(true); setErr('');
     try {
       const res = await fetch(`/api/users/${userId}/manager`, {
-        method: 'PUT', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ managerId: pick || null }),
       });
       const data = await json(res);
@@ -1039,7 +1037,7 @@ function AssignManagerModal({ userId, self, loggedInUser, onClose, onDone }) {
 }
 
 /** Admin password reset, with generated or chosen password. Shown once. */
-function ResetPasswordModal({ userId, username, loggedInUser, onClose, onDone }) {
+function ResetPasswordModal({ userId, username, onClose, onDone }) {
   const [mode, setMode] = useState('generate');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -1049,7 +1047,7 @@ function ResetPasswordModal({ userId, username, loggedInUser, onClose, onDone })
     setSaving(true); setErr('');
     try {
       const res = await fetch(`/api/users/${userId}/reset-password`, {
-        method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'generate' ? { generate: true } : { newPassword: password }),
       });
       const data = await json(res);
@@ -1138,23 +1136,23 @@ function LifecycleStatusCard({ fullUser, canManage }) {
 }
 
 /** Sessions panel with per-session revoke; current session highlighted. */
-function SessionsPanel({ userId, username, loggedInUser, canManage, onChanged }) {
+function SessionsPanel({ userId, username, canManage, onChanged }) {
   const [sessions, setSessions] = useState(null);
   // The token (and its session id) may live in either store — see sessionStore.
   const currentSessionId = getSessionId() || '';
 
   const load = useCallback(() => {
-    fetch(`/api/users/${userId}/sessions`, { headers: { 'X-Username': loggedInUser } })
+    fetch(`/api/users/${userId}/sessions`, { headers: {} })
       .then((r) => (r.ok ? r.json() : []))
       .then(setSessions)
       .catch(() => setSessions([]));
-  }, [userId, loggedInUser]);
+  }, [userId]);
   useEffect(() => { load(); }, [load]);
 
   const revoke = async (sid) => {
     if (!await window.appConfirm('Revoke this session?')) return;
     try {
-      await json(await fetch(`/api/users/${userId}/sessions/${sid}`, { method: 'DELETE', headers: { 'X-Username': loggedInUser } }));
+      await json(await fetch(`/api/users/${userId}/sessions/${sid}`, { method: 'DELETE', headers: {} }));
       load(); onChanged?.();
     } catch (e) { window.appAlert(e.message); }
   };
@@ -1172,7 +1170,7 @@ function SessionsPanel({ userId, username, loggedInUser, canManage, onChanged })
         <Button size="sm" variant="secondary" icon={LogOut} disabled={!canManage} onClick={async () => {
           if (!await window.appConfirm('Revoke every session except the ones this browser holds?')) return;
           try {
-            await json(await fetch(`/api/users/${userId}/revoke-sessions`, { method: 'POST', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' }, body: JSON.stringify({ keepSessionId: currentSessionId || undefined }) }));
+            await json(await fetch(`/api/users/${userId}/revoke-sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keepSessionId: currentSessionId || undefined }) }));
             load(); onChanged?.();
           } catch (e) { window.appAlert(e.message); }
         }}>Revoke all other</Button>
@@ -1411,7 +1409,7 @@ function OrganizationPanel({ userId, fullUser, overview, departments, canEdit, o
     setSaving(true);
     try {
       await json(await fetch(`/api/users/${userId}/organization`, {
-        method: 'PUT', headers: { 'X-Username': localStorage.getItem('loggedInUser'), 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(org),
       }));
       window.appAlert('Organization details saved.');
@@ -1545,16 +1543,16 @@ function OrganizationPanel({ userId, fullUser, overview, departments, canEdit, o
 }
 
 /** Preferences + notification channels; users edit their own, admins anyone's. */
-function PreferencesPanel({ userId, loggedInUser, onSaved, showNotificationPrefs = false }) {
+function PreferencesPanel({ userId, onSaved, showNotificationPrefs = false }) {
   const [prefs, setPrefs] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/users/${userId}/preferences`, { headers: { 'X-Username': loggedInUser } })
+    fetch(`/api/users/${userId}/preferences`, { headers: {} })
       .then((r) => (r.ok ? r.json() : null))
       .then(setPrefs)
       .catch(() => setPrefs(null));
-  }, [userId, loggedInUser]);
+  }, [userId]);
 
   const set = (key, value) => setPrefs((p) => ({ ...p, [key]: value }));
 
@@ -1562,7 +1560,7 @@ function PreferencesPanel({ userId, loggedInUser, onSaved, showNotificationPrefs
     setSaving(true);
     try {
       await json(await fetch(`/api/users/${userId}/preferences`, {
-        method: 'PUT', headers: { 'X-Username': loggedInUser, 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prefs),
       }));
       window.appAlert('Preferences saved.');

@@ -15,8 +15,11 @@ const prisma = require('../prismaClient');
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
+// One row per company; oldest wins if a duplicate ever appears (see settings.js).
+const SINGLETON_ORDER = [{ createdAt: 'asc' }, { id: 'asc' }];
+
 async function getWhatsAppSettings() {
-  return prisma.whatsAppSetting.findFirst();
+  return prisma.whatsAppSetting.findFirst({ orderBy: SINGLETON_ORDER });
 }
 
 /** Digits only, with the country code, as WhatsApp wants it (9198xxxxxxxx). */

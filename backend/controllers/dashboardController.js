@@ -273,7 +273,7 @@ exports.getDashboardStats = async (req, res) => {
     // (projects, users, properties) are the same for everyone who can see them.
     const [
       leadTotal, oppTotal, projectTotal, customerTotal, cpTotal,
-      userTotal, LeadsTotal, groupTotal,
+      userTotal, groupTotal,
     ] = await Promise.all([
       safeCount('leads', () => prisma.lead.count({ where: leadFilter })),
       safeCount('opportunities', () => prisma.opportunity.count({ where: oppFilter })),
@@ -281,7 +281,6 @@ exports.getDashboardStats = async (req, res) => {
       safeCount('customers', () => prisma.customer.count()),
       safeCount('channel partners', () => prisma.channelPartner.count()),
       safeCount('users', () => prisma.user.count()),
-      safeCount('enquiries', () => prisma.leads.count()),
       safeCount('user groups', () => prisma.userGroup.count()),
     ]);
 
@@ -430,7 +429,6 @@ exports.getDashboardStats = async (req, res) => {
       customers: customerTotal,
       channelPartners: cpTotal,
       users: showStaffCounts ? userTotal : null,
-      enquiries: LeadsTotal,
       userGroups: showStaffCounts ? groupTotal : null,
     };
 
