@@ -23,6 +23,7 @@ const { retryQueuedMail } = require('../utils/mailer');
 const { runDueReports } = require('../utils/scheduledReports');
 const { sweepSubscription } = require('../utils/billing');
 const { runCollectionReminders } = require('../utils/collections');
+const { runRetentionSweep } = require('../utils/retention');
 
 /** How often to look for expired windows. Not the window itself. */
 const SWEEP_INTERVAL_MS = 60 * 1000;
@@ -48,6 +49,9 @@ const TASKS = [
   ['subscription', (company) => sweepSubscription(company.id), (r) => Boolean(r)],
   // Buyers reminded before and after each milestone falls due.
   ['collection-reminders', () => runCollectionReminders(), (r) => r && r.sent > 0],
+  // Old outbox rows, login/audit logs, read notifications and dead tokens
+  // are pruned so the tables that only grow stop growing without bound.
+  ['retention', () => runRetentionSweep(), (r) => r && Object.values(r).some((n) => n > 0)],
 ];
 
 async function sweepCompany(company) {

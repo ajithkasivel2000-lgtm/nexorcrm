@@ -21,10 +21,15 @@ const {
 
 /* Lockout policy. user_login_attempts has been on the User row since the
    original schema but was never written to; these are the thresholds that
-   make it real. Five failures in a row locks the account for fifteen minutes
-   — long enough to matter, short enough that a lock is not a support ticket. */
-const MAX_LOGIN_ATTEMPTS = 5;
+   make it real. Five consecutive failures from ONE source address lock the
+   account for fifteen minutes — the targeted-guessing case. Counting per
+   address (utils/loginAttempts.js) is what stops the spray: an attacker with
+   a list of usernames sending one wrong password to each, from a different
+   IP per request, used to be able to lock every account in the company at
+   once. A distributed spray never reaches five on any one account from any
+   one address, and the per-IP login rate limit still caps each machine. */
 const LOCK_MINUTES = 15;
+const { MAX_LOGIN_ATTEMPTS, recordLoginFailure, resetLoginFailures } = require('../utils/loginAttempts');
 
 /* Password reset tokens are stored in the database, hashed (SHA-256) — a
    database dump must not hand out working reset links, any more than it
@@ -215,18 +220,23 @@ exports.login = async (req, res) => {
       }
     }
     if (!passwordMatch) {
-      // Count the failure. At the threshold, lock the account.
-      const attempts = (user.user_login_attempts || 0) + 1;
+      // The failure counts against this account FROM THIS ADDRESS. At the
+      // threshold, lock the account — that is a targeted attack, not noise.
+      const attempts = recordLoginFailure(user.id, ipAddress);
       const lockedUntil = attempts >= MAX_LOGIN_ATTEMPTS
         ? new Date(Date.now() + LOCK_MINUTES * 60000)
         : null;
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          user_login_attempts: lockedUntil ? 0 : attempts,
-          lockedUntil,
           lastFailedLoginAt: new Date(),
           lastFailedLoginIp: ipAddress,
+          // The row's counter mirrors the per-address streak so the sessions
+          // tab and dashboards keep working; the lock decision is the
+          // tracker's. When the account locks, stop counting from anywhere:
+          // the next attempt after expiry starts clean.
+          user_login_attempts: lockedUntil ? 0 : attempts,
+          lockedUntil,
         },
       });
       await prisma.systemLog.create({
@@ -237,12 +247,15 @@ exports.login = async (req, res) => {
         actor: user.username,
         action: 'LOGIN_FAILED',
         ip: ipAddress,
-        note: lockedUntil ? 'Account locked after too many failed attempts' : `Attempt ${attempts} of ${MAX_LOGIN_ATTEMPTS}`,
+        note: lockedUntil ? `Account locked after ${MAX_LOGIN_ATTEMPTS} failures from one address` : `Attempt ${attempts} of ${MAX_LOGIN_ATTEMPTS} from this address`,
       });
       return res.status(401).json({ message: lockedUntil
         ? `Invalid credentials. Account locked for ${LOCK_MINUTES} minutes after ${MAX_LOGIN_ATTEMPTS} failed attempts.`
         : 'Invalid credentials' });
     }
+
+    // A correct password clears this account's per-address failure streaks.
+    resetLoginFailures(user.id);
 
     // Two-factor accounts stop here: no session until the code is checked.
     if (user.totpEnabled && user.totpSecret) {
@@ -277,6 +290,7 @@ async function completeLogin(req, res, user, { ipAddress, userAgent, persistent,
     // Update last login, hashing the legacy password while we have the plain
     // text in hand. A successful login clears the failure counter and any
     // expired lock.
+    resetLoginFailures(user.id);
     const loginData = {
       lastLoginAt: new Date(),
       user_login_attempts: 0,
@@ -380,7 +394,10 @@ exports.verifyTwoFactor = async (req, res) => {
       }
     }
     if (!ok) {
-      const attempts = (user.user_login_attempts || 0) + 1;
+      // Same per-address rule as the password step: one source must produce
+      // the whole streak before the account locks, so a code-spraying attack
+      // across addresses cannot lock people out.
+      const attempts = recordLoginFailure(user.id, ipAddress);
       const lockedUntil = attempts >= MAX_LOGIN_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60000) : null;
       await prisma.user.update({
         where: { id: user.id },
@@ -392,6 +409,7 @@ exports.verifyTwoFactor = async (req, res) => {
         : 'That code is not right. Check the time on your phone and try again.' });
     }
 
+    resetLoginFailures(user.id);
     return completeLogin(req, res, user, {
       ipAddress,
       userAgent: String(req.headers['user-agent'] || '').slice(0, 255),

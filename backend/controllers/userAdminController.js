@@ -11,6 +11,7 @@ const { sendToUser } = require('../utils/push');
 const { withoutPassword } = require('../utils/userSafe');
 const { publicSession, idsForHandles } = require('../utils/sessionHandle');
 const { requestIp } = require('../utils/settings');
+const { resetLoginFailures } = require('../utils/loginAttempts');
 
 /* Everything below serves the User 360° administration centre: the overview
    statistics, the reporting structure, the security actions and the account
@@ -408,6 +409,9 @@ exports.unlock = async (req, res) => {
       where: { id: user.id },
       data: { lockedUntil: null, user_login_attempts: 0 },
     });
+    // Also clear the in-memory per-address streaks, or the next failure from
+    // an address that had streaked before the lock would re-lock instantly.
+    resetLoginFailures(user.id);
     await auditEvent({
       userId: user.id, actor: req.user.username, action: 'ACCOUNT_UNLOCKED', ip: ipOf(req),
     });
@@ -458,6 +462,7 @@ exports.resetPassword = async (req, res) => {
         user_login_attempts: 0,
       },
     });
+    resetLoginFailures(user.id);
 
     // Every live session dies: whoever had the old password no longer has access.
     await prisma.session.deleteMany({ where: { username: user.username } });

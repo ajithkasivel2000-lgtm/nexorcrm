@@ -17,6 +17,7 @@ monitoring.installProcessHandlers();
    CORS_EXTRA_ORIGINS. Webhooks (Meta, Razorpay, Exotel) are server-to-server
    and send no Origin header, so they pass regardless. */
 const { corsOptions, isOriginAllowed } = require('./utils/corsPolicy');
+const { securityHeaders } = require('./utils/securityHeaders');
 
 const leadRoutes = require('./routes/leadRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
@@ -78,21 +79,44 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middleware
+app.use(securityHeaders); // CSP, nosniff, frame options — see utils/securityHeaders.js
 app.use(cors(corsOptions()));
 
-/* Team-chat photos arrive as base64 inside a JSON body. express.json()'s
-   default cap is 100kb, so every photo request died with a 413 before the
-   controller ever saw it — the controller's own 5MB allowance was unreachable.
-   10mb covers a 4MB file (the client's limit) plus base64's 4/3 overhead with
-   room to spare. Photos are then written to disk (uploads/teamchat/) and the
-   message row stores the URL, not the base64 — a large text column in
-   Postgres on every read of the room was the alternative. */
-/* The raw bytes are kept alongside the parsed body: Meta signs its webhooks
-   over the exact body it sent, and re-serialising the JSON would not match. */
-app.use(express.json({
-  limit: '10mb',
-  verify: (req, _res, buf) => { if (req.originalUrl.startsWith('/api/webhooks/')) req.rawBody = buf; },
-}));
+/* JSON body limits are scoped per route rather than one global cap: a limit
+   big enough for the largest upload was on every endpoint, so a flood of
+   small requests each carried up to 10MB to parse. The big bodies are base64
+   file uploads and the signed webhook payloads; everything else (login,
+   CRUD forms, settings) is a few kilobytes, and 64kb is the guard. Each
+   upload route still enforces its own decoded-size cap in the controller —
+   the body limit only covers base64's 4/3 overhead on top.
+
+   The raw bytes are kept for webhooks: Meta signs the exact body it sent,
+   and re-serialising the JSON would not match. */
+const keepRawBody = (req, _res, buf) => {
+  if (req.originalUrl.startsWith('/api/webhooks/')) req.rawBody = buf;
+};
+const jsonParse = (limit) => express.json({ limit, verify: keepRawBody });
+
+/* Order matters: the path-scoped limits come first. body-parser raises 413
+   itself when a body is over the limit — it does not fall through — so a
+   6MB photo must meet the 6mb parser, not the 64kb one. Once a parser has
+   handled the body, later ones skip it, so the generic guard below only
+   ever sees paths none of the specific mounts matched. */
+
+// Team-chat photos: 4MB file (the client's cap) + base64 overhead.
+app.use('/api/team-chat', jsonParse('6mb'));
+// Record documents: 10MB decoded cap in the controller + base64 overhead.
+app.use('/api/records', jsonParse('14mb'));
+// Company branding logo: 1MB decoded cap in the controller.
+app.use('/api/company', jsonParse('2mb'));
+app.use('/api/platform', jsonParse('2mb'));
+// Signed webhook payloads (Meta batches, Razorpay events) can be sizeable.
+app.use('/api/webhooks', jsonParse('1mb'));
+// Lead import posts the whole spreadsheet as JSON rows.
+app.use('/api/leads', jsonParse('2mb'));
+
+// The everyday guard: forms, logins, settings — nothing here is ever big.
+app.use(jsonParse('64kb'));
 
 /* Team-chat photos, from disk or S3 (utils/storage.js). Served without auth on
    purpose: the names are unguessable random ids, never user-controlled paths,
