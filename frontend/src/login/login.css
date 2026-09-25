@@ -94,8 +94,19 @@
   padding: 20px clamp(16px, 4vw, 48px);
 }
 
-.nx-login__logo { height: 42px; width: auto; flex-shrink: 0; }
-.nx-login__brandname { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: var(--nx-accent, #4F46E5); flex-shrink: 0; }
+.nx-login__logo {
+  height: 42px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.nx-login__brandname {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--nx-accent, #4F46E5);
+  flex-shrink: 0;
+}
 
 .nx-login__nav {
   display: flex;
@@ -116,8 +127,14 @@
   transition: color .18s, background .18s;
 }
 
-.nx-login__navlink:hover { color: var(--lg-ink); }
-.nx-login__navlink.is-on { color: var(--lg-gold-ink); background: rgba(255, 210, 63, 0.18); }
+.nx-login__navlink:hover {
+  color: var(--lg-ink);
+}
+
+.nx-login__navlink.is-on {
+  color: var(--lg-gold-ink);
+  background: rgba(255, 210, 63, 0.18);
+}
 
 .nx-login__tools {
   margin-left: auto;
@@ -144,10 +161,18 @@
   transition: color .18s, border-color .18s;
 }
 
-.nx-login__icon-btn:hover { color: var(--lg-ink); border-color: var(--lg-gold); }
-.nx-login__icon-btn--wide { padding: 0 14px; }
+.nx-login__icon-btn:hover {
+  color: var(--lg-ink);
+  border-color: var(--lg-gold);
+}
 
-.nx-login__lang { position: relative; }
+.nx-login__icon-btn--wide {
+  padding: 0 14px;
+}
+
+.nx-login__lang {
+  position: relative;
+}
 
 .nx-login__lang-pop {
   position: absolute;
@@ -197,8 +222,14 @@
   font-weight: 800;
 }
 
-.nx-login__wordmark span { color: var(--lg-gold-ink); }
-.nx-login__wordmark strong { color: var(--lg-ink); font-weight: 800; }
+.nx-login__wordmark span {
+  color: var(--lg-gold-ink);
+}
+
+.nx-login__wordmark strong {
+  color: var(--lg-ink);
+  font-weight: 800;
+}
 
 .nx-login__tagline {
   margin: 6px 0 0;
@@ -249,9 +280,18 @@
   transition: opacity .2s, border-color .2s, transform .2s;
 }
 
-.nx-login__feature svg { color: var(--lg-gold); }
-.nx-login__feature.is-on { border-color: var(--lg-gold); transform: translateY(-2px); }
-.nx-login__feature.is-dim { opacity: .38; }
+.nx-login__feature svg {
+  color: var(--lg-gold);
+}
+
+.nx-login__feature.is-on {
+  border-color: var(--lg-gold);
+  transform: translateY(-2px);
+}
+
+.nx-login__feature.is-dim {
+  opacity: .38;
+}
 
 .nx-login__quote {
   margin: 0;
@@ -266,7 +306,10 @@
   line-height: 1.35;
 }
 
-.nx-login__quote em { color: var(--lg-gold-ink); font-style: normal; }
+.nx-login__quote em {
+  color: var(--lg-gold-ink);
+  font-style: normal;
+}
 
 .nx-login__quote cite {
   display: block;
@@ -280,7 +323,10 @@
 
 /* ---- right: wherever the card goes -------------------------------------- */
 
-.nx-login__panel { display: flex; justify-content: center; }
+.nx-login__panel {
+  display: flex;
+  justify-content: center;
+}
 
 /* ---- footer ------------------------------------------------------------- */
 
@@ -306,25 +352,56 @@
   padding: 0;
 }
 
-.nx-login__promises li { display: flex; align-items: center; gap: 7px; }
-.nx-login__promises svg { color: var(--lg-gold); }
-.nx-login__copy { margin: 0 0 0 auto; }
+.nx-login__promises li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.nx-login__promises svg {
+  color: var(--lg-gold);
+}
+
+.nx-login__copy {
+  margin: 0 0 0 auto;
+}
 
 /* ---- narrow screens ------------------------------------------------------
    The pitch is an advertisement and the person is here to sign in, so below
    the breakpoint it goes and the card takes the width. */
 
 @media (max-width: 1020px) {
-  .nx-login__main { grid-template-columns: 1fr; }
-  .nx-login__pitch { display: none; }
-  .nx-login__nav { display: none; }
+  .nx-login__main {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-login__pitch {
+    display: none;
+  }
+
+  .nx-login__nav {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
-  .nx-login__top { padding: 14px 16px; gap: 12px; }
-  .nx-login__logo { height: 34px; }
-  .nx-login__foot { flex-direction: column; align-items: flex-start; }
-  .nx-login__copy { margin: 0; }
+  .nx-login__top {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .nx-login__logo {
+    height: 34px;
+  }
+
+  .nx-login__foot {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nx-login__copy {
+    margin: 0;
+  }
 }
 
 /* =========================================================================
@@ -391,12 +468,29 @@
   transition: color .18s, background .18s;
 }
 
-.nx-card__tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nx-card__tab:hover { color: var(--lg-ink); }
-.nx-card__tab.is-on { color: var(--lg-gold-ink); background: rgba(255, 210, 63, 0.18); }
-.nx-card__tab.is-on svg { color: var(--lg-gold-ink); }
+.nx-card__tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-card__tab:hover {
+  color: var(--lg-ink);
+}
+
+.nx-card__tab.is-on {
+  color: var(--lg-gold-ink);
+  background: rgba(255, 210, 63, 0.18);
+}
+
+.nx-card__tab.is-on svg {
+  color: var(--lg-gold-ink);
+}
+
 /* Shown, but marked as not yet available rather than quietly broken. */
-.nx-card__tab.is-pending { opacity: .55; }
+.nx-card__tab.is-pending {
+  opacity: .55;
+}
 
 .nx-card__pending {
   padding: 18px;
@@ -406,7 +500,12 @@
   text-align: center;
 }
 
-.nx-card__pending p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--lg-ink-soft); }
+.nx-card__pending p {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--lg-ink-soft);
+}
 
 /* ---- banners ------------------------------------------------------------ */
 
@@ -419,13 +518,44 @@
   border: 1px solid transparent;
 }
 
-.nx-card__banner.is-error { color: #ffb4b4; background: rgba(220, 38, 38, .14); border-color: rgba(220, 38, 38, .35); }
-.nx-card__banner.is-info { color: var(--lg-ink); background: rgba(56, 132, 255, .13); border-color: rgba(56, 132, 255, .32); }
-.nx-login.is-light .nx-card__banner.is-error { color: #a11616; }
+.nx-card__banner.is-error {
+  color: #ffb4b4;
+  background: rgba(220, 38, 38, .14);
+  border-color: rgba(220, 38, 38, .35);
+}
+
+.nx-card__banner.is-info {
+  color: var(--lg-ink);
+  background: rgba(56, 132, 255, .13);
+  border-color: rgba(56, 132, 255, .32);
+}
+
+.nx-login.is-light .nx-card__banner.is-error {
+  color: #a11616;
+}
 
 /* ---- fields ------------------------------------------------------------- */
 
-.nx-card__form { display: flex; flex-direction: column; gap: 14px; }
+.nx-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nx-card__field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nx-card__label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--lg-ink-dim, var(--lg-ink-soft));
+  text-align: left;
+}
+
+.nx-card__label-hint { font-weight: 400; opacity: .7; }
 
 .nx-card__field {
   display: flex;
@@ -444,7 +574,10 @@
   box-shadow: 0 0 0 3px rgba(255, 210, 63, .18);
 }
 
-.nx-card__field-icon { color: var(--lg-ink-faint); flex-shrink: 0; }
+.nx-card__field-icon {
+  color: var(--lg-ink-faint);
+  flex-shrink: 0;
+}
 
 .nx-card__field input {
   flex: 1;
@@ -457,7 +590,9 @@
   color: var(--lg-ink);
 }
 
-.nx-card__field input::placeholder { color: var(--lg-ink-faint); }
+.nx-card__field input::placeholder {
+  color: var(--lg-ink-faint);
+}
 
 .nx-card__field-btn {
   display: inline-flex;
@@ -469,7 +604,9 @@
   border-radius: 6px;
 }
 
-.nx-card__field-btn:hover { color: var(--lg-ink); }
+.nx-card__field-btn:hover {
+  color: var(--lg-ink);
+}
 
 /* ---- remember / forgot -------------------------------------------------- */
 
@@ -491,7 +628,12 @@
   cursor: pointer;
 }
 
-.nx-card__check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.nx-card__check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
 
 .nx-card__box {
   width: 18px;
@@ -503,22 +645,26 @@
   transition: background .16s, border-color .16s;
 }
 
-.nx-card__check input:checked + .nx-card__box {
+.nx-card__check input:checked+.nx-card__box {
   background: var(--lg-gold);
   border-color: var(--lg-gold);
 }
 
-.nx-card__check input:checked + .nx-card__box::after {
+.nx-card__check input:checked+.nx-card__box::after {
   content: '';
   position: absolute;
-  left: 5px; top: 1px;
-  width: 5px; height: 10px;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
   border: solid #15233b;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
 
-.nx-card__check input:focus-visible + .nx-card__box { box-shadow: 0 0 0 3px rgba(255, 210, 63, .3); }
+.nx-card__check input:focus-visible+.nx-card__box {
+  box-shadow: 0 0 0 3px rgba(255, 210, 63, .3);
+}
 
 .nx-card__link {
   border: 0;
@@ -531,7 +677,9 @@
   cursor: pointer;
 }
 
-.nx-card__link:hover { text-decoration: underline; }
+.nx-card__link:hover {
+  text-decoration: underline;
+}
 
 /* ---- submit ------------------------------------------------------------- */
 
@@ -554,9 +702,18 @@
   transition: filter .18s, transform .12s;
 }
 
-.nx-card__submit:hover:not(:disabled) { filter: brightness(1.06); }
-.nx-card__submit:active:not(:disabled) { transform: translateY(1px); }
-.nx-card__submit:disabled { opacity: .65; cursor: not-allowed; }
+.nx-card__submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.nx-card__submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.nx-card__submit:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
 
 /* ---- divider and social ------------------------------------------------- */
 
@@ -600,13 +757,28 @@
   transition: border-color .18s;
 }
 
-.nx-card__social-btn:hover:not(:disabled) { border-color: var(--lg-gold); }
-.nx-card__social-btn:disabled { opacity: .45; cursor: not-allowed; }
+.nx-card__social-btn:hover:not(:disabled) {
+  border-color: var(--lg-gold);
+}
+
+.nx-card__social-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
 
 @media (max-width: 560px) {
-  .nx-card { padding: 22px 18px; border-radius: 14px; }
-  .nx-card__tab span { display: none; }
-  .nx-card__tab { padding: 10px 4px; }
+  .nx-card {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .nx-card__tab span {
+    display: none;
+  }
+
+  .nx-card__tab {
+    padding: 10px 4px;
+  }
 }
 
 /* ---- provider tiles ------------------------------------------------------
@@ -616,7 +788,10 @@
    that starts the flow is a real click on Google's control, and the card
    still gets the design. */
 
-.nx-oauth { position: relative; overflow: hidden; }
+.nx-oauth {
+  position: relative;
+  overflow: hidden;
+}
 
 .nx-oauth__real {
   position: absolute;
@@ -639,14 +814,30 @@
   z-index: 2;
 }
 
-.nx-oauth__real > div,
-.nx-oauth__real iframe { width: 100% !important; height: 100% !important; }
+.nx-oauth__real>div,
+.nx-oauth__real iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
 
 /* Not configured, or the script was blocked: dimmed, with the reason on hover. */
-.nx-oauth.is-off { opacity: .45; cursor: not-allowed; }
-.nx-oauth__why { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.nx-oauth.is-off {
+  opacity: .45;
+  cursor: not-allowed;
+}
 
-.nx-card__social-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nx-oauth__why {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nx-card__social-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ---- the security line -------------------------------------------------- */
 
@@ -663,8 +854,15 @@
   color: var(--lg-ink-faint);
 }
 
-.nx-card__secure > svg { color: var(--lg-ink-soft); flex-shrink: 0; }
-.nx-card__secure > span { flex: 1; min-width: 0; }
+.nx-card__secure>svg {
+  color: var(--lg-ink-soft);
+  flex-shrink: 0;
+}
+
+.nx-card__secure>span {
+  flex: 1;
+  min-width: 0;
+}
 
 .nx-card__more {
   display: inline-flex;
@@ -674,8 +872,13 @@
   white-space: nowrap;
 }
 
-.nx-card__more svg { transition: transform .18s; }
-.nx-card__more svg.is-open { transform: rotate(90deg); }
+.nx-card__more svg {
+  transition: transform .18s;
+}
+
+.nx-card__more svg.is-open {
+  transform: rotate(90deg);
+}
 
 .nx-card__secure-list {
   margin: 10px 0 0;
@@ -688,7 +891,9 @@
   color: var(--lg-ink-soft);
 }
 
-.nx-card__secure-list li + li { margin-top: 4px; }
+.nx-card__secure-list li+li {
+  margin-top: 4px;
+}
 
 /* Why a provider tile is dimmed — on the page, not in a tooltip a disabled
    button will not show. */
@@ -714,8 +919,15 @@
    The shadow colour has to be opaque: --lg-field is a translucent white over
    the card, and a translucent patch lets Chrome's fill show straight through. */
 
-.nx-login { --lg-field-solid: #161e2e; --lg-field-solid-focus: #1b2437; }
-.nx-login.is-light { --lg-field-solid: #f2f4f8; --lg-field-solid-focus: #e9edf4; }
+.nx-login {
+  --lg-field-solid: #161e2e;
+  --lg-field-solid-focus: #1b2437;
+}
+
+.nx-login.is-light {
+  --lg-field-solid: #f2f4f8;
+  --lg-field-solid-focus: #e9edf4;
+}
 
 .nx-card__field input:-webkit-autofill,
 .nx-card__field input:-webkit-autofill:hover,

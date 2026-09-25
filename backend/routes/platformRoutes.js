@@ -8,6 +8,7 @@ const platform = express.Router();
 platform.use(authMiddleware, c.requirePlatformAdmin);
 platform.get('/companies', c.listCompanies);
 platform.post('/companies', c.createCompany);
+platform.post('/companies/bulk-delete', c.bulkDeleteCompanies);
 platform.put('/companies/:id', c.updateCompany);
 // View / Edit a client company and its administrators' logins.
 const companyView = require('../controllers/platformCompanyController');

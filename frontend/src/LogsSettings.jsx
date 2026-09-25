@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useListData } from './components/Leads';
+import formatIp from './utils/formatIp';
 import { Button, DataTable, Page, Pill } from './ui';
 
 const formatDate = (isoString) => {
@@ -69,7 +70,7 @@ const LogsSettings = () => {
     {
       key: 'ipAddress',
       label: 'IP Address',
-      render: l => <span className="nx-page__id">{l.ipAddress || '—'}</span>,
+      render: l => <span className="nx-page__id">{formatIp(l.ipAddress)}</span>,
     },
   ]), []);
 

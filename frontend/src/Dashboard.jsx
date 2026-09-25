@@ -115,7 +115,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         document.documentElement.style.setProperty('--nx-accent', b.brandColor);
         document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
       }
-    }).catch(() => {});
+    }).catch(() => { });
     const onInactive = (e) => setInactiveReason(e.detail || 'Your subscription is not active.');
     window.addEventListener('nx:subscription-inactive', onInactive);
     return () => window.removeEventListener('nx:subscription-inactive', onInactive);
@@ -126,7 +126,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
   useEffect(() => {
     // Only administrators can be platform admins; nobody else needs to ask.
     if (!['Admin', 'superadmin'].includes(localStorage.getItem('userStatus'))) return;
-    fetch('/api/company').then((r) => (r.ok ? r.json() : null)).then((c) => setIsPlatformAdmin(Boolean(c?.isPlatformAdmin))).catch(() => {});
+    fetch('/api/company').then((r) => (r.ok ? r.json() : null)).then((c) => setIsPlatformAdmin(Boolean(c?.isPlatformAdmin))).catch(() => { });
   }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -675,8 +675,9 @@ export default function Dashboard({ onLogout, loggedInUser }) {
           )}
         </div>
 
-        <footer className="dashboard-footer">
-          Copyright 2026 © NexorCRM
+        <footer className="dashboard-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Copyright 2026 © NexorCRM</span>
+          <span style={{ marginRight: '70px' }}>powered by Infitoolz</span>
         </footer>
       </main>
 

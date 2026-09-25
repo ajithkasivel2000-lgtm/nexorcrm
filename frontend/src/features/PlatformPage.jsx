@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, Eye, KeyRound, MessageCircle, Pencil, Plus } from 'lucide-react';
+import { Copy, Eye, KeyRound, MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Switch, Textarea, toast,
 } from '../ui';
@@ -45,7 +45,7 @@ function Companies() {
 
   const load = useCallback(() => {
     api('/api/platform/companies').then(setRows).catch((e) => { setError(e.message); setRows([]); });
-    api('/api/platform/plans').then(setPlans).catch(() => {});
+    api('/api/platform/plans').then(setPlans).catch(() => { });
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -56,6 +56,18 @@ function Companies() {
   const setStatus = async (company, status) => {
     if (status === 'Suspended' && !await window.appConfirm(`Suspend ${company.name}? Its users are signed out and cannot sign in until it is reactivated.`)) return;
     try { await api(`/api/platform/companies/${company.id}`, { method: 'PUT', body: { status } }); load(); toast.success(`${company.name}: ${status}.`); } catch (e) { toast.error(e.message); }
+  };
+
+  const deleteCompanies = async (ids, clearSelection) => {
+    const names = (rows || []).filter((r) => ids.includes(r.id)).map((r) => r.name).join(', ');
+    if (!await window.appConfirm(`Permanently delete ${names} and ALL their data (users, leads, bookings, payments, documents)? This cannot be undone. Only suspended companies can be deleted.`)) return;
+    try {
+      toast.success((await api('/api/platform/companies/bulk-delete', { method: 'POST', body: { ids } })).message);
+      clearSelection();
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
   };
 
   if (error) return <p className="fx-error">{error}</p>;
@@ -84,9 +96,13 @@ function Companies() {
         ]}
         rows={rows || []}
         loading={!rows}
-        selectable={false}
         timestamps={false}
         exportName="companies"
+        bulkActions={(selected, clear) => (
+          <Button variant="danger-outline" size="sm" icon={Trash2} onClick={() => deleteCompanies(selected, clear)}>
+            Delete Selected
+          </Button>
+        )}
         onRowClick={(r) => setEditing(r)}
         actions={(r) => (
           r.own ? <Pill tone="info">Your company</Pill> : (

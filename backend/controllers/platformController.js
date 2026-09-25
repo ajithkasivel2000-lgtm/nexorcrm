@@ -78,6 +78,48 @@ exports.createCompany = (req, res) => tenant.runAsSystem(async () => {
   }
 });
 
+/**
+ * POST /api/platform/companies/bulk-delete { ids }
+ *
+ * Permanently removes client companies and ALL their data (utils/companyDelete).
+ * A company must be Suspended first, so an active client is never one click
+ * from gone; the owner's own company can never be deleted.
+ */
+exports.bulkDeleteCompanies = (req, res) => tenant.runAsSystem(async () => {
+  try {
+    const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).map(String))];
+    if (!ids.length) return res.status(400).json({ message: 'Choose at least one company.' });
+    if (ids.length > 50) return res.status(400).json({ message: 'Delete at most 50 companies at a time.' });
+    if (ids.includes(req.companyId) || ids.includes(tenant.DEFAULT_COMPANY_ID)) {
+      return res.status(400).json({ message: 'Your own company cannot be deleted.' });
+    }
+    const companies = await prisma.company.findMany({ where: { id: { in: ids } } });
+    if (companies.length !== ids.length) return res.status(404).json({ message: 'One of those companies no longer exists. Refresh and try again.' });
+    const active = companies.filter((c) => c.status !== 'Suspended');
+    if (active.length) {
+      return res.status(400).json({ message: `Suspend ${active.map((c) => c.name).join(', ')} first. Only suspended companies can be deleted.` });
+    }
+
+    // Stop any NexorCRM subscription still billing them.
+    const billing = require('../utils/billing');
+    for (const c of companies) {
+      if (c.razorpaySubscriptionId && billing.razorpayConfigured() && ['active', 'past_due', 'trialing'].includes(c.subscriptionStatus)) {
+        await billing.razorpay(`/subscriptions/${c.razorpaySubscriptionId}/cancel`, { method: 'POST', body: { cancel_at_cycle_end: 0 } })
+          .catch((error) => console.error(`Could not cancel ${c.name}'s subscription:`, error.message));
+      }
+    }
+
+    const removed = await require('../utils/companyDelete').deleteCompanies(ids);
+    console.log(`[platform] ${req.user.username} deleted companies ${companies.map((c) => `${c.name} (${c.id})`).join(', ')}`, JSON.stringify(removed));
+    res.status(200).json({
+      message: `Deleted ${companies.map((c) => c.name).join(', ')} and all their data.`,
+      removed,
+    });
+  } catch (error) {
+    sendError(res, error, 'Could not delete companies', 500);
+  }
+});
+
 exports.updateCompany = (req, res) => tenant.runAsSystem(async () => {
   try {
     const data = {};

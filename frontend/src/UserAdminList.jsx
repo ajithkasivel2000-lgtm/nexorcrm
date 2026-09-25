@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import formatIp from './utils/formatIp';
 import { subscribeDataChanged } from './utils/dataBus';
 
 /* The statuses that mean "made, but not yet allowed in". Kept in step with
@@ -298,7 +299,7 @@ const UserAdminList = ({ onEdit }) => {
       key: 'registeredIp',
       label: 'IP Address',
       width: '160px',
-      render: u => <span className="nx-page__id">{u.registeredIp || '—'}</span>,
+      render: u => <span className="nx-page__id">{formatIp(u.registeredIp)}</span>,
     },
   ];
 
@@ -312,7 +313,7 @@ const UserAdminList = ({ onEdit }) => {
       key: 'ipAddress',
       label: 'Last IP Address',
       width: '180px',
-      render: sn => <span className="nx-page__id">{sn.ipAddress || '—'}</span>,
+      render: sn => <span className="nx-page__id">{formatIp(sn.ipAddress)}</span>,
     },
     {
       key: 'lastActive',

@@ -18,6 +18,7 @@ import { getSessionId } from './utils/sessionStore';
 import DynamicDropdown from './components/DynamicDropdown';
 import UserPermissions from './components/UserPermissions';
 import DeleteUserDialog from './DeleteUserDialog';
+import formatIp from './utils/formatIp';
 import './User360.css';
 
 /* The tabs are lazy-loaded: the User 360 page has twelve of them, and the
@@ -318,8 +319,8 @@ const UserAdminEdit = ({ user, onBack }) => {
       dob: (fullUser.dob || '').slice(0, 10), gender: fullUser.gender || '',
     }));
   },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [fullUser.id, fullUser.username, fullUser.email, fullUser.profile_image,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fullUser.id, fullUser.username, fullUser.email, fullUser.profile_image,
     fullUser.dob, fullUser.gender]);
 
   const validateUsername = (username) => {
@@ -617,8 +618,8 @@ const UserAdminEdit = ({ user, onBack }) => {
             <KpiCard icon={Unlock} label="Lock Status" value={fullUser.lockedUntil && new Date(fullUser.lockedUntil) > new Date() ? 'Locked' : 'Not locked'} tone={fullUser.lockedUntil && new Date(fullUser.lockedUntil) > new Date() ? 'warning' : 'success'} sub={fullUser.lockedUntil ? `Until ${formatDateTime(fullUser.lockedUntil)}` : undefined} />
             <KpiCard icon={ShieldOff} label="Failed Attempts" value={fullUser.user_login_attempts ?? 0} sub={fullUser.lastFailedLoginAt ? `Last at ${formatDateTime(fullUser.lastFailedLoginAt)}` : undefined} />
             <KpiCard icon={KeyRound} label="Password Changed" value={fullUser.passwordChangedAt ? fmtDate(fullUser.passwordChangedAt) : 'Not on record'} sub={fullUser.forcePasswordChange ? 'Change forced at next sign-in' : undefined} />
-            <KpiCard icon={MonitorSmartphone} label="Last Login IP" value={fullUser.lastActiveIp || fullUser.lastip || '—'} sub={fullUser.lastLoginAt ? formatDateTime(fullUser.lastLoginAt) : undefined} />
-            <KpiCard icon={MapPin} label="Last Failed IP" value={fullUser.lastFailedLoginIp || '—'} />
+            <KpiCard icon={MonitorSmartphone} label="Last Login IP" value={formatIp(fullUser.lastActiveIp || fullUser.lastip)} sub={fullUser.lastLoginAt ? formatDateTime(fullUser.lastLoginAt) : undefined} />
+            <KpiCard icon={MapPin} label="Last Failed IP" value={formatIp(fullUser.lastFailedLoginIp)} />
           </div>
           <p style={{ fontSize: 12, color: 'var(--nx-text-muted)', marginTop: 14 }}>
             Two-factor sign-in: <strong>{fullUser.twoFactorEnabled ? 'on' : 'off'}</strong>. Passwords are stored as bcrypt hashes and never displayed.
@@ -1187,7 +1188,7 @@ function SessionsPanel({ userId, username, loggedInUser, canManage, onChanged })
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{ua.device}{ua.os && ua.os !== ua.device ? ` · ${ua.os}` : ''}{ua.browser ? ` · ${ua.browser}` : ''}</div>
                   <div className="u360-session__meta">
-                    IP <strong>{s.ipAddress}</strong> · Signed in <strong>{formatDateTime(s.createdAt)}</strong> · Last active <strong>{formatDateTime(s.lastActive)}</strong>
+                    IP <strong>{formatIp(s.ipAddress)}</strong> · Signed in <strong>{formatDateTime(s.createdAt)}</strong> · Last active <strong>{formatDateTime(s.lastActive)}</strong>
                     {isCurrent && <> · <Pill tone="success" dot>This session</Pill></>}
                   </div>
                 </div>
@@ -1266,7 +1267,7 @@ function LoginHistoryPanel({ username }) {
                 </span>
                 <div className="u360-audit__body">
                   <div className="u360-audit__title">{eventLabel(l.event)}</div>
-                  <div className="u360-audit__diff">IP {l.ipAddress || '—'}</div>
+                  <div className="u360-audit__diff">IP {formatIp(l.ipAddress) || '—'}</div>
                 </div>
                 <span className="u360-audit__when">{formatDateTime(l.createdAt)}</span>
               </div>
