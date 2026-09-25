@@ -109,4 +109,50 @@ function isReadOnlyForViewer(lead, user) {
   return isSamePerson(lead?.allocator, user) && !isSamePerson(lead?.owner, user);
 }
 
-module.exports = { blockAllocatorEdits, isReadOnlyForViewer, canAccessLead, requireLeadAccess };
+/**
+ * The Prisma `where` fragment narrowing a lead query to what `user` may see —
+ * the same rule the list endpoint (controllers/leads/read.js getLeads) applies:
+ *
+ *   superadmin / Admin  every lead
+ *   Manager             leads owned by a Manager or an Employee
+ *   everyone else       leads they own, or that were allocated to them
+ *
+ * Shared so other lead-reading endpoints (AI search today) cannot drift from
+ * the list: a lead not in a person's list must not be reachable through
+ * another door either.
+ */
+async function visibleLeadScope(user) {
+  const { isSuperUser, isManagerUser } = require('./authMiddleware');
+
+  if (isSuperUser(user)) return {};
+
+  if (isManagerUser(user)) {
+    const users = await prisma.user.findMany({
+      where: { status: { in: ['Manager', 'Employee'] } },
+      select: { id: true, username: true },
+    });
+    return {
+      AND: [{
+        OR: [
+          { ownerId: { in: users.map((u) => u.id) } },
+          { owner: { in: users.map((u) => u.username) } },
+        ],
+      }],
+    };
+  }
+
+  // Everyone else — including an unknown status — sees only their own leads.
+  // Default-deny, exactly as the list endpoint does.
+  const mine = [user.id, user.username].filter(Boolean);
+  return {
+    AND: [{
+      OR: [
+        { ownerId: { in: mine } },
+        { owner: { in: mine } },
+        { allocator: { in: mine } },
+      ],
+    }],
+  };
+}
+
+module.exports = { blockAllocatorEdits, isReadOnlyForViewer, canAccessLead, requireLeadAccess, visibleLeadScope };

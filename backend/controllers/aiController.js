@@ -2,6 +2,7 @@ const { z } = require('zod');
 const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
 const prisma = require('../prismaClient');
 const { sendError } = require('../utils/apiError');
+const { visibleLeadScope } = require('../middleware/leadAccess');
 
 const AnthropicModule = require('@anthropic-ai/sdk');
 const Anthropic = AnthropicModule.default || AnthropicModule;
@@ -125,17 +126,16 @@ exports.searchLeads = async (req, res) => {
       return res.status(502).json({ message: 'Could not interpret that search. Try rephrasing it.' });
     }
 
-    // ---- Translate the model's filter into a Prisma query -----------------
-    const where = {};
+    /* ---- Translate the model's filter into a scoped Prisma query ----------
+       The same lead-visibility rule the Leads list applies
+       (middleware/leadAccess.js): an Employee must not read the whole
+       company's contact data by asking the AI for it, any more than they
+       could by opening the list. The model's filter narrows inside that
+       scope; it can never widen it. */
     const and = [];
 
-    if (filter.statuses?.length) where.status = { in: filter.statuses };
-    if (filter.sources?.length) where.primarySource = { in: filter.sources };
-    if (filter.projects?.length) where.project = { in: filter.projects };
-    if (filter.owners?.length) where.owner = { in: filter.owners };
-
     if (filter.textSearch?.trim()) {
-      const q = filter.textSearch.trim();
+      const q = String(filter.textSearch).trim().slice(0, 100);
       and.push({
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
@@ -154,7 +154,17 @@ exports.searchLeads = async (req, res) => {
       and.push({ followUpDate: { not: null, lte: new Date() } });
     }
 
-    if (and.length) where.AND = and;
+    const scope = await visibleLeadScope(req.user);
+    const where = {
+      ...scope,
+      ...(filter.statuses?.length ? { status: { in: filter.statuses } } : {}),
+      ...(filter.sources?.length ? { primarySource: { in: filter.sources } } : {}),
+      ...(filter.projects?.length ? { project: { in: filter.projects } } : {}),
+      // An owner filter can only narrow: whoever is outside the caller's
+      // scope is excluded by it already.
+      ...(filter.owners?.length ? { owner: { in: filter.owners } } : {}),
+      ...(and.length ? { AND: [...(scope.AND || []), ...and] } : {}),
+    };
 
     const take = Math.min(Math.max(Number(filter.limit) || 50, 1), 200);
     const leads = await prisma.lead.findMany({
@@ -294,11 +304,15 @@ exports.ask = async (req, res) => {
   }
 
   try {
+    /* The snapshot answers over what the caller may see, not the whole
+       company — the same rule the list and AI search follow. For admins this
+       is everything; for an employee it is their own pipeline. */
+    const scope = await visibleLeadScope(req.user);
     const [byStatus, bySource, total, recent] = await Promise.all([
-      prisma.lead.groupBy({ by: ['status'], _count: { id: true } }),
-      prisma.lead.groupBy({ by: ['primarySource'], _count: { id: true } }),
-      prisma.lead.count(),
-      prisma.lead.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 86400000) } } }),
+      prisma.lead.groupBy({ by: ['status'], where: scope, _count: { id: true } }),
+      prisma.lead.groupBy({ by: ['primarySource'], where: scope, _count: { id: true } }),
+      prisma.lead.count({ where: scope }),
+      prisma.lead.count({ where: { ...scope, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } } }),
     ]);
 
     const context = [

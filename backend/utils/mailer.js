@@ -18,6 +18,18 @@ const { runAsSystem, currentCompanyId } = require('./tenant');
 const RETRY_MINUTES = [1, 5, 30, 120, 360];
 const MAX_ATTEMPTS = RETRY_MINUTES.length + 1;
 
+/* SMTP TLS verifies the server's certificate by default. SMTP_ALLOW_SELF_SIGNED=true
+   relaxes that — for a mail server with a self-signed certificate only — and is
+   logged loudly so it cannot be set by accident. Sending over an unverified
+   connection exposes the company's mail password and every message to anyone
+   between the server and the mail host. */
+const allowSelfSigned = () => {
+  const allowed = String(process.env.SMTP_ALLOW_SELF_SIGNED || '').trim().toLowerCase() === 'true';
+  if (allowed) console.warn('[mailer] SMTP_ALLOW_SELF_SIGNED=true — TLS certificates are NOT verified. Set a proper certificate on the mail server.');
+  return allowed;
+};
+const tlsVerified = allowSelfSigned();
+
 /** The company's mail settings and a transporter, or null when mail is off. */
 async function getTransport() {
   const settings = await prisma.mailSetting.findFirst();
@@ -32,7 +44,7 @@ async function getTransport() {
       port: Number(settings.smtpPort),
       secure: Number(settings.smtpPort) === 465,
       auth: useAuth ? { user: settings.smtpUsername, pass: settings.smtpPassword } : undefined,
-      tls: settings.starttls === 'True' ? { rejectUnauthorized: false } : undefined,
+      tls: settings.starttls === 'True' ? { rejectUnauthorized: tlsVerified ? false : true } : undefined,
     }),
   };
 }
