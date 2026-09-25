@@ -51,7 +51,7 @@ exports.overview = async (req, res) => {
       plans: plans.map(publicPlan),
       invoices,
       onlinePayments: billing.razorpayConfigured(),
-      isPlatformAdmin: String(process.env.PLATFORM_ADMINS || '').split(',').map((s) => s.trim()).includes(req.user.username),
+      isPlatformAdmin: require('./platformController').isPlatformAdmin(req.user),
     });
   } catch (error) {
     sendError(res, error, 'Could not load billing', 500);

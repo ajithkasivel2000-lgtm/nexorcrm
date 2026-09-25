@@ -24,7 +24,13 @@ const { provisionCompany, newPublicKey } = require('../utils/provisioning');
 const platformAdmins = () => String(process.env.PLATFORM_ADMINS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
-const isPlatformAdmin = (user) => Boolean(user) && platformAdmins().includes(user.username);
+/* The platform owner's accounts live in the owner's own company (NexorCRM,
+   CMP-DEFAULT). Checking the company as well as the name means a customer
+   company can never gain platform access by taking a listed username, for
+   example after the owner's account is removed. */
+const isPlatformAdmin = (user) => Boolean(user)
+  && user.companyId === tenant.DEFAULT_COMPANY_ID
+  && platformAdmins().includes(user.username);
 
 function requirePlatformAdmin(req, res, next) {
   if (!isPlatformAdmin(req.user)) {
