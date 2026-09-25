@@ -60,6 +60,8 @@ exports.listCompanies = (req, res) => tenant.runAsSystem(async () => {
       users: count(users, c.id),
       leads: count(leads, c.id),
       bookings: count(bookings, c.id),
+      // The platform owner's own company: managed from its own screens.
+      own: c.id === req.companyId,
     })));
   } catch (error) {
     sendError(res, error, 'Could not load companies', 500);

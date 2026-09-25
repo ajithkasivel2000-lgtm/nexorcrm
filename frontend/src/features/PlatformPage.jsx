@@ -89,6 +89,7 @@ function Companies() {
         exportName="companies"
         onRowClick={(r) => setEditing(r)}
         actions={(r) => (
+          r.own ? <Pill tone="info">Your company</Pill> : (
           <div className="nx-page__row-actions">
             <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
             <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
@@ -96,6 +97,7 @@ function Companies() {
               ? <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Suspended'); }}>Suspend</Button>
               : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
           </div>
+          )
         )}
       />
       {editing && (
