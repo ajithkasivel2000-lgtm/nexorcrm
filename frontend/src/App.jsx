@@ -181,6 +181,9 @@ function App() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Show/hide for the three fields of the change-password screen.
+  const [showChangePw, setShowChangePw] = useState({ cur: false, new: false, conf: false });
+  const flipChangePw = (k) => setShowChangePw((v) => ({ ...v, [k]: !v[k] }));
 
   /**
    * Adopts whatever the browser autofilled into the sign-in fields.
@@ -589,24 +592,51 @@ function App() {
             <div className="input-group-premium">
               <div className={`input-wrapper-premium ${currentPassword ? 'has-val' : ''}`}>
                 <Lock className="input-icon-p" size={20} />
-                <input id="cur-pw" type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                <input id="cur-pw" type={showChangePw.cur ? 'text' : 'password'} autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
                 <label className="floating-label" htmlFor="cur-pw">Current Password</label>
+                <button
+                  type="button"
+                  className="toggle-password-p"
+                  onClick={() => flipChangePw('cur')}
+                  aria-label={showChangePw.cur ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showChangePw.cur ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
                 <div className="input-highlight"></div>
               </div>
             </div>
             <div className="input-group-premium">
               <div className={`input-wrapper-premium ${newPw ? 'has-val' : ''}`}>
                 <Lock className="input-icon-p" size={20} />
-                <input id="new-pw" type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required />
+                <input id="new-pw" type={showChangePw.new ? 'text' : 'password'} autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required />
                 <label className="floating-label" htmlFor="new-pw">New Password</label>
+                <button
+                  type="button"
+                  className="toggle-password-p"
+                  onClick={() => flipChangePw('new')}
+                  aria-label={showChangePw.new ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showChangePw.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
                 <div className="input-highlight"></div>
               </div>
             </div>
             <div className="input-group-premium">
               <div className={`input-wrapper-premium ${confirmPw ? 'has-val' : ''}`}>
                 <Lock className="input-icon-p" size={20} />
-                <input id="conf-pw" type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
+                <input id="conf-pw" type={showChangePw.conf ? 'text' : 'password'} autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
                 <label className="floating-label" htmlFor="conf-pw">Confirm New Password</label>
+                <button
+                  type="button"
+                  className="toggle-password-p"
+                  onClick={() => flipChangePw('conf')}
+                  aria-label={showChangePw.conf ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showChangePw.conf ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
                 <div className="input-highlight"></div>
               </div>
             </div>
