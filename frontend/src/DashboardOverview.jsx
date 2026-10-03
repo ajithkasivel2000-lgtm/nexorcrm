@@ -44,8 +44,13 @@ const getSearchPlaceholder = (view) => {
 
 export default function DashboardOverview() {
   const loggedInUser = localStorage.getItem('loggedInUser') || '';
-  const isSuperAdmin = loggedInUser === 'admin';
   const userStatusFromStorage = localStorage.getItem('userStatus') || '';
+  /* Each tenant has its own superadmin; recognise them by role, not by the
+     hardcoded platform username. The old check `loggedInUser === 'admin'`
+     meant a company superadmin (e.g. 'landmint') never saw the Superadmin
+     dashboard view and got the Admin one instead. */
+  const isSuperAdmin = loggedInUser === 'admin'
+    || String(userStatusFromStorage).toLowerCase() === 'superadmin';
 
   // ── Role / home view ─────────────────────────────────────────────────────
   const [homeView, setHomeView] = useState(getHomeView(isSuperAdmin, userStatusFromStorage));

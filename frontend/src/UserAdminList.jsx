@@ -214,7 +214,19 @@ const UserAdminList = ({ onEdit }) => {
     }
   };
 
-  const isSuperAdmin = loggedInUser === 'admin';
+  /* Superadmin by role, not by hardcoded username.
+   *
+   * The old check was `loggedInUser === 'admin'`, which only recognised the
+   * platform's bootstrap account. Every tenant has its own superadmin now
+   * (landmint, roofonwalls, …), and theirs did not match — so for every
+   * company other than the platform's own, the filter below fell all the way
+   * through to the Employee branch and returned an empty list, even for the
+   * company's actual superadmin signed in and looking at User Admin.
+   *
+   * Keep the 'admin' username as a safety net for the bootstrap account, in
+   * case its DB status is ever something odd. */
+  const isSuperAdmin = String(loggedInRole).toLowerCase() === 'superadmin'
+    || loggedInUser === 'admin';
 
   const filterForLoggedInUser = (uList) => {
     // Hide the 'admin' / superadmin account from all lists permanently
@@ -396,7 +408,7 @@ const UserAdminList = ({ onEdit }) => {
           bulkActions={(ids) => (
             // Activation is Admin-only server-side (requireAdmin), so the
             // bulk action only renders for Admins rather than answering 403.
-            loggedInRole === 'Admin' ? (
+            (isSuperAdmin || loggedInRole === 'Admin') ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -411,7 +423,7 @@ const UserAdminList = ({ onEdit }) => {
              an extra step for it. Same endpoint, same Admin-only guard — the
              row simply leaves this tab once its status is no longer
              Registered/Pending. */
-          actions={loggedInRole === 'Admin' ? (user => (
+          actions={(isSuperAdmin || loggedInRole === 'Admin') ? (user => (
             <Button
               variant="primary"
               size="sm"

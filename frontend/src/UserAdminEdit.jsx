@@ -186,12 +186,23 @@ const UserAdminEdit = ({ user, onBack }) => {
     } else if (loggedInUser) {
       fetch(`/api/users/username/${loggedInUser}`)
         .then((r) => r.json())
-        .then((data) => { if (data?.status) setLoggedInRole(data.status); })
+        .then((data) => {
+          if (data?.status) {
+            setLoggedInRole(data.status);
+            // Each tenant has its own superadmin (status='superadmin') whose
+            // username isn't the platform 'admin', so recognise them by role.
+            if (String(data.status).toLowerCase() === 'superadmin') setIsSuperAdmin(true);
+          }
+        })
         .catch(() => { });
     }
   }, [loggedInUser]);
 
-  const isAdminLevel = loggedInRole === 'Admin';
+  /* A tenant superadmin counts as Admin-level for every privileged control on
+     this page: role buttons, reset-password, status changes, org fields. The
+     old check was `loggedInRole === 'Admin'` alone, which hid everything for
+     a company's own superadmin because their status is 'superadmin'. */
+  const isAdminLevel = isSuperAdmin || loggedInRole === 'Admin';
   const canManage = loggedInRole !== 'Employee';
   const canUsePrivileged = isAdminLevel; // role buttons, reset password, org fields
 

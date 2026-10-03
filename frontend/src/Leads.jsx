@@ -51,7 +51,12 @@ export default function Leads() {
   const { canCreate, canEdit, canDelete, canExport } = usePagePermissions('leads');
   const userRole = context?.userRole || '';
   const isEmployeeLevel = userRole === 'User';
-  const isSuperAdmin = loggedInUser === 'admin';
+  /* Superadmin by role, not by hardcoded username — a tenant's own superadmin
+     (status='superadmin', any username) deserves the same visibility as the
+     platform bootstrap 'admin'. Without the role check the Duplicate Leads
+     tab was hidden from every tenant's own superadmin. */
+  const isSuperAdmin = loggedInUser === 'admin'
+    || String(localStorage.getItem('userStatus') || '').toLowerCase() === 'superadmin';
 
 
   /* Duplicate Leads stays restricted to the super admin, as it always has. */
