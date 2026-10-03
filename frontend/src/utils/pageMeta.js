@@ -20,8 +20,13 @@
  * landing view. See applyPageMeta().
  */
 
-const BRAND = 'NexorCRM';
-const SUFFIX = ` | ${BRAND}`;
+const DEFAULT_BRAND = 'NexorCRM';
+/* The platform's name until a tenant brand overrides it. Set by
+   applyBranding() when the branding API returns a company name. */
+let activeBrand = DEFAULT_BRAND;
+let activeFaviconUrl = null;
+const brandName = () => activeBrand;
+const titleSuffix = () => ` | ${activeBrand}`;
 
 /** The share image, used when a page does not name one of its own. */
 const SITE_IMAGE = '/og-image.png';
@@ -34,8 +39,12 @@ const LOCALE = 'en_US';
  */
 const THEME_COLOR = { light: '#f5f6fa', dark: '#0b1120' };
 
-/** Words every page shares, so each entry only lists what is specific to it. */
-const BASE_KEYWORDS = ['NexorCRM', 'CRM software', 'real estate CRM', 'lead management'];
+/** Words every page shares, so each entry only lists what is specific to it.
+ *
+ * Deliberately tenant-agnostic: the platform runs for companies in any
+ * industry, so "real estate CRM" used to live here but no longer does — a
+ * company selling SaaS does not want its tab titles pitching real estate. */
+const BASE_KEYWORDS = ['CRM software', 'lead management', 'customer management'];
 
 /**
  * Routes are matched longest-first, and `:param` matches one path segment, so
@@ -51,13 +60,13 @@ export const PAGE_META = {
   /* ---- Leads ----------------------------------------------------------- */
   '/leads': {
     title: 'Leads',
-    description: 'Every Leads in one table — filter by status, source, owner and project, and act on them without leaving the list.',
-    keywords: ['lead list', 'Leads management', 'lead tracking', 'sales leads'],
+    description: 'Every lead in one table — filter by status, source, owner and project, and act on them without leaving the list.',
+    keywords: ['lead list', 'lead management', 'lead tracking', 'sales leads'],
   },
   '/leads/:id': {
     title: 'Lead Profile',
     description: 'The full record for one lead: contact details, source, status, site visits, follow-ups and the complete activity log.',
-    keywords: ['lead profile', 'lead details', 'Leads record', 'lead activity log'],
+    keywords: ['lead profile', 'lead details', 'lead record', 'lead activity log'],
   },
   '/import-leads': {
     title: 'Import Leads',
@@ -82,8 +91,8 @@ export const PAGE_META = {
   },
   '/customers': { title: 'Customers', description: 'Every customer on the books, with their projects and contact details.', keywords: ['customer list', 'customer management', 'client records'] },
   '/campaign-leads': { title: 'Campaign Leads', description: 'Leads that arrived from a marketing campaign, grouped by the campaign that produced them.', keywords: ['campaign leads', 'marketing campaigns', 'lead source tracking'] },
-  '/rrq': { title: 'RRQ', description: 'Rate and requirement quotations raised against projects.', keywords: ['RRQ', 'quotation management', 'rate requests'] },
-  '/report': { title: 'Reports', description: 'Build a report across leads, opportunities and site visits, then export it.', keywords: ['CRM reports', 'sales reporting', 'export data'] },
+  '/rrq': { title: 'RRQ', description: 'The routing queues leads flow through — who gets the next Presales enquiry on this project, who gets the next Sales handover.', keywords: ['RRQ', 'routing queues', 'lead routing', 'round robin'] },
+  '/report': { title: 'Export Report', description: 'Export leads for a date range, with the status, source and owner filters applied.', keywords: ['export leads', 'lead export', 'CRM reports'] },
 
   /* ---- Channel partners ------------------------------------------------ */
   '/channel-partners': { title: 'Channel Partners', description: 'Every registered channel partner, with their documents, bank details and the leads they brought in.', keywords: ['channel partners', 'broker management', 'partner network'] },
@@ -91,7 +100,7 @@ export const PAGE_META = {
   '/channel-partners/edit/:id': { title: 'Edit Channel Partner', description: 'Update a channel partner’s details, documents and bank account.', keywords: ['edit channel partner', 'partner details'] },
 
   /* ---- Projects -------------------------------------------------------- */
-  '/projects/list': { title: 'Projects', description: 'Every project in the portfolio, with status, type, amenities and contact details.', keywords: ['project list', 'real estate projects', 'project portfolio'] },
+  '/projects/list': { title: 'Projects', description: 'Every project in the portfolio, with status, type, amenities and contact details.', keywords: ['project list', 'project portfolio', 'project management'] },
   '/projects/edit/:id': { title: 'Edit Project', description: 'Update a project’s details, amenities, features and contact information.', keywords: ['edit project', 'project details'] },
   '/projects/status': { title: 'Project Status', description: 'Manage the statuses a project can move through.', keywords: ['project status', 'project stages'] },
   '/projects/type': { title: 'Project Type', description: 'Manage the project types used across the CRM.', keywords: ['project types', 'project categories'] },
@@ -115,6 +124,19 @@ export const PAGE_META = {
   '/settings/logs': { title: 'Logs', description: 'The audit trail — who did what, when, and from where.', keywords: ['audit log', 'activity log', 'system logs'] },
   '/settings/mail': { title: 'Email Settings', description: 'Configure the SMTP server used to send notifications, and test it.', keywords: ['email settings', 'SMTP configuration', 'mail server'] },
   '/settings/email-templates': { title: 'Email Templates', description: 'The templates behind every automated email the CRM sends.', keywords: ['email templates', 'notification templates'] },
+  '/settings/reminders': { title: 'Reminders', description: 'When and how the CRM reminds owners about their open leads, site visits and follow-ups.', keywords: ['reminders', 'notification schedule', 'follow-up reminders'] },
+  '/settings/integrations': { title: 'Integrations', description: 'Branding, company key, lead-form URLs, WhatsApp, calling, Facebook/Google lead sources, scheduled reports and the email log.', keywords: ['integrations', 'branding', 'WhatsApp', 'webhooks', 'company key'] },
+  '/settings/login-layout': { title: 'Login Layout', description: 'The heading, tagline and welcome title shown on your company sign-in page.', keywords: ['login layout', 'sign-in page', 'branding'] },
+  '/settings/billing': { title: 'Billing & Plan', description: 'Your subscription, plan, next renewal and payment history.', keywords: ['billing', 'subscription', 'plan', 'payments'] },
+
+  /* ---- Communication and bookings -------------------------------------- */
+  '/team-chat': { title: 'Team Chat', description: 'Chat with the rest of the team in rooms you choose.', keywords: ['team chat', 'messaging', 'collaboration'] },
+  '/assistant': { title: 'Assistant', description: 'Ask the CRM about leads, projects, bookings and more in natural language.', keywords: ['AI assistant', 'natural language search', 'help'] },
+  '/bookings': { title: 'Bookings & Payments', description: 'Every booking on the books, its payment schedule and the receipts raised against it.', keywords: ['bookings', 'payments', 'receipts', 'collections'] },
+  '/report-builder': { title: 'Report Builder', description: 'Build a custom report by picking the entity, columns and filters, then export it.', keywords: ['report builder', 'custom reports', 'export'] },
+
+  /* ---- Platform (platform admins only) --------------------------------- */
+  '/platform/companies': { title: 'Companies', description: 'Every company on the platform — subscription state, admins, domains and plans.', keywords: ['platform admin', 'companies', 'tenants', 'multi-tenant'] },
 
   /* ---- Account --------------------------------------------------------- */
   '/my-profile': { title: 'My Profile', description: 'Your account: username, password, contact details and profile picture.', keywords: ['my profile', 'account settings'] },
@@ -123,7 +145,6 @@ export const PAGE_META = {
 /** Shown for the signed-out view, which is the only page a crawler can reach. */
 export const SIGNED_OUT_META = {
   title: 'Sign in',
-  fullTitle: `${BRAND} | Smart CRM & Business Management Platform`,
   description: 'NexorCRM is a CRM and business management platform for managing leads, customers, opportunities, campaigns, projects and sales.',
   keywords: [...BASE_KEYWORDS, 'CRM system', 'customer relationship management', 'sales CRM', 'opportunity management', 'business management software'],
   indexable: true,
@@ -210,10 +231,10 @@ export function applyPageMeta(meta, { detail } = {}) {
   if (typeof document === 'undefined' || !meta) return;
 
   const title = meta.fullTitle
-    || `${detail ? `${detail} · ` : ''}${meta.title}${SUFFIX}`;
+    || `${detail ? `${detail} · ` : ''}${meta.title}${titleSuffix()}`;
   const description = meta.description || '';
   const image = new URL(meta.image || SITE_IMAGE, window.location.origin).href;
-  const imageAlt = meta.imageAlt || `${meta.title} — ${BRAND}`;
+  const imageAlt = meta.imageAlt || `${meta.title} — ${brandName()}`;
   const url = `${window.location.origin}${window.location.pathname}`;
 
   document.title = title;
@@ -221,13 +242,13 @@ export function applyPageMeta(meta, { detail } = {}) {
   /* ---- the page itself -------------------------------------------------- */
   setMeta('meta[name="description"]', { name: 'description' }, description);
   setMeta('meta[name="keywords"]', { name: 'keywords' }, (meta.keywords || []).join(', '));
-  setMeta('meta[name="author"]', { name: 'author' }, BRAND);
-  setMeta('meta[name="application-name"]', { name: 'application-name' }, BRAND);
-  setMeta('meta[name="apple-mobile-web-app-title"]', { name: 'apple-mobile-web-app-title' }, BRAND);
+  setMeta('meta[name="author"]', { name: 'author' }, brandName());
+  setMeta('meta[name="application-name"]', { name: 'application-name' }, brandName());
+  setMeta('meta[name="apple-mobile-web-app-title"]', { name: 'apple-mobile-web-app-title' }, brandName());
 
   /* ---- Open Graph: what Slack, Teams and WhatsApp read ------------------ */
   setMeta('meta[property="og:type"]', { property: 'og:type' }, 'website');
-  setMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, BRAND);
+  setMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, brandName());
   setMeta('meta[property="og:locale"]', { property: 'og:locale' }, LOCALE);
   setMeta('meta[property="og:title"]', { property: 'og:title' }, title);
   setMeta('meta[property="og:description"]', { property: 'og:description' }, description);
@@ -267,6 +288,32 @@ export function applyPageMeta(meta, { detail } = {}) {
  * the header — and the tint should follow it rather than waiting for the next
  * page.
  */
+/**
+ * Point the whole document at a tenant's brand.
+ *
+ * Call once when the branding API has resolved. From that point on every
+ * tab title ends with the company's name, the browser tab icon switches to
+ * the company's favicon, and open-graph/author tags read the company too.
+ * Passing { name: null } or no arguments resets to the platform default.
+ */
+export function applyBranding({ name = null, faviconUrl = null } = {}) {
+  activeBrand = name && String(name).trim() ? String(name).trim() : DEFAULT_BRAND;
+  activeFaviconUrl = faviconUrl || null;
+  if (typeof document === 'undefined') return;
+  // Favicon — leave the <link rel="icon"> alone when no override is given, so
+  // the static /favicon.png in index.html stays authoritative on the platform.
+  if (activeFaviconUrl) {
+    setLink('icon', activeFaviconUrl);
+    setLink('apple-touch-icon', activeFaviconUrl);
+  } else {
+    setLink('icon', '/favicon.png');
+    setLink('apple-touch-icon', '/favicon.png');
+  }
+  // Repaint the title/meta tags so the change is visible without a navigation.
+  const current = resolvePageMeta(window.location.pathname);
+  applyPageMeta(current);
+}
+
 export function applyThemeColor() {
   if (typeof document === 'undefined') return;
   const dark = document.documentElement.dataset.theme === 'dark'

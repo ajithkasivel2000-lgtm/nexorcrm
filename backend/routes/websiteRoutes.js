@@ -21,6 +21,11 @@ router.post('/companies', rateLimit('company-signup', { max: 5, windowMs: 60 * 6
 router.get('/branding', branding.publicBranding);
 // The plans on offer, for the free-trial form.
 router.get('/plans', branding.publicPlans);
-router.get('/branding/logo/:id', branding.logo);
+router.get('/branding/logo/:id',    branding.logo);
+router.get('/branding/icon/:id',    branding.icon);
+router.get('/branding/favicon/:id', branding.favicon);
+// Caddy's on-demand TLS asks here before issuing a cert: 200 if we recognise
+// the Host (platform or an active company's customDomain), 404 otherwise.
+router.get('/branding/allow-host', branding.allowHost);
 
 module.exports = router;

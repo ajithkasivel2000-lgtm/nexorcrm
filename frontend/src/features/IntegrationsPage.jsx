@@ -393,9 +393,14 @@ function EmailLogTab() {
 function BrandingCard({ slugLink }) {
   const [brand, setBrand] = useState(null);
   const [color, setColor] = useState('');
+  const [sidebar, setSidebar] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    api('/api/branding').then((b) => { setBrand(b); setColor(b?.brandColor || ''); }).catch(() => {});
+    api('/api/branding').then((b) => {
+      setBrand(b);
+      setColor(b?.brandColor || '');
+      setSidebar(b?.sidebarColor || '');
+    }).catch(() => {});
   }, []);
   const save = async (body, message) => {
     setBusy(true);
@@ -406,39 +411,77 @@ function BrandingCard({ slugLink }) {
         document.documentElement.style.setProperty('--nx-accent', b.brandColor);
         document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
       }
+      // Live-preview the sidebar colour so a save shows immediately without a
+      // reload. Clearing it (sidebarColor: null) returns the shell to defaults.
+      if (b.sidebarColor) {
+        document.documentElement.style.setProperty('--nx-sidebar-bg', b.sidebarColor);
+      } else {
+        document.documentElement.style.removeProperty('--nx-sidebar-bg');
+      }
       toast.success(message);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
   if (!brand) return null;
+  /* Each asset has its own column and its own size limit; the row is identical
+     otherwise, so share the markup. The icon shows in the sidebar's narrow strip
+     and on the mobile top bar; the favicon is the browser tab icon. */
+  const uploadRow = ({ label, hint, urlField, dataField, removeField, accept, maxBytes, maxLabel, previewBg }) => (
+    <div className="fx-row" style={{ alignItems: 'center', gap: 'var(--nx-space-3)' }}>
+      {brand[urlField]
+        ? <img src={brand[urlField]} alt={label} style={{ height: 48, maxWidth: 160, objectFit: 'contain', background: previewBg, borderRadius: 8, padding: 4, border: '1px solid var(--nx-border)' }} />
+        : <span className="fx-muted" style={{ minWidth: 100 }}>{hint}</span>}
+      <label className="nx-btn nx-btn--secondary nx-btn--md" style={{ cursor: 'pointer' }}>
+        {brand[urlField] ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
+        <input type="file" hidden accept={accept} onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (file.size > maxBytes) { toast.error(`Keep the ${label.toLowerCase()} under ${maxLabel}.`); return; }
+          save({ [dataField]: await readAsDataUrl(file) }, `${label} saved.`);
+        }} />
+      </label>
+      {brand[urlField] && <Button onClick={() => save({ [removeField]: true }, `${label} removed.`)} disabled={busy}>Remove</Button>}
+    </div>
+  );
   return (
     <div className="fx-card">
       <h3 className="fx-card__title">Branding</h3>
-      <p className="fx-card__hint">Your logo and colour in the app, on your sign-in page and in PDFs. Emails are sent in your company's name unless Mail Settings says otherwise.</p>
-      <div className="fx-row">
-        {brand.logoUrl
-          ? <img src={brand.logoUrl} alt="Company logo" style={{ height: 48, maxWidth: 200, objectFit: 'contain', background: '#fff', borderRadius: 8, padding: 4, border: '1px solid var(--nx-border)' }} />
-          : <span className="fx-muted">No logo yet.</span>}
-        <label className="nx-btn nx-btn--secondary nx-btn--md" style={{ cursor: 'pointer' }}>
-          Upload logo
-          <input type="file" hidden accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            if (file.size > 1024 * 1024) { toast.error('Keep the logo under 1MB.'); return; }
-            save({ logoDataUrl: await readAsDataUrl(file) }, 'Logo saved.');
-          }} />
-        </label>
-        {brand.logoUrl && <Button onClick={() => save({ removeLogo: true }, 'Logo removed.')} disabled={busy}>Remove</Button>}
-      </div>
-      <div className="fx-row" style={{ marginTop: 'var(--nx-space-4)' }}>
-        <Field label="Brand colour">
-          <div className="fx-row">
-            <input type="color" value={color || '#4F46E5'} onChange={(e) => setColor(e.target.value)} aria-label="Pick a colour" style={{ width: 44, height: 36, border: 0, background: 'none' }} />
-            <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#4F46E5" style={{ width: 120 }} />
-          </div>
-        </Field>
-        <Button variant="primary" loading={busy} onClick={() => save({ brandColor: color }, 'Colour saved.')}>Save colour</Button>
-        {brand.brandColor && <Button onClick={() => { setColor(''); save({ brandColor: '' }, 'Back to the default colour.'); }}>Use default</Button>}
-      </div>
+      <p className="fx-card__hint">Your logo, icon, favicon and colour. The logo and colour show in the app, on your sign-in page and in PDFs. The icon shows in the narrow sidebar and on mobile. The favicon is the browser tab icon. The browser tab title uses your company name. Emails are sent in your company's name unless Mail Settings says otherwise.</p>
+
+      <Field label="Logo (wide)" hint="Shown in the top bar, on the sign-in page and in PDFs. Up to 1MB.">
+        {uploadRow({ label: 'Logo', hint: 'No logo yet.', urlField: 'logoUrl', dataField: 'logoDataUrl', removeField: 'removeLogo', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', maxBytes: 1024 * 1024, maxLabel: '1MB', previewBg: '#fff' })}
+      </Field>
+
+      <Field label="Icon (square)" hint="Shown in the narrow sidebar strip and on the mobile top bar. A ~128×128 square works best. Up to 512KB.">
+        {uploadRow({ label: 'Icon', hint: 'No icon yet.', urlField: 'iconUrl', dataField: 'iconDataUrl', removeField: 'removeIcon', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', maxBytes: 512 * 1024, maxLabel: '512KB', previewBg: '#fff' })}
+      </Field>
+
+      <Field label="Favicon" hint="The browser tab icon. Typically 32×32 or 48×48. PNG, ICO or SVG. Up to 256KB.">
+        {uploadRow({ label: 'Favicon', hint: 'Default favicon in use.', urlField: 'faviconUrl', dataField: 'faviconDataUrl', removeField: 'removeFavicon', accept: 'image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/jpeg', maxBytes: 256 * 1024, maxLabel: '256KB', previewBg: 'var(--nx-bg-elev)' })}
+      </Field>
+      {/* Brand accent and sidebar colour share the same row shape: swatch,
+          hex input, Save, and (if set) Use default — all inline with the
+          label above, matching the upload rows. Putting the Save button as a
+          sibling of Field used to break the row because Field is a column:
+          the button sat beside the stacked label+input instead of next to the
+          input. Everything the row controls now lives inside Field.children. */}
+      <Field label="Brand colour" hint="Accent used for buttons and highlights.">
+        <div className="fx-row" style={{ alignItems: 'center', gap: 'var(--nx-space-3)' }}>
+          <input type="color" value={color || '#4F46E5'} onChange={(e) => setColor(e.target.value)} aria-label="Pick a colour" style={{ width: 44, height: 36, border: 0, background: 'none', cursor: 'pointer' }} />
+          <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#4F46E5" style={{ width: 120 }} />
+          <Button variant="primary" loading={busy} onClick={() => save({ brandColor: color }, 'Colour saved.')}>Save colour</Button>
+          {brand.brandColor && <Button onClick={() => { setColor(''); save({ brandColor: '' }, 'Back to the default colour.'); }}>Use default</Button>}
+        </div>
+      </Field>
+
+      <Field label="Sidebar colour" hint="The signed-in sidebar background. Leave blank for the default dark.">
+        <div className="fx-row" style={{ alignItems: 'center', gap: 'var(--nx-space-3)' }}>
+          <input type="color" value={sidebar || '#111827'} onChange={(e) => setSidebar(e.target.value)} aria-label="Pick a sidebar colour" style={{ width: 44, height: 36, border: 0, background: 'none', cursor: 'pointer' }} />
+          <Input value={sidebar} onChange={(e) => setSidebar(e.target.value)} placeholder="#111827" style={{ width: 120 }} />
+          <Button variant="primary" loading={busy} onClick={() => save({ sidebarColor: sidebar }, 'Sidebar colour saved.')}>Save sidebar colour</Button>
+          {brand.sidebarColor && <Button onClick={() => { setSidebar(''); save({ sidebarColor: '' }, 'Back to the default sidebar colour.'); }}>Use default</Button>}
+        </div>
+      </Field>
+
       <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Your branded sign-in page: <code>{slugLink}</code></p>
     </div>
   );

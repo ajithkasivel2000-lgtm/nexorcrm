@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Building2, ChevronRight, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, X } from 'lucide-react';
 import GoogleSignIn from '../components/GoogleSignIn';
 import MicrosoftSignIn from './MicrosoftSignIn';
 import useAuthProviders from './useAuthProviders';
@@ -11,15 +11,9 @@ import useAuthProviders from './useAuthProviders';
  * flag belong to App.jsx, which owns the session — so this can be restyled
  * without going near the auth logic.
  *
- * One form: username or email, and password. On the platform's general
- * sign-in page an optional company code narrows the sign-in to that company;
- * a company's own page (its link or domain) is already that company's, so the
- * box is not shown there.
- *
- * The company code is its own optional field rather than a tab of its own:
- * the state and the request wiring stay in App.jsx (loginCompanyCode →
- * `company` in the login body), where the backend's loginCompany() consumes
- * it.
+ * One form: username or email, and password. Usernames are unique across
+ * companies, so the general sign-in page needs no company code; a company's
+ * own page (its link or domain) signs in to that company only.
  *
  * Beneath the divider, Google and Microsoft are real — each mints an ID token
  * with the vendor's own UI, which the server verifies against that vendor's
@@ -32,7 +26,7 @@ import useAuthProviders from './useAuthProviders';
 export default function SignInCard({
   theme,
   brandName,
-  companyCode = '', onCompanyCodeChange = () => { },
+  welcomeTitle,
   username, onUsernameChange,
   password, onPasswordChange,
   rememberMe, onRememberChange,
@@ -45,8 +39,6 @@ export default function SignInCard({
   onError,
   onBusyChange,
   formRef,
-  /** A company's own page is already scoped to that company. */
-  showCompanyCode = true,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
@@ -58,48 +50,13 @@ export default function SignInCard({
 
   return (
     <div className="nx-card">
-      <h2 className="nx-card__title">Welcome Back</h2>
+      <h2 className="nx-card__title">{welcomeTitle || 'Welcome Back'}</h2>
       <p className="nx-card__sub">Sign in to your {brandName || 'NexorCRM'} account</p>
 
       {notice && <p className={`nx-card__banner is-${noticeTone}`}>{notice}</p>}
       {error && <p className="nx-card__banner is-error" role="alert">{error}</p>}
 
       <form onSubmit={onSubmit} className="nx-card__form" ref={formRef}>
-        {/* Optional company code, platform page only. Typing one sends `company`
-            with the login and the server answers any other company's account
-            exactly like a wrong password, so a person on the wrong door is not
-            told which usernames exist elsewhere. */}
-        {showCompanyCode && (
-          <div className="nx-card__field-group">
-            <label htmlFor="login-company" className="nx-card__label">
-              Company Code <span className="nx-card__label-hint">(optional)</span>
-            </label>
-            <div className="nx-card__field">
-              <Building2 size={17} className="nx-card__field-icon" aria-hidden="true" />
-              <input
-                id="login-company"
-                name="company"
-                type="text"
-                autoComplete="organization"
-                placeholder="Leave empty for the default company"
-                value={companyCode}
-                onChange={(e) => onCompanyCodeChange(e.target.value)}
-              />
-              {companyCode && (
-                <button
-                  type="button"
-                  className="nx-card__field-btn"
-                  onClick={() => onCompanyCodeChange('')}
-                  aria-label="Clear"
-                  tabIndex={-1}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
         <div className="nx-card__field-group">
           <label htmlFor="login-username" className="nx-card__label">Username / Email</label>
           <div className="nx-card__field">

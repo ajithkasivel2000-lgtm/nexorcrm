@@ -47,8 +47,8 @@ export default function CompanyLoginLayout({ theme, onToggleTheme, brand, childr
               : <span className="nx-colog__initials">{initials(brand.name)}</span>}
           </div>
           <p className="nx-colog__eyebrow">Welcome to</p>
-          <h1 className="nx-colog__name">{brand.name}</h1>
-          <p className="nx-colog__blurb">Sign in to manage your leads, projects, bookings and customers.</p>
+          <h1 className="nx-colog__name">{brand.loginContent?.heading || brand.name}</h1>
+          <p className="nx-colog__blurb">{brand.loginContent?.tagline || 'Sign in to manage your leads, projects, bookings and customers.'}</p>
         </div>
       </aside>
 

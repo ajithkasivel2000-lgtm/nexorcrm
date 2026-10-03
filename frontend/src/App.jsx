@@ -10,7 +10,7 @@ import './ui/globalConfirm';
 // Lazy load layout components and pages
 import NotFound from './NotFound';
 import usePageMeta from './hooks/usePageMeta';
-import { applyPageMeta, SIGNED_OUT_META } from './utils/pageMeta';
+import { applyPageMeta, SIGNED_OUT_META, applyBranding } from './utils/pageMeta';
 import { setAuth, getToken, getUsername, getSessionId, clearAuth } from './utils/sessionStore';
 import { connectRealtime, disconnectRealtime } from './utils/realtime';
 import TwoFactorCard from './login/TwoFactorCard';
@@ -71,6 +71,7 @@ const EmailTemplates = lazyWithRetry(() => import('./EmailTemplates'));
 const MyProfile = lazyWithRetry(() => import('./MyProfile'));
 const BookingsPage = lazyWithRetry(() => import('./features/BookingsPage'));
 const IntegrationsPage = lazyWithRetry(() => import('./features/IntegrationsPage'));
+const LoginLayoutPage = lazyWithRetry(() => import('./features/LoginLayoutPage'));
 const PlatformPage = lazyWithRetry(() => import('./features/PlatformPage'));
 const PartnerPortal = lazyWithRetry(() => import('./features/PartnerPortal'));
 const BillingPage = lazyWithRetry(() => import('./features/BillingPage'));
@@ -173,11 +174,17 @@ function App() {
     fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
-        if (!b) return;
+        if (!b) {
+          // No tenant brand (we're on the platform host) — keep NexorCRM.
+          applyBranding();
+          return;
+        }
         setBrand(b);
         if (b.brandColor) document.documentElement.style.setProperty('--nx-accent', b.brandColor);
+        // Tab title ends with the company name, favicon follows the company.
+        applyBranding({ name: b.name, faviconUrl: b.faviconUrl });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
   const [forgotInput, setForgotInput] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -324,7 +331,7 @@ function App() {
     // Wipes both stores, userStatus and forcePasswordChange with them.
     disconnectRealtime();
     clearAuth();
-    window.location.href = companySlug ? `/?company=${encodeURIComponent(companySlug)}` : '/';
+    window.location.href = (companySlug && companySlug !== 'default') ? `/?company=${encodeURIComponent(companySlug)}` : '/';
   };
 
   const handleLogin = async (e) => {
@@ -735,6 +742,7 @@ function App() {
               <Route path="settings/mail" element={<MailSettings />} />
               <Route path="settings/email-templates" element={<EmailTemplates />} />
               <Route path="settings/integrations" element={<IntegrationsPage />} />
+              <Route path="settings/login-layout" element={<LoginLayoutPage />} />
               <Route path="settings/billing" element={<BillingPage />} />
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="report-builder" element={<ReportBuilderPage />} />
@@ -787,6 +795,7 @@ function App() {
         <SignInCard
           theme={theme}
           brandName={brand?.name}
+          welcomeTitle={brand?.loginContent?.welcomeTitle}
           username={username}
           onUsernameChange={setUsername}
           password={password}
