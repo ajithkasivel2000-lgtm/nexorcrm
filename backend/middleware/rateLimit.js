@@ -20,7 +20,15 @@ setInterval(() => {
   }
 }, 60_000).unref();
 
+/* The e2e suite fires many logins and signups back-to-back from one IP and
+   hits the limit well inside the test timeout; the alternative — sleeping
+   between tests — turns a fast run into a slow one for a check this file is
+   not what the tests are measuring. In production this flag stays unset and
+   the limiter protects what it was written for. */
+const DISABLED = String(process.env.DISABLE_RATE_LIMITS || '').toLowerCase() === 'true';
+
 function rateLimit(name, { max, windowMs }) {
+  if (DISABLED) return (req, res, next) => next();
   return (req, res, next) => {
     const key = `${name}:${requestIp(req) || 'unknown'}`;
     const now = Date.now();
@@ -38,4 +46,8 @@ function rateLimit(name, { max, windowMs }) {
   };
 }
 
-module.exports = { rateLimit };
+/** Empty every bucket. Used by e2e teardown so one suite does not poison the
+ *  next, and by any admin surface that resets its own counters. */
+function resetRateLimits() { buckets.clear(); }
+
+module.exports = { rateLimit, resetRateLimits };

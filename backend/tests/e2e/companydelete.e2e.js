@@ -88,7 +88,9 @@ const rowsOf = (companyId) => t.runAsSystem(async () => {
     check('every row it owned is gone, in every table', await rowsOf(victim.id) === 0);
     const company = await t.runAsSystem(() => p.company.findUnique({ where: { id: victim.id } }));
     check('the company itself is gone', company === null);
-    const takenAgain = await t.runAsSystem(() => p.user.findUnique({ where: { username: `gone${stamp}` } }));
+    // Username is composite-unique per company now; cross-tenant lookup is a
+    // findFirst, not findUnique.
+    const takenAgain = await t.runAsSystem(() => p.user.findFirst({ where: { username: `gone${stamp}` } }));
     check('its usernames are free again', takenAgain === null);
     // Counted after this test's own sessions were made; background jobs may only add rows.
     check('the owner company\'s data is untouched', await rowsOf(CO) >= ownBefore, `${await rowsOf(CO)} vs ${ownBefore}`);

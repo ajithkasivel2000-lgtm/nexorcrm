@@ -52,7 +52,13 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
 
     const token = await login(owner, pw);
     check('new owner signs in straight away (no forced change)', Boolean(token));
+    /* The signup above may have been rate-limited, in which case `slug` is
+       undefined and findUnique throws a cryptic Prisma validation error from
+       deep in the stack. Report it as a test failure here instead so the
+       cause ("signup refused") is on the surface. */
+    if (!slug) { check('company signup must succeed before billing checks', false, 'no slug — earlier signup failed'); return; }
     const company = await t.runAsSystem(() => p.company.findUnique({ where: { slug } }));
+    if (!company) { check('company lookup', false, `no row for slug ${slug}`); return; }
     made.companyId = company.id;
 
     /* ---- trial & seats ---- */

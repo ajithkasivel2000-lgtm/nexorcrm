@@ -176,8 +176,12 @@ const signed = (payload, secret = HOOK_SECRET) => {
     check('replayed webhook accepted', r.status === 200, r.status);
     const payments = await inCo(() => p.payment.findMany({ where: { bookingId } }));
     check('payment recorded exactly once', payments.length === 1 && Number(payments[0].amount) === first.outstanding && payments[0].gatewayPaymentId === `pay_e2e_${stamp}` && /Online/.test(payments[0].mode), JSON.stringify(payments.map((x) => [x.amount, x.mode])));
+    /* An earlier failure in this suite can leave link.id undefined, in which
+       case findUnique throws a cryptic Prisma validation error. Report the
+       state we have instead, so the FAIL points at the real cause. */
+    if (!link?.id) { check('link marked paid', false, 'no link id — earlier payment-link step failed'); return; }
     const linkAfter = await inCo(() => p.paymentLink.findUnique({ where: { id: link.id } }));
-    check('link marked paid', linkAfter.status === 'paid' && linkAfter.paymentId === `pay_e2e_${stamp}`, linkAfter.status);
+    check('link marked paid', linkAfter?.status === 'paid' && linkAfter?.paymentId === `pay_e2e_${stamp}`, linkAfter?.status);
     r = await call(null, '/api/webhooks/razorpay-payments/CMP-NOPE', { method: 'POST', raw: s.raw, headers: s.headers });
     check('webhook for an unknown company is refused', r.status === 404, r.status);
     r = await call(buyer, '/api/buyer/me');
