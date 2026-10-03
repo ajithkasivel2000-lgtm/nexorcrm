@@ -84,6 +84,16 @@ async function checkDeliverable(email) {
   const domain = domainOf(email);
   if (!domain) return { ok: true };
 
+  /* Development skip. In production an MX-less domain is a typo that will
+     silently misroute every notification, so the check must stay strict. In
+     a dev or CI environment the tester is creating fixtures against domains
+     that are never meant to receive mail (landmint.org, example.com, foo.local),
+     and refusing them turns every seed script and smoke test into a chore.
+     SKIP_EMAIL_DELIVERABILITY_CHECK=true opts out explicitly; NODE_ENV !=
+     production is the implicit case. */
+  const skip = String(process.env.SKIP_EMAIL_DELIVERABILITY_CHECK || '').toLowerCase() === 'true'
+    || process.env.NODE_ENV !== 'production';
+
   const suggestion = suggestDomain(email);
 
   let mx = null;
@@ -93,6 +103,7 @@ async function checkDeliverable(email) {
     // NXDOMAIN: no such domain. ENODATA: the domain exists but has no MX.
     // Either way mail to it cannot be delivered.
     if (error.code === 'ENOTFOUND' || error.code === 'ENODATA' || error.code === 'NXDOMAIN') {
+      if (skip) return { ok: true, warning: `${domain} has no mail server — notifications to this user will not be delivered.` };
       const hint = suggestion ? ` Did you mean ${withDomain(email, suggestion)}?` : '';
       return {
         ok: false,
@@ -103,6 +114,7 @@ async function checkDeliverable(email) {
   }
 
   if (!mx || mx.length === 0) {
+    if (skip) return { ok: true, warning: `${domain} has no mail server — notifications to this user will not be delivered.` };
     const hint = suggestion ? ` Did you mean ${withDomain(email, suggestion)}?` : '';
     return {
       ok: false,

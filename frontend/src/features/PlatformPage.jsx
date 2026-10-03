@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Copy, Eye, KeyRound, MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Switch, Textarea, toast,
@@ -17,15 +17,24 @@ const rupees = (paise) => `₹${(Number(paise || 0) / 100).toLocaleString('en-IN
 
 export default function PlatformPage() {
   const [tab, setTab] = useState('companies');
+  const companiesRef = React.useRef(null);
+  const plansRef = React.useRef(null);
+
+  const actions = tab === 'companies' ? (
+    <Button variant="primary" icon={Plus} onClick={() => companiesRef.current?.newCompany()}>New company</Button>
+  ) : (
+    <Button variant="primary" icon={Plus} onClick={() => plansRef.current?.newPlan()}>New plan</Button>
+  );
+
   return (
-    <Page title="Platform" subtitle="Every customer on this installation, and the plans they can buy.">
+    <Page title="Platform" subtitle="Every customer on this installation, and the plans they can buy." actions={actions}>
       <div className="nx-scope">
         <div className="fx-tabs" role="tablist">
           {[['companies', 'Companies'], ['plans', 'Plans']].map(([k, l]) => (
             <button key={k} type="button" role="tab" className="fx-tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
-        {tab === 'companies' ? <Companies /> : <Plans />}
+        {tab === 'companies' ? <Companies ref={companiesRef} /> : <Plans ref={plansRef} />}
       </div>
     </Page>
   );
@@ -33,7 +42,7 @@ export default function PlatformPage() {
 
 /* ------------------------------------------------------------ companies --- */
 
-function Companies() {
+const Companies = React.forwardRef((props, ref) => {
   const [rows, setRows] = useState(null);
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState('');
@@ -42,6 +51,10 @@ function Companies() {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [changing, setChanging] = useState(null);
+
+  React.useImperativeHandle(ref, () => ({
+    newCompany: () => setCreating(true),
+  }));
 
   const load = useCallback(() => {
     api('/api/platform/companies').then(setRows).catch((e) => { setError(e.message); setRows([]); });
@@ -74,9 +87,6 @@ function Companies() {
 
   return (
     <>
-      <div className="fx-row" style={{ justifyContent: 'flex-end', marginBottom: 'var(--nx-space-4)' }}>
-        <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New company</Button>
-      </div>
       <DataTable
         columns={[
           { key: 'name', label: 'Company', render: (r) => <span className="nx-page__strong">{r.name}</span> },
@@ -106,13 +116,13 @@ function Companies() {
         onRowClick={(r) => setEditing(r)}
         actions={(r) => (
           r.own ? <Pill tone="info">Your company</Pill> : (
-          <div className="nx-page__row-actions">
-            <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
-            <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
-            {r.status === 'Active'
-              ? <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Suspended'); }}>Suspend</Button>
-              : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
-          </div>
+            <div className="nx-page__row-actions">
+              <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
+              <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
+              {r.status === 'Active'
+                ? <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Suspended'); }}>Suspend</Button>
+                : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
+            </div>
           )
         )}
       />
@@ -144,7 +154,7 @@ function Companies() {
       )}
     </>
   );
-}
+});
 
 function CompanyModal({ company, plans, onClose, onAction, onSaved }) {
   const [name, setName] = useState(company.name);
@@ -215,8 +225,8 @@ function DomainCard({ company, onSaved }) {
       <p className="fx-card__hint">
         Run this company's CRM on its own address, such as <code>crm.{company.slug}.com</code>. Their staff sign in there and
         their buyers use <code>/portal</code> on it, with the company's logo, and emails link to it. Before saving: add a DNS
-        <strong> A record</strong> for the domain pointing to this server, add the domain to the nginx config and run certbot
-        (see deploy/DEPLOY.md).
+        <strong> A record</strong> for the domain pointing to this server, then ask your server administrator to add the
+        domain to the webserver and issue a Let's Encrypt certificate for it.
       </p>
       <div className="fx-row">
         <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="crm.example.com" aria-label="Own domain" />
@@ -476,16 +486,20 @@ function NewCompanyModal({ plans, onClose, onCreated }) {
 
 /* ---------------------------------------------------------------- plans --- */
 
-function Plans() {
+const Plans = React.forwardRef((props, ref) => {
   const [rows, setRows] = useState(null);
   const [editing, setEditing] = useState(null);
   const load = useCallback(() => api('/api/platform/plans').then(setRows).catch((e) => toast.error(e.message)), []);
   useEffect(() => { load(); }, [load]);
+
+  React.useImperativeHandle(ref, () => ({
+    newPlan: () => setEditing({ key: '', name: '', priceRupees: '', maxUsers: 10, description: '', features: '', active: true }),
+  }));
+
   return (
     <>
       <div className="fx-row" style={{ justifyContent: 'space-between', marginBottom: 'var(--nx-space-4)' }}>
         <p className="fx-muted" style={{ margin: 0 }}>Prices are monthly, before GST. A price change applies to new subscriptions; existing subscribers keep theirs.</p>
-        <Button variant="primary" icon={Plus} onClick={() => setEditing({ key: '', name: '', priceRupees: '', maxUsers: 10, description: '', features: '', active: true })}>New plan</Button>
       </div>
       <DataTable
         columns={[
@@ -505,7 +519,7 @@ function Plans() {
       {editing && <PlanModal plan={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
     </>
   );
-}
+});
 
 function PlanModal({ plan, onClose, onSaved }) {
   const [form, setForm] = useState(plan);

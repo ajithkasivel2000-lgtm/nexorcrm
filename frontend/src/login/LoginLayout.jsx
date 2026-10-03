@@ -114,7 +114,6 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
               <h1 className="nx-login__wordmark">
                 <span>Nexor</span><strong>CRM</strong>
               </h1>
-              <p className="nx-login__tagline">an innovative crm</p>
             </>
           )}
           <span className="nx-login__rule" />
@@ -134,10 +133,6 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
             ))}
           </ul>
 
-          <blockquote className="nx-login__quote">
-            <p>Smarter Relationships.<br /><em>Stronger Growth.</em></p>
-            <cite>{brand?.name || 'Nexor CRM'}</cite>
-          </blockquote>
         </section>
 
         <section className="nx-login__panel">{children}</section>

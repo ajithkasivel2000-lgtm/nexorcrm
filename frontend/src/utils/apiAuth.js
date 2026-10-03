@@ -25,7 +25,7 @@ function isInternalApiUrl(url) {
   try {
     const resolved = new URL(url, window.location.origin);
     return resolved.origin === window.location.origin &&
-           resolved.pathname.startsWith(API_PREFIX);
+      resolved.pathname.startsWith(API_PREFIX);
   } catch {
     return false;
   }
@@ -120,7 +120,7 @@ export default function installApiAuth() {
         // there (read before the wipe below takes it away).
         const slug = window.localStorage.getItem('companySlug');
         clearAuth();
-        window.location.href = slug
+        window.location.href = (slug && slug !== 'default' && slug !== 'null')
           ? `/?company=${encodeURIComponent(slug)}&session=ended`
           : '/?session=ended';
         return;
@@ -133,7 +133,7 @@ export default function installApiAuth() {
           if (body?.code === 'SUBSCRIPTION_INACTIVE') {
             window.dispatchEvent(new CustomEvent('nx:subscription-inactive', { detail: body.message }));
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       /* Anything that changed data on the server tells the rest of the app so,
@@ -149,7 +149,7 @@ export default function installApiAuth() {
           notifyDataChanged(resourceFromPath(pathname));
         } catch { /* a URL we cannot parse is not worth failing a request over */ }
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     return handled;
   };

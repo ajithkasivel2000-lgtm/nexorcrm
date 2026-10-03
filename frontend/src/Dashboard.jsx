@@ -5,7 +5,7 @@ import AiAssistant from './ai/AiAssistant';
 import AssistantWidget from './assistant/AssistantWidget';
 import { SearchInput } from './ui';
 import './Dashboard.css';
-import { applyThemeColor } from './utils/pageMeta';
+import { applyThemeColor, applyBranding } from './utils/pageMeta';
 import NotificationMenu from './components/NotificationMenu';
 import { subscribeDataChanged } from './utils/dataBus';
 import SubscriptionBanner from './features/SubscriptionBanner';
@@ -83,6 +83,7 @@ const sidebarMenus = [
           { name: 'Email Templates', path: '/settings/email-templates', pageId: 'settings' },
           // WhatsApp, calling, ad lead sources, scheduled reports, company key.
           { name: 'Integrations', path: '/settings/integrations', pageId: 'settings' },
+          { name: 'Login Layout', path: '/settings/login-layout', pageId: 'settings' },
           { name: 'Billing & Plan', path: '/settings/billing', pageId: 'settings' },
 
           // Accounts and access rules
@@ -124,6 +125,16 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         document.documentElement.style.setProperty('--nx-accent', b.brandColor);
         document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
       }
+      // The sidebar background follows the company. Removing the override when
+      // the field is clear lets the default dark theme reassert itself.
+      if (b.sidebarColor) {
+        document.documentElement.style.setProperty('--nx-sidebar-bg', b.sidebarColor);
+      } else {
+        document.documentElement.style.removeProperty('--nx-sidebar-bg');
+      }
+      // Signed-in tab title and favicon follow the company — same hook the
+      // signed-out view uses, so the tab reads consistently across both.
+      applyBranding({ name: b.name, faviconUrl: b.faviconUrl });
     }).catch(() => { });
     const onInactive = (e) => setInactiveReason(e.detail || 'Your subscription is not active.');
     window.addEventListener('nx:subscription-inactive', onInactive);
@@ -450,12 +461,17 @@ export default function Dashboard({ onLogout, loggedInUser }) {
           {isSidebarOpen ? (
             <div className="dashboard-logo-full">
               {brand?.logoUrl
-                ? <img src={brand.logoUrl} alt={brand.name} style={{ height: '40px', maxWidth: '170px', objectFit: 'contain', background: '#fff', borderRadius: 6, padding: 2 }} />
+                ? <img src={brand.logoUrl} alt={brand.name} style={{ height: '40px', maxWidth: '170px', objectFit: 'contain' }} />
                 : <img src="/logo_light.png" alt="NexorCRM" style={{ height: '40px', objectFit: 'contain' }} />}
             </div>
           ) : (
+            /* Collapsed sidebar: 28×28 slot. Use the square assets a tenant
+               uploaded, else the static favicon. The wide logo is NOT in the
+               chain — squeezing a 200×60 wordmark into 28×28 reads as a smudge,
+               and Branding tells the admin why ("Icon shows in the narrow
+               sidebar... A ~128×128 square works best."). */
             <div className="dashboard-logo-icon">
-              <img src={brand?.logoUrl || '/favicon.png'} alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+              <img src={brand?.iconUrl || brand?.faviconUrl || '/favicon.png'} alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
             </div>
           )}
           <button
@@ -519,18 +535,6 @@ export default function Dashboard({ onLogout, loggedInUser }) {
           ))}
         </div>
 
-        {/* Pinned below the menu rather than inside it, so it stays put while
-            a long menu scrolls. Hidden when the sidebar is collapsed — at 76px
-            there is no room for it to say anything. */}
-        <div className="sidebar-promo" aria-hidden="true">
-          <span className="sidebar-promo__wave" />
-          <img src="/logo_light.png" alt="" className="sidebar-promo__logo" />
-          <p className="sidebar-promo__tagline">
-            Smarter Leads
-            <br />
-            Stronger Business
-          </p>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -639,8 +643,15 @@ export default function Dashboard({ onLogout, loggedInUser }) {
                   </div>
                 </div>
                 <div className="greeting-text">
+                  {/* Platform bootstrap 'admin' reads "Hello, Super / Platform Admin".
+                      A tenant's own superadmin reads "Hello, <username> / Super Admin"
+                      — not "superadmin" lowercase, which looked like a raw field. */}
                   <div className="greeting-title" style={{ textAlign: 'left' }}>Hello, {loggedInUser === 'admin' ? 'Super' : (loggedInUser || 'Super')}</div>
-                  <div className="greeting-role" style={{ textAlign: 'left' }}>{userRole === 'Admin' && loggedInUser === 'admin' ? 'Platform Admin' : userRole}</div>
+                  <div className="greeting-role" style={{ textAlign: 'left' }}>{
+                    userRole === 'Admin' && loggedInUser === 'admin'
+                      ? 'Platform Admin'
+                      : (String(userRole).toLowerCase() === 'superadmin' ? 'Super Admin' : userRole)
+                  }</div>
                 </div>
                 <ChevronDown size={14} className="greeting-chevron" />
               </div>
@@ -687,7 +698,6 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         <footer className="dashboard-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* The signed-in company's name, and this year. */}
           <span>Copyright {new Date().getFullYear()} © {brand?.name || 'NexorCRM'}</span>
-          <span style={{ marginRight: '70px' }}>powered by Infitoolz</span>
         </footer>
       </main>
 
