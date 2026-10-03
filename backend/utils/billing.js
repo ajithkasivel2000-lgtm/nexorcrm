@@ -99,11 +99,16 @@ async function razorpay(path, { method = 'GET', body } = {}) {
     throw Object.assign(new Error('Online payments are not set up yet. Contact the platform administrator.'), { status: 503 });
   }
   const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
-  const res = await fetch(`https://api.razorpay.com/v1${path}`, {
-    method,
-    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`https://api.razorpay.com/v1${path}`, {
+      method,
+      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    throw Object.assign(new Error(`Razorpay network error: ${err.message}`), { status: 502 });
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw Object.assign(new Error(`Razorpay: ${data?.error?.description || res.status}`), { status: 502 });
@@ -210,22 +215,24 @@ async function recordPayment(company, plan, { paymentId = null, periodStart = ne
   }
   if (!invoice) throw new Error('Could not allocate an invoice number.');
 
-  async function createInvoiceRow() { return tenant.runAsSystem(async () => prisma.invoice.create({
-    data: {
-      companyId: company.id,
-      number: await nextInvoiceNumber(),
-      planKey: plan?.key || null,
-      description: description || `${plan ? plan.name : 'Subscription'} plan — ${new Date(periodStart).toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`,
-      amountPaise: amount,
-      gstPercent: GST_PERCENT,
-      totalPaise: Math.round(amount * (1 + GST_PERCENT / 100)),
-      status: 'paid',
-      periodStart,
-      periodEnd: end,
-      razorpayPaymentId: paymentId,
-      paidAt: new Date(),
-    },
-  })); }
+  async function createInvoiceRow() {
+    return tenant.runAsSystem(async () => prisma.invoice.create({
+      data: {
+        companyId: company.id,
+        number: await nextInvoiceNumber(),
+        planKey: plan?.key || null,
+        description: description || `${plan ? plan.name : 'Subscription'} plan — ${new Date(periodStart).toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`,
+        amountPaise: amount,
+        gstPercent: GST_PERCENT,
+        totalPaise: Math.round(amount * (1 + GST_PERCENT / 100)),
+        status: 'paid',
+        periodStart,
+        periodEnd: end,
+        razorpayPaymentId: paymentId,
+        paidAt: new Date(),
+      },
+    }));
+  }
   await tenant.runAsSystem(() => prisma.company.update({
     where: { id: company.id },
     data: { subscriptionStatus: 'active', currentPeriodEnd: end, planKey: plan?.key || company.planKey },

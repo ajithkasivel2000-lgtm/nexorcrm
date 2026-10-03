@@ -19,3 +19,25 @@ backend/uploads/
 logs.txt
 build_output.txt
 lint_output.txt
+
+# Local dev artefacts
+backend/testOutput.txt
+# One-off diagnostic / smoke scripts kept out of the tree. The committed
+# scripts (seedDefaults, setProvider) are referenced from backend/package.json
+# and stay in. Add new names here if you add more.
+backend/scripts/check3.js
+backend/scripts/checkCompanies.js
+backend/scripts/checkDupes.js
+backend/scripts/checkMirrorDupes.js
+backend/scripts/sess.js
+backend/scripts/testHttp.js
+backend/scripts/testSubscribe.js
+backend/scripts/activateAllCompanies.js
+backend/scripts/fixOwnerSubscription.js
+
+# Session notes, not documentation
+LIVE-UPDATE-FILES.md
+
+# Local tool state
+.claude/
+mobile/.claude/
