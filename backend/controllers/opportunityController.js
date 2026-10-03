@@ -179,7 +179,9 @@ exports.getOpportunities = async (req, res) => {
   try {
     const filters = {};
     if (req.query.username) {
-      const user = await prisma.user.findUnique({ where: { username: req.query.username } });
+      // username is unique only within a company; the tenant extension scopes
+      // this findFirst to the signed-in user's company automatically.
+      const user = await prisma.user.findFirst({ where: { username: req.query.username } });
       if (user) {
         /* Matched on BOTH forms. New rows store a username (see
            createOpportunity), but rows written before that fix hold a user id,

@@ -115,7 +115,22 @@ exports.login = async (req, res) => {
     if (scope.error) return res.status(400).json({ message: scope.error });
     const inScope = (u) => !u || !scope.company || u.companyId === scope.company.id;
 
-    let user = await prisma.user.findUnique({ where: { username: typed } });
+    /* Username is unique inside a company, not globally. On a company sign-in
+       the lookup is specific to that company; on the platform page we accept
+       exactly one match across tenants, and refuse ambiguous usernames rather
+       than guess which company the person belongs to. */
+    let user = null;
+    if (scope.company) {
+      user = await prisma.user.findUnique({
+        where: { companyId_username: { companyId: scope.company.id, username: typed } },
+      });
+    } else {
+      const matches = await prisma.user.findMany({ where: { username: typed }, take: 2 });
+      if (matches.length > 1) {
+        return res.status(400).json({ message: 'That username exists in more than one company. Sign in on your company page.' });
+      }
+      user = matches[0] || null;
+    }
     if (!inScope(user)) user = null;
     if (!user && typed.includes('@')) {
       /* An email address can belong to accounts in more than one company; the
@@ -1011,7 +1026,10 @@ exports.changeMyPassword = async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current and new passwords are required.' });
     }
-    const user = await prisma.user.findUnique({ where: { username: req.user.username } });
+    // Composite lookup since username is unique only within a company now.
+    const user = await prisma.user.findUnique({
+      where: { companyId_username: { companyId: req.user.companyId, username: req.user.username } },
+    });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     let ok = false;

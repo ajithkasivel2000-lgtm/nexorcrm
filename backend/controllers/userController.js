@@ -68,14 +68,19 @@ const UNIQUE_FIELD_LABELS = {
  * alone silently produced the generic wording every time.
  */
 function uniqueMessage(error) {
-  const fromMeta = Array.isArray(error?.meta?.target) ? error.meta.target[0] : error?.meta?.target;
+  /* On a composite constraint like @@unique([companyId, username]) the
+     target array is ['companyId', 'username'] — the first element is always
+     the tenant key and read to the user as the error. Pick the first key
+     that is not 'companyId'. */
+  const metaArr = [].concat(error?.meta?.target || []);
+  const fromMeta = metaArr.find((k) => k && k !== 'companyId');
   // "Unique constraint failed on the fields: (`"employeeId"`)"
   const fromText = String(error?.message || '').match(/fields:\s*\(?`?"?([A-Za-z_][\w]*)"?`?\)?/);
 
   const field = String(fromMeta || fromText?.[1] || '').replace(/["`]/g, '');
   const label = UNIQUE_FIELD_LABELS[field];
   return label
-    ? `${label} is already used by another user. Please choose a different one.`
+    ? `${label} is already used by another user in your company. Please choose a different one.`
     : 'That value is already taken.';
 }
 const { validatePhone, normalizeDial } = require('../utils/phone');
@@ -151,7 +156,9 @@ exports.getUserById = async (req, res) => {
 exports.getUserByUsername = async (req, res) => {
   try {
     const { username } = req.params;
-    const rawUser = await prisma.user.findUnique({
+    // Tenant extension auto-scopes to the signed-in company; findFirst is
+    // required because username is unique only within the composite now.
+    const rawUser = await prisma.user.findFirst({
       where: { username },
       include: { userGroupMembers: { include: { group: true } } }
     });
@@ -232,8 +239,13 @@ exports.createUser = async (req, res) => {
     res.status(201).json({ ...withoutPassword(savedUser), emailWarning: reach.warning || null });
   } catch (error) {
     if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0] || 'A field';
-      return res.status(400).json({ message: `${field} already exists. Please choose a different one.` });
+      /* `target` on a composite unique is `['companyId', <column>]` — the
+         first element is always 'companyId' and reads to the user as "A field
+         already exists". Pick the first non-tenant key instead, and spell it
+         out in English so the message is actionable. */
+      const raw = [].concat(error.meta?.target || []).find((k) => k && k !== 'companyId');
+      const label = { username: 'Username', email: 'Email', employeeId: 'Employee ID' }[raw] || raw || 'This value';
+      return res.status(400).json({ message: `${label} already exists in your company. Please choose a different one.` });
     }
     sendError(res, error, 'Error creating user', 400);
   }

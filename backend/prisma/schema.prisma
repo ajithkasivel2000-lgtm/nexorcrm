@@ -9,7 +9,13 @@ datasource db {
 model ChannelPartner {
   companyId                 String
   id                        String              @id @default(uuid())
-  cpId                      String              @unique
+  /// Mirror of id in the legacy CHP-YYYY-NNN format. Unique PER COMPANY, not
+  /// globally — the counter in utils/refId.js is scoped to one tenant's rows,
+  /// so both companies land on CHP-2026-001 for their first channel partner.
+  /// With `@unique` on the column alone, the second company's write failed
+  /// at the DB with a P2002 after any backend restart cleared the in-memory
+  /// anti-collision map. See @@unique at the end of the model.
+  cpId                      String
   typeOfChannelPartner      String
   message                   String
   companyName               String
@@ -40,6 +46,7 @@ model ChannelPartner {
   mobileCountryCode         String              @default("+91")
   logs                      ChannelPartnerLog[]
 
+  @@unique([companyId, cpId])
   @@index([companyId])
 }
 
@@ -58,7 +65,8 @@ model ChannelPartnerLog {
 model Customer {
   companyId                 String
   id                        String   @id @default(uuid())
-  customerId                String   @unique
+  /// Mirror of id; unique PER COMPANY. See notes on ChannelPartner.cpId.
+  customerId                String
   customerName              String?
   customerEmail             String?
   customerMobile            String?
@@ -67,6 +75,7 @@ model Customer {
   updatedAt                 DateTime @updatedAt
   customerMobileCountryCode String   @default("+91")
 
+  @@unique([companyId, customerId])
   @@index([companyId])
 }
 
@@ -228,7 +237,8 @@ model LeadType {
 model Opportunity {
   companyId                  String
   id                         String           @id @default(uuid())
-  oppId                      String           @unique
+  /// Mirror of id; unique PER COMPANY. See notes on ChannelPartner.cpId.
+  oppId                      String
   leadId                     String?
   bvd                        String?
   opportunityName            String?
@@ -297,6 +307,7 @@ model Opportunity {
   invoiceAmount              Decimal?
   logs                       OpportunityLog[]
 
+  @@unique([companyId, oppId])
   @@index([companyId])
 }
 
@@ -774,7 +785,8 @@ model RegistrationSetting {
 model RRQ {
   companyId     String
   id            String   @id @default(uuid())
-  rrqId         String   @unique
+  /// Mirror of id; unique PER COMPANY. See notes on ChannelPartner.cpId.
+  rrqId         String
   projectName   String
   rrqName       String
   rrqType       String
@@ -782,6 +794,7 @@ model RRQ {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@unique([companyId, rrqId])
   @@index([companyId])
 }
 
@@ -854,9 +867,21 @@ model User {
   calendarToken             String?            @unique
   channelPartnerId          String?
   id                        String             @id @default(uuid())
-  username                  String             @unique
+  /// Unique PER company, not globally.
+  ///
+  /// Was `@unique` on the column alone — fine until the platform grew past one
+  /// tenant, when a username had to be unique across EVERYONE. A new company
+  /// trying to add a user called `ajith` was refused because another company
+  /// already had one; the error landed in the UI as a confusing "A field
+  /// already exists" because Prisma's P2002 target was `['companyId','username']`
+  /// and the handler only read the first element. The composite constraint
+  /// below makes usernames unique inside a company and free across companies.
+  username                  String
   firstName                 String
   lastName                  String?
+  /// Addresses are optional and unique per company; two tenants can share an
+  /// address (common for cross-company employees), but one company cannot have
+  /// two accounts on the same address.
   email                     String?
   password                  String?
   status                    String             @default("Manager")
@@ -957,6 +982,8 @@ model User {
   permissions               UserPermission[]
 
   @@unique([companyId, employeeId])
+  @@unique([companyId, username])
+  @@unique([companyId, email])
   @@index([status])
   @@index([dept_id])
   @@index([reporting_to])
@@ -1087,9 +1114,11 @@ model EmailTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   bodyContent String?
-  templateId  String   @unique
+  /// Mirror of id; unique PER COMPANY. See notes on ChannelPartner.cpId.
+  templateId  String
 
   @@unique([companyId, templateKey])
+  @@unique([companyId, templateId])
   @@index([companyId])
 }
 
@@ -1570,7 +1599,18 @@ model Company {
 
   // Branding
   logoKey    String?
+  /// Square icon version of the logo — used in the sidebar's narrow strip
+  /// and on the mobile top bar, where the wide logoKey is too long to read.
+  iconKey    String?
+  /// Browser-tab icon (favicon). PNG or ICO, typically 32×32 or 48×48.
+  faviconKey String?
   brandColor String?
+  /// Sidebar background colour (hex). Overrides --nx-sidebar-bg in the signed-in
+  /// shell so a company can match the sidebar to its brand. Null → default dark.
+  sidebarColor String?
+  /// Editable copy on this company's branded sign-in page: { heading, tagline, welcomeTitle }.
+  /// Any missing key falls back to the hardcoded default in login/CompanyLoginLayout.jsx / SignInCard.jsx.
+  loginContent Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }

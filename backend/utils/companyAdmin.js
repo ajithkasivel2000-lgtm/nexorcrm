@@ -20,15 +20,17 @@ function findCompanySuperAdmin() {
 }
 
 /**
- * Whether a username is in use anywhere on the platform.
+ * Whether this username is already in use somewhere on the platform.
  *
- * Usernames are unique across every company (a username is how sign-in knows
- * which company you belong to), but ordinary queries only see the current
- * company — so "is it taken?" has to look past it, or a clash would only
- * surface as a failed insert.
+ * Usernames are unique PER COMPANY now, not globally — so two companies may
+ * share one. OAuth username generation and the company-provisioning signup
+ * flow still check cross-company because they are picking a login name for a
+ * brand-new account before the request has a company context, and refusing a
+ * clash upfront reads better than letting the DB reject it. findFirst instead
+ * of findUnique is what the composite constraint demands.
  */
 function isUsernameTaken(username) {
-  return runAsSystem(() => prisma.user.findUnique({ where: { username }, select: { id: true } }))
+  return runAsSystem(() => prisma.user.findFirst({ where: { username }, select: { id: true } }))
     .then(Boolean);
 }
 

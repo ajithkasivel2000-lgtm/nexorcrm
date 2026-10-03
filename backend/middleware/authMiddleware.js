@@ -115,7 +115,12 @@ async function verifySession(token) {
     }
   } catch { /* a settings problem must not sign everybody out */ }
 
-  const user = await prisma.user.findUnique({ where: { username: session.username } });
+  /* Composite lookup: username is unique only within a company now, so
+     findUnique on username alone no longer compiles. The session row carries
+     the company it was opened in, so that is the one to look up against. */
+  const user = await prisma.user.findUnique({
+    where: { companyId_username: { companyId: session.companyId, username: session.username } },
+  });
   if (!user) {
     return { error: { status: 401, message: 'The account behind this session no longer exists.' } };
   }
@@ -150,7 +155,7 @@ function withSession(token) {
  * CRM's own routes can see the request.
  */
 const isPartnerUser = (user) => String(user?.status || '') === 'Partner';
-const BILLING_PATHS = ['/api/billing', '/api/auth/', '/api/company', '/api/notifications', '/api/push/', '/api/user-permissions/me', '/api/users/username/'];
+const BILLING_PATHS = ['/api/billing', '/api/auth/', '/api/company', '/api/branding', '/api/notifications', '/api/push/', '/api/user-permissions/me', '/api/users/username/'];
 const PARTNER_PATHS = ['/api/partner/', '/api/auth/', '/api/notifications', '/api/push/'];
 
 function authMiddleware(req, res, next) {
