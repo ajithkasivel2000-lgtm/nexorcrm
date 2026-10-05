@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, FileDown } from 'lucide-react';
 import { Button, DataTable, Field, FormGrid, Input, Page, Pill, Textarea, toast } from '../ui';
+import { startCashfreeSubscriptionCheckout } from '../utils/cashfreeSubscriptionCheckout';
 import loadPdfTools from '../utils/loadPdfTools';
 import { api, fmtDate } from './api';
 import './features.css';
@@ -14,23 +15,13 @@ import './features.css';
 const rupees = (paise) => `₹${(Number(paise || 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const STATE = {
   internal: ['Internal — not billed', 'success'],
+  pending_payment: ['Payment authorization required', 'warning'],
   active: ['Active', 'success'],
   trialing: ['Free trial', 'info'],
   past_due: ['Payment failed', 'warning'],
   cancelled: ['Cancelled', 'warning'],
   expired: ['Expired', 'danger'],
 };
-
-function loadCheckout() {
-  if (window.Cashfree) return Promise.resolve(window.Cashfree);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
-    s.onload = () => resolve(window.Cashfree);
-    s.onerror = () => reject(new Error('Could not load Cashfree checkout. Check your connection.'));
-    document.body.appendChild(s);
-  });
-}
 
 /* Checked before anything loads: without it the page mounted for a moment
    while permissions loaded, and its refused requests surfaced as error pop-ups. */
@@ -44,10 +35,11 @@ function BillingPageInner() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  const autoAuthorizationHandled = useRef(false);
   const load = useCallback(() => api('/api/billing').then(setData).catch((e) => setError(e.message)), []);
   useEffect(() => { load(); }, [load]);
 
-  const choose = async (plan) => {
+  const choose = useCallback(async (plan) => {
     if (String(data?.company?.phone || '').replace(/\D/g, '').length < 10) {
       toast.error('Add a valid 10-digit phone number in Billing details before choosing a plan.');
       document.getElementById('billing-phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -55,19 +47,12 @@ function BillingPageInner() {
       return;
     }
     setBusy(plan.key);
+    let pendingSubscriptionId = null;
     try {
       const checkout = await api('/api/billing/subscribe', { method: 'POST', body: { planKey: plan.key } });
-      const Cashfree = await loadCheckout();
-      const cashfree = Cashfree({ mode: checkout.mode });
       sessionStorage.setItem('cashfreeSubscriptionId', checkout.subscriptionId);
-      const result = await cashfree.checkout({
-        subsSessionId: checkout.subscriptionSessionId,
-        redirectTarget: '_self',
-      });
-      if (result?.error) {
-        sessionStorage.removeItem('cashfreeSubscriptionId');
-        throw new Error(result.error.message || 'Cashfree checkout was not completed.');
-      }
+      pendingSubscriptionId = checkout.subscriptionId;
+      await startCashfreeSubscriptionCheckout(checkout.mode, checkout.subscriptionSessionId);
       const verified = await api('/api/billing/verify', {
         method: 'POST',
         body: { subscriptionId: checkout.subscriptionId },
@@ -75,8 +60,56 @@ function BillingPageInner() {
       if (verified.pending) toast.info(verified.message);
       else {
         sessionStorage.removeItem('cashfreeSubscriptionId');
+        pendingSubscriptionId = null;
         toast.success(verified.message);
       }
+      await load();
+    } catch (e) {
+      if (pendingSubscriptionId) sessionStorage.removeItem('cashfreeSubscriptionId');
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  }, [data, load]);
+
+  useEffect(() => {
+    if (!data || autoAuthorizationHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('authorizeSubscription') !== '1') return;
+
+    autoAuthorizationHandled.current = true;
+    const requestedCompany = params.get('company');
+    params.delete('company');
+    params.delete('authorizeSubscription');
+    const remainingQuery = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ''}${window.location.hash}`,
+    );
+
+    if (!requestedCompany || requestedCompany !== data.company.slug) {
+      toast.error('This recurring payment link does not match the signed-in company.');
+      return;
+    }
+    if (data.status !== 'pending_payment' || !data.plan) {
+      toast.info('There is no pending recurring payment authorization for this company.');
+      return;
+    }
+    choose(data.plan);
+  }, [data, choose]);
+
+  const checkAuthorization = async () => {
+    if (!data?.subscriptionId) return;
+    setBusy('verify');
+    try {
+      const result = await api('/api/billing/verify', {
+        method: 'POST',
+        body: { subscriptionId: data.subscriptionId },
+      });
+      if (result.pending) toast.info(result.message);
+      else if (result.failed) toast.error(result.message);
+      else toast.success(result.message);
       await load();
     } catch (e) {
       toast.error(e.message);
@@ -104,9 +137,11 @@ function BillingPageInner() {
             <div className="fx-stat__value" style={{ fontSize: 'var(--nx-text-lg)' }}>{internal ? '—' : (data.plan?.name || 'Not chosen')}</div>
           </div>
           <div className="fx-stat">
-            <div className="fx-stat__label">{data.status === 'trialing' ? 'Trial ends' : 'Paid until'}</div>
+            <div className="fx-stat__label">
+              {data.status === 'pending_payment' ? 'First charge scheduled' : data.status === 'trialing' ? 'Trial ends' : 'Paid until'}
+            </div>
             <div className="fx-stat__value" style={{ fontSize: 'var(--nx-text-lg)' }}>
-              {internal ? '—' : fmtDate(data.trialEndsAt || data.currentPeriodEnd)}
+              {internal ? '—' : fmtDate(data.status === 'pending_payment' ? data.nextBillingAt : (data.trialEndsAt || data.currentPeriodEnd))}
               {data.access?.daysLeft != null && <span className="fx-muted"> ({data.access.daysLeft} days)</span>}
             </div>
           </div>
@@ -119,7 +154,16 @@ function BillingPageInner() {
         {data.access && !data.access.allowed && (
           <div className="fx-card" style={{ borderColor: 'var(--nx-danger)' }}>
             <h3 className="fx-card__title">{data.access.reason}</h3>
-            <p className="fx-card__hint">Your data is safe. Choose a plan below and everyone gets back in straight away.</p>
+            <p className="fx-card__hint">
+              {data.status === 'pending_payment'
+                ? 'Your trial starts only after Cashfree confirms the mandate. You can resume authorization below.'
+                : 'Your data is safe. Choose a plan below to restore access.'}
+            </p>
+            {data.status === 'pending_payment' && data.subscriptionId && (
+              <Button variant="primary" loading={busy === 'verify'} disabled={Boolean(busy)} onClick={checkAuthorization}>
+                Check Cashfree authorization
+              </Button>
+            )}
           </div>
         )}
 
@@ -138,7 +182,9 @@ function BillingPageInner() {
             )}
             <div className="fx-stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
               {data.plans.map((plan) => {
-                const current = data.plan?.key === plan.key && data.status === 'active';
+                const current = data.plan?.key === plan.key
+                  && data.hasAuthorizedSubscription
+                  && ['active', 'trialing'].includes(data.status);
                 return (
                   <div key={plan.key} className="fx-stat" style={current ? { borderColor: 'var(--nx-accent)', boxShadow: 'var(--nx-shadow)' } : undefined}>
                     <div className="fx-stat__label">{plan.name}</div>
@@ -150,15 +196,20 @@ function BillingPageInner() {
                       {plan.features.map((f, i) => <li key={i}>{f}</li>)}
                     </ul>
                     {current
-                      ? <Pill tone="success" dot>Current plan</Pill>
+                      ? <Pill tone="success" dot>{data.status === 'trialing' ? 'Current plan · Trial' : 'Current plan'}</Pill>
+                      : data.hasAuthorizedSubscription
+                        ? <Pill tone="neutral">Cancel current subscription before switching</Pill>
                       : <Button variant="primary" icon={Check} loading={busy === plan.key} disabled={!data.onlinePayments || Boolean(busy)} onClick={() => choose(plan)}>Choose {plan.name}</Button>}
                   </div>
                 );
               })}
             </div>
-            {data.status === 'active' && (
+            {['active', 'trialing'].includes(data.status) && data.hasAuthorizedSubscription && (
               <Button variant="danger" onClick={async () => {
-                if (!await window.appConfirm('Stop renewing? You keep access until the end of the period you have paid for.')) return;
+                const prompt = data.status === 'trialing'
+                  ? 'Cancel recurring billing? Your trial remains available until its scheduled end date.'
+                  : 'Stop renewing? You keep access until the end of the period you have paid for.';
+                if (!await window.appConfirm(prompt)) return;
                 try { toast.success((await api('/api/billing/cancel', { method: 'POST' })).message); load(); } catch (e) { toast.error(e.message); }
               }}>Cancel subscription</Button>
             )}

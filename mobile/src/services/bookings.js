@@ -21,7 +21,7 @@ export const bookingsService = {
   async paymentLinks(id) {
     return (await api.get(`/bookings/${id}/payment-links`)).data;
   },
-  /** A Razorpay payment link for the next due milestone (or milestoneId). */
+  /** A Cashfree payment link for the next due milestone (or milestoneId). */
   async createPaymentLink(id, milestoneId) {
     return (await api.post(`/bookings/${id}/payment-links`, milestoneId ? { milestoneId } : {})).data;
   },

@@ -11,8 +11,8 @@ import './features.css';
  * on the server) get data here; everyone else gets the server's 403 message.
  */
 
-const SUB_TONE = { internal: 'success', active: 'success', trialing: 'info', past_due: 'warning', cancelled: 'warning', expired: 'danger' };
-const SUB_LABEL = { internal: 'Internal', active: 'Paid', trialing: 'Trial', past_due: 'Payment failed', cancelled: 'Cancelled', expired: 'Expired' };
+const SUB_TONE = { internal: 'success', active: 'success', trialing: 'info', pending_payment: 'warning', past_due: 'warning', cancelled: 'warning', expired: 'danger' };
+const SUB_LABEL = { internal: 'Internal', active: 'Paid', trialing: 'Trial', pending_payment: 'Payment authorization required', past_due: 'Payment failed', cancelled: 'Cancelled', expired: 'Expired' };
 const rupees = (paise) => `₹${(Number(paise || 0) / 100).toLocaleString('en-IN')}`;
 
 export default function PlatformPage() {
@@ -51,6 +51,7 @@ const Companies = React.forwardRef((props, ref) => {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [changing, setChanging] = useState(null);
+  const [copyingPaymentLinkFor, setCopyingPaymentLinkFor] = useState(null);
 
   React.useImperativeHandle(ref, () => ({
     newCompany: () => setCreating(true),
@@ -69,6 +70,25 @@ const Companies = React.forwardRef((props, ref) => {
   const setStatus = async (company, status) => {
     if (status === 'Suspended' && !await window.appConfirm(`Suspend ${company.name}? Its users are signed out and cannot sign in until it is reactivated.`)) return;
     try { await api(`/api/platform/companies/${company.id}`, { method: 'PUT', body: { status } }); load(); toast.success(`${company.name}: ${status}.`); } catch (e) { toast.error(e.message); }
+  };
+
+  const copyPaymentLink = async (company) => {
+    setCopyingPaymentLinkFor(company.id);
+    try {
+      const link = await api(`/api/platform/companies/${company.id}/billing`, {
+        method: 'POST',
+        body: { action: 'create-payment-link' },
+      });
+      if (await copyText(link.url)) {
+        toast.success(`Cashfree payment link copied. Send it to ${company.name}'s billing contact.`);
+      } else {
+        window.prompt('Copy this Cashfree payment link and send it to the customer:', link.url);
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setCopyingPaymentLinkFor(null);
+    }
   };
 
   const deleteCompanies = async (ids, clearSelection) => {
@@ -95,7 +115,9 @@ const Companies = React.forwardRef((props, ref) => {
           {
             key: 'subscriptionStatus', label: 'Subscription',
             render: (r) => {
-              const state = r.access?.allowed === false ? 'expired' : r.subscriptionStatus;
+              const state = r.subscriptionStatus === 'pending_payment'
+                ? 'pending_payment'
+                : (r.access?.allowed === false ? 'expired' : r.subscriptionStatus);
               return <Pill tone={SUB_TONE[state] || 'neutral'} dot>{SUB_LABEL[state] || state}{r.access?.daysLeft != null ? ` · ${r.access.daysLeft}d` : ''}</Pill>;
             },
           },
@@ -129,6 +151,20 @@ const Companies = React.forwardRef((props, ref) => {
             <div className="nx-page__row-actions">
               <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
               <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
+              {r.subscriptionStatus === 'pending_payment' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={Copy}
+                  aria-label={`Create and copy Cashfree payment link for ${r.name}`}
+                  title="Create a Cashfree hosted first-payment link"
+                  loading={copyingPaymentLinkFor === r.id}
+                  disabled={Boolean(copyingPaymentLinkFor)}
+                  onClick={(e) => { e.stopPropagation(); copyPaymentLink(r); }}
+                >
+                  Send payment link
+                </Button>
+              )}
               {/* Three states, three actions:
                    Active    → Suspend (close for violation / non-payment)
                    Pending   → Activate (skip the email verification by
@@ -199,6 +235,7 @@ function CompanyModal({ company, plans, onClose, onAction, onSaved }) {
         <p className="fx-card__hint">
           Status <strong>{SUB_LABEL[company.subscriptionStatus] || company.subscriptionStatus}</strong>
           {company.trialEndsAt && <> · trial ends {fmtDate(company.trialEndsAt)}</>}
+          {company.nextBillingAt && company.subscriptionStatus === 'pending_payment' && <> · first charge scheduled {fmtDate(company.nextBillingAt)}</>}
           {company.currentPeriodEnd && <> · paid until {fmtDate(company.currentPeriodEnd)}</>}
         </p>
         <FormGrid columns={2}>
@@ -329,7 +366,7 @@ function CompanyViewModal({ company, onClose, onEdit }) {
               <Detail label="Name">{c.name}</Detail>
               <Detail label="Code (slug)"><code>{c.slug}</code></Detail>
               <Detail label="Account"><Pill tone={c.status === 'Active' ? 'success' : 'danger'}>{c.status}</Pill></Detail>
-              <Detail label="Subscription"><Pill tone={SUB_TONE[state] || 'neutral'} dot>{SUB_LABEL[state] || state}</Pill> {c.plan || ''}{c.trialEndsAt ? ` · trial ends ${fmtDate(c.trialEndsAt)}` : ''}{c.currentPeriodEnd ? ` · paid until ${fmtDate(c.currentPeriodEnd)}` : ''}</Detail>
+              <Detail label="Subscription"><Pill tone={SUB_TONE[state] || 'neutral'} dot>{SUB_LABEL[state] || state}</Pill> {c.plan || ''}{c.trialEndsAt ? ` · trial ends ${fmtDate(c.trialEndsAt)}` : ''}{c.nextBillingAt && c.subscriptionStatus === 'pending_payment' ? ` · first charge scheduled ${fmtDate(c.nextBillingAt)}` : ''}{c.currentPeriodEnd ? ` · paid until ${fmtDate(c.currentPeriodEnd)}` : ''}</Detail>
               <Detail label="Sign-in address"><a href={data.signInUrl} target="_blank" rel="noreferrer">{data.signInUrl}</a></Detail>
               <Detail label="Own domain">{c.customDomain}</Detail>
               <Detail label="Legal name">{c.legalName}</Detail>

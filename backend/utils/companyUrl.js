@@ -56,22 +56,31 @@ async function companyByHost(host) {
 }
 
 /**
- * Which company a sign-in is for, if any: the company code typed on the
- * Company Login tab or carried by a company's sign-in link (?company=), else
- * the company whose own domain the page is on. A sign-in for a company only
- * lets that company's people in.
+ * Which company a sign-in is for: the company code carried by a company's
+ * sign-in link (?company=), the company whose own domain the page is on, or
+ * the platform's default company on its own host. Tenant users cannot sign in
+ * through the platform owner's page.
  *
- * Returns { company }, {} for the platform's general sign-in, or { error }.
+ * Returns { company } or { error }.
  */
 async function loginCompany(req) {
-  const slug = String(req.body?.company || '').trim().toLowerCase();
+  const slug = String(req.body?.company || req.query?.company || '').trim().toLowerCase();
   if (slug) {
     const company = await tenant.runAsSystem(() => prisma.company.findUnique({ where: { slug } }));
     if (!company) return { error: 'No company uses that company code. Check it with your administrator.' };
+    if (company.status !== 'Active') {
+      return { error: 'This company sign-in is unavailable. Contact the application owner.' };
+    }
     return { company };
   }
   const company = await companyByHost(req.hostname);
-  return company ? { company } : {};
+  if (company) return { company };
+  const platformCompany = await tenant.runAsSystem(() => prisma.company.findUnique({
+    where: { id: tenant.DEFAULT_COMPANY_ID },
+  }));
+  return platformCompany?.status === 'Active'
+    ? { company: platformCompany }
+    : { error: 'The platform sign-in is unavailable. Contact the application owner.' };
 }
 
 module.exports = { normalizeDomain, assertClaimable, companyBaseUrl, companyByHost, platformUrl, loginCompany };

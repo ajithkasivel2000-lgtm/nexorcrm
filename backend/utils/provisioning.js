@@ -90,29 +90,34 @@ async function provisionCompany(input) {
   const slugTaken = await prisma.company.findUnique({ where: { slug } });
   if (slugTaken) throw Object.assign(new Error('That company slug is already in use.'), { status: 409 });
 
-  // Every new company starts on a free trial; the plan decides its user limit.
+  // The selected plan sets the user limit; self-signups wait for Cashfree
+  // authorization before their trial becomes usable.
   const planKey = input.planKey || 'growth';
   const plan = await prisma.plan.findUnique({ where: { key: planKey } });
   if (!plan) throw Object.assign(new Error('Unknown plan.'), { status: 400 });
 
-  /* Verify-first mode (self-signup):
-     company and admin are both created in a Pending state, the trial clock
-     does not start yet, and a token good for 24h is attached. The customer
-     clicks the verification link, the controller flips both to Active and
-     starts the trial — so the 14 days begin when the email was actually
-     reachable, not when the form was submitted. Platform-admin provisioning
-     (and seed scripts) keep activating immediately as before. */
+  /* Verify-first mode (self-signup): company and admin are created in a
+     Pending state, and the 24-hour token is attached. Email verification and
+     Cashfree mandate activation are independent prerequisites for access. */
   const verifyFirst = input.verifyBeforeActivate === true;
   const verificationToken = verifyFirst ? crypto.randomBytes(32).toString('hex') : null;
   const verificationExpiresAt = verifyFirst ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null;
+  const subscriptionStatus = input.subscriptionStatus || 'trialing';
+  const trialEndsAt = subscriptionStatus === 'pending_payment'
+    ? (input.trialEndsAt ? new Date(input.trialEndsAt) : null)
+    : (verifyFirst ? null : new Date(Date.now() + TRIAL_DAYS * 86400000));
 
   const company = await prisma.company.create({
     data: {
       name, slug, plan: plan.name, planKey: plan.key,
       status: verifyFirst ? 'Pending' : 'Active',
       publicKey: newPublicKey(),
-      subscriptionStatus: 'trialing',
-      trialEndsAt: verifyFirst ? null : new Date(Date.now() + TRIAL_DAYS * 86400000),
+      subscriptionStatus,
+      trialEndsAt,
+      nextBillingAt: subscriptionStatus === 'pending_payment' ? trialEndsAt : null,
+      subscriptionAmountPaise: subscriptionStatus === 'pending_payment' ? plan.pricePaise : null,
+      billingCycle: subscriptionStatus === 'pending_payment' ? 'MONTH' : null,
+      signupRequestKey: input.signupRequestKey || null,
       billingEmail: String(input.admin?.email || '').trim() || null,
       phone: input.phone || null,
       verificationToken,
@@ -144,21 +149,38 @@ async function provisionCompany(input) {
 }
 
 /**
- * Flip a verify-pending company and its first admin to Active, starting the
- * trial clock. Called by the GET /api/public/verify-company endpoint after a
- * matching token. Idempotent at the controller level: a used/expired token
- * no longer finds a row so this never runs twice for the same company.
+ * Verify the company and its first admin. A self-signup's trial is usable only
+ * when both email verification and Cashfree mandate activation have completed.
  */
 async function activatePendingCompany(companyId) {
   const now = new Date();
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new Error('Company not found while activating the signup.');
+  const signupWaitsForPayment = Boolean(company.signupRequestKey);
+  const mandateActive = Boolean(company.subscriptionActivatedAt);
+  const data = {
+    status: 'Active',
+    verificationToken: null,
+    verificationExpiresAt: null,
+  };
+  if (signupWaitsForPayment) {
+    if (company.subscriptionStatus === 'active'
+      && company.currentPeriodEnd
+      && company.currentPeriodEnd > now) {
+      data.subscriptionStatus = 'active';
+    } else if (mandateActive) {
+      data.subscriptionStatus = company.trialEndsAt && company.trialEndsAt > now ? 'trialing' : 'expired';
+      data.trialStartedAt = company.subscriptionActivatedAt;
+    } else {
+      data.subscriptionStatus = 'pending_payment';
+    }
+  } else {
+    data.subscriptionStatus = 'trialing';
+    data.trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 86400000);
+  }
   await prisma.company.update({
     where: { id: companyId },
-    data: {
-      status: 'Active',
-      verificationToken: null,
-      verificationExpiresAt: null,
-      trialEndsAt: new Date(now.getTime() + TRIAL_DAYS * 86400000),
-    },
+    data,
   });
   await tenant.runWithCompany(companyId, async () => {
     const admin = await prisma.user.findFirst({

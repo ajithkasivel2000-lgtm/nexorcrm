@@ -4,13 +4,14 @@ const tenant = require('../utils/tenant');
 const storage = require('../utils/storage');
 const { sendError } = require('../utils/apiError');
 const { provisionCompany, activatePendingCompany } = require('../utils/provisioning');
+const billing = require('../utils/billing');
 const { normalizeDomain, platformUrl, companyByHost } = require('../utils/companyUrl');
 const { sendMail } = require('../utils/mailer');
 
 /**
  * Company self-signup and per-company branding.
  *
- *   POST /api/public/companies               start a free trial (new company + its admin)
+ *   POST /api/public/companies               create company/admin and initialize Cashfree trial billing
  *   GET  /api/public/branding?company=slug   name, colour, logo for a login page
  *   GET  /api/public/branding/logo/:id       the logo image
  *   GET  /api/branding                       the signed-in company's branding
@@ -52,6 +53,8 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
       return res.status(400).json({ message: 'Company name, your email, a username and a password are required.' });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'That email address does not look right.' });
+    const phone = String(b.phone || '').replace(/\D/g, '');
+    if (phone.length < 10) return res.status(400).json({ message: 'Enter a valid 10-digit phone number to set up recurring payment authorization.' });
     const pw = String(b.password);
     if (pw.length < 10 || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
       return res.status(400).json({ message: 'Use a password of at least 10 characters with a number and a symbol.' });
@@ -61,11 +64,48 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
        env flag is for the test suite, which creates throwaway companies and
        cannot click an email in the browser. */
     const verifyFirst = String(process.env.SKIP_SIGNUP_VERIFICATION || '').toLowerCase() !== 'true';
+    const planKey = String(b.planKey || 'growth').trim();
+    const plan = await prisma.plan.findUnique({ where: { key: planKey } });
+    if (!plan || !plan.active) return res.status(400).json({ message: 'Choose one of the plans currently available.' });
+    const signupRequestKey = String(b.signupRequestKey || '').trim();
+    if (signupRequestKey && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(signupRequestKey)) {
+      return res.status(400).json({ message: 'Signup request is invalid. Refresh the page and try again.' });
+    }
+
+    if (signupRequestKey) {
+      const existing = await prisma.company.findUnique({ where: { signupRequestKey } });
+      if (existing) {
+        const existingAdmin = await tenant.runWithCompany(existing.id, () =>
+          prisma.user.findFirst({ where: { username: String(b.username).trim() }, select: { email: true } }));
+        if (existing.name !== String(b.companyName).trim()
+          || String(existing.billingEmail || '').toLowerCase() !== email.toLowerCase()
+          || !existingAdmin
+          || String(existingAdmin.email || '').toLowerCase() !== email.toLowerCase()
+          || existing.planKey !== planKey) {
+          return res.status(409).json({ message: 'This signup request was already used for different company details.' });
+        }
+        const result = await signupPayment(existing, plan, email);
+        return res.status(result.paymentError ? 503 : 200).json({
+          message: result.paymentError || 'Your signup is already in progress.',
+          accountCreated: true,
+          pending: existing.status === 'Pending',
+          email,
+          checkout: result.checkout,
+          paymentError: result.paymentError,
+          company: { slug: existing.slug, name: existing.name },
+        });
+      }
+    }
+
+    const trialEndsAt = new Date(Date.now() + billing.TRIAL_DAYS * 86400000);
     const { company, verificationToken } = await provisionCompany({
       name: b.companyName,
-      planKey: b.planKey || 'growth',
-      phone: b.phone ? String(b.phone).trim() : null,
+      planKey,
+      phone: phone.slice(-10),
       verifyBeforeActivate: verifyFirst,
+      subscriptionStatus: 'pending_payment',
+      trialEndsAt,
+      signupRequestKey: signupRequestKey || null,
       admin: {
         username: String(b.username).trim(),
         email,
@@ -74,12 +114,13 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
         mustChangePassword: false, // they chose it themselves just now
       },
     });
+    const result = await signupPayment(company, plan, email);
 
     /* Tell the platform admins somebody started a trial — a quiet "ping"
        so they can watch signups land, follow up, and spot abuse without
        having to refresh the Companies screen. Non-blocking: a mail failure
        must not block the signup response. */
-    notifyPlatformAdminsOfSignup({ req, company, email, planKey: b.planKey || 'growth' })
+    notifyPlatformAdminsOfSignup({ req, company, email, planKey })
       .catch((err) => console.log('[signup] platform admin notification failed:', err.message));
 
     if (verifyFirst && verificationToken) {
@@ -91,17 +132,21 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
       const devLink = (!sent && process.env.NODE_ENV !== 'production') ? link : undefined;
       return res.status(201).json({
         message: sent
-          ? `Check your email. We sent a verification link to ${email}.`
+          ? `Check your email to verify your company. Complete Cashfree payment authorization to start your trial.`
           : `Account created. Mail is not configured on this server — ask an administrator for the verification link, or configure SMTP in Mail Settings.`,
         pending: true,
         email,
+        checkout: result.checkout,
+        paymentError: result.paymentError,
         company: { slug: company.slug, name: company.name },
         ...(devLink ? { _devVerifyLink: devLink } : {}),
       });
     }
 
     res.status(201).json({
-      message: 'Your company is ready. Signing you in…',
+      message: result.paymentError || 'Payment authorization is required to start your trial.',
+      checkout: result.checkout,
+      paymentError: result.paymentError,
       company: { slug: company.slug, name: company.name, trialEndsAt: company.trialEndsAt },
     });
   } catch (error) {
@@ -109,6 +154,23 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
     sendError(res, error, 'Could not create your company', 500);
   }
 });
+
+async function signupPayment(company, plan, email) {
+  try {
+    const checkout = await billing.createSubscription(company, plan, email, { startTrial: true });
+    return { checkout, paymentError: null };
+  } catch (error) {
+    const safeMessage = error.status
+      ? error.message
+      : 'Cashfree could not initialize subscription authorization. Sign in after email verification to retry from Billing & Plan.';
+    console.error('[signup] Cashfree subscription initialization failed', JSON.stringify({
+      companyId: company.id,
+      status: error.status || null,
+      code: error.code || null,
+    }));
+    return { checkout: null, paymentError: safeMessage };
+  }
+}
 
 /* ---- platform-admin signup notification --------------------------------- */
 
@@ -171,7 +233,12 @@ ${companiesUrl}
 </body></html>`;
 
   for (const admin of admins) {
-    const result = await sendMail({ to: admin.email, subject, text, html })
+    const result = await sendMail({
+      to: admin.email,
+      subject,
+      text,
+      html,
+    }, { companyId: tenant.DEFAULT_COMPANY_ID })
       .catch((e) => ({ status: 'skipped', error: e.message }));
     if (result?.status !== 'sent') {
       console.log(`[signup] admin notification to ${admin.username} <${admin.email}> not sent (${result?.error || 'unknown'})`);
@@ -198,7 +265,7 @@ function verificationEmailBody({ link, companyName, hours }) {
   const text =
 `Welcome to NexorCRM.
 
-Confirm your email to activate ${companyName} and start your free trial:
+Confirm your email to activate ${companyName}. Your trial begins after Cashfree confirms the recurring-payment mandate:
 
 ${link}
 
@@ -207,7 +274,7 @@ This link expires in ${hours} hours. If you did not create an account, ignore th
 <!doctype html><html><body style="font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f5f6fa;padding:24px;color:#0f172a">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
     <h2 style="margin:0 0 8px 0">Welcome to NexorCRM</h2>
-    <p>Confirm your email to activate <strong>${name}</strong> and start your free trial.</p>
+    <p>Confirm your email to activate <strong>${name}</strong>. Your trial begins after Cashfree confirms the recurring-payment mandate.</p>
     <p style="margin:24px 0">
       <a href="${safe(link)}" style="display:inline-block;background:#4F46E5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Verify my email</a>
     </p>
@@ -232,7 +299,7 @@ async function sendVerificationEmail({ req, email, company, verificationToken })
     subject: `Verify your email to activate ${company.name}`,
     text,
     html,
-  }).catch((e) => ({ status: 'skipped', error: e.message }));
+  }, { companyId: tenant.DEFAULT_COMPANY_ID }).catch((e) => ({ status: 'skipped', error: e.message }));
   if (result?.status !== 'sent') {
     // Visible both ways: a prominent log line AND the link in the string so
     // a tail -f on the backend picks it up without scrolling.

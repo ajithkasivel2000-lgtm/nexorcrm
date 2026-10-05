@@ -57,7 +57,7 @@ const call = async (sess, path, opts = {}) => {
     const acmeAdmin = r.body?.admin?.username;
 
     // --- the new company's admin logs in with a password (full login path)
-    r = await call(null, '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: acmeAdmin, password: 'Acme-Pass-123!' }) });
+    r = await call(null, '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: acmeAdmin, password: 'Acme-Pass-123!', company: slug }) });
     check('new company admin can log in', r.status === 200 && r.body.token, `${r.status} ${r.body?.message || ''}`);
     check('session token is 256 random bits, not a counter', /^sess_[0-9a-f]{64}$/.test(r.body?.token || ''), r.body?.token?.slice(0, 16));
     const guessed = await call('sess_SES-2026-001', '/api/leads'); check('a guessed old-style token is refused', guessed.status === 401, guessed.status);

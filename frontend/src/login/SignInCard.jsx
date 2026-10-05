@@ -27,6 +27,8 @@ export default function SignInCard({
   theme,
   brandName,
   welcomeTitle,
+  subtitle,
+  usernameLabel = 'Username / Email',
   username, onUsernameChange,
   password, onPasswordChange,
   rememberMe, onRememberChange,
@@ -50,14 +52,14 @@ export default function SignInCard({
   return (
     <div className="nx-card">
       <h2 className="nx-card__title">{welcomeTitle || 'Welcome Back'}</h2>
-      <p className="nx-card__sub">Sign in to your {brandName || 'NexorCRM'} account</p>
+      <p className="nx-card__sub">{subtitle || `Sign in to your ${brandName || 'NexorCRM'} account`}</p>
 
-      {notice && <p className={`nx-card__banner is-${noticeTone}`}>{notice}</p>}
-      {error && <p className="nx-card__banner is-error" role="alert">{error}</p>}
+      {notice && <p className={`nx-card__banner is-${noticeTone}`} role="status">{notice}</p>}
+      {error && <p id="login-error" className="nx-card__banner is-error" role="alert">{error}</p>}
 
       <form onSubmit={onSubmit} className="nx-card__form" ref={formRef}>
         <div className="nx-card__field-group">
-          <label htmlFor="login-username" className="nx-card__label">Username / Email</label>
+          <label htmlFor="login-username" className="nx-card__label">{usernameLabel}</label>
           <div className="nx-card__field">
             <Mail size={17} className="nx-card__field-icon" aria-hidden="true" />
             <input
@@ -70,6 +72,7 @@ export default function SignInCard({
               onChange={(e) => onUsernameChange(e.target.value)}
               required
               autoFocus
+              aria-describedby={error ? 'login-error' : undefined}
             />
             {username && (
               <button
@@ -77,7 +80,6 @@ export default function SignInCard({
                 className="nx-card__field-btn"
                 onClick={() => onUsernameChange('')}
                 aria-label="Clear"
-                tabIndex={-1}
               >
                 <X size={16} />
               </button>
@@ -104,7 +106,7 @@ export default function SignInCard({
               className="nx-card__field-btn"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              tabIndex={-1}
+              aria-pressed={showPassword}
             >
               {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>

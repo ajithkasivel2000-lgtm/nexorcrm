@@ -42,7 +42,7 @@ function contentSecurityPolicy() {
     `connect-src 'self' blob: ws: wss: ${fontHosts} https://flagcdn.com https://sdk.cashfree.com https://api.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com`,
     "object-src 'none'",
     "base-uri 'none'",
-    "form-action 'self'",
+    "form-action 'self' https://sandbox.cashfree.com https://api.cashfree.com",
     "frame-ancestors 'self'",
   ].join('; ');
 }

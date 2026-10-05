@@ -37,15 +37,28 @@ exports.overview = async (req, res) => {
     ]);
     const plan = plans.find((p) => p.key === company.planKey) || null;
     const limitPlan = plan || plans.find((p) => p.key === 'growth') || null;
+    const subscriptionCanStillCollect = ['active', 'trialing', 'past_due'].includes(company.subscriptionStatus)
+      || (company.subscriptionStatus === 'cancelled'
+        && company.currentPeriodEnd
+        && company.currentPeriodEnd > new Date());
     res.status(200).json({
       company: {
-        id: company.id, name: company.name, legalName: company.legalName, gstin: company.gstin,
+        id: company.id, name: company.name, slug: company.slug, legalName: company.legalName, gstin: company.gstin,
         billingAddress: company.billingAddress, billingEmail: company.billingEmail, phone: company.phone,
       },
       status: company.subscriptionStatus,
+      subscriptionId: company.subscriptionGatewayId,
       access: req.subscription || billing.accessFor(company),
       trialEndsAt: company.subscriptionStatus === 'trialing' ? billing.trialEndOf(company) : null,
+      trialStartedAt: company.trialStartedAt,
+      authorizationStatus: company.authorizationStatus,
+      hasAuthorizedSubscription: Boolean(
+        company.subscriptionGatewayId
+        && company.subscriptionActivatedAt
+        && subscriptionCanStillCollect,
+      ),
       currentPeriodEnd: company.currentPeriodEnd,
+      nextBillingAt: company.nextBillingAt,
       plan: plan ? publicPlan(plan) : null,
       seats: { used: seats, limit: company.subscriptionStatus === 'internal' ? 0 : (limitPlan?.maxUsers || 0) },
       plans: plans.map(publicPlan),
@@ -81,11 +94,32 @@ exports.subscribe = async (req, res) => {
     if (company.subscriptionStatus === 'internal') return res.status(400).json({ message: 'This company is not billed.' });
     const plan = await tenant.runAsSystem(() => prisma.plan.findUnique({ where: { key: String(req.body?.planKey || '') } }));
     if (!plan || !plan.active) return res.status(400).json({ message: 'Choose one of the plans on offer.' });
+    const subscriptionCanStillCollect = ['active', 'trialing', 'past_due'].includes(company.subscriptionStatus)
+      || (company.subscriptionStatus === 'cancelled'
+        && company.currentPeriodEnd
+        && company.currentPeriodEnd > new Date());
+    if (company.subscriptionGatewayId
+      && company.subscriptionActivatedAt
+      && subscriptionCanStillCollect) {
+      return res.status(409).json({ message: 'This subscription is already authorized. Cancel it before starting a different plan.' });
+    }
+    if (company.subscriptionStatus === 'pending_payment'
+      && company.subscriptionGatewayId
+      && company.planKey !== plan.key) {
+      return res.status(409).json({ message: 'Complete or cancel the current payment authorization before changing plans.' });
+    }
     // Downgrading below current usage would lock people out on the next check.
     if (plan.maxUsers && await billing.seatsUsed() > plan.maxUsers) {
       return res.status(400).json({ message: `You have more active users than the ${plan.name} plan allows (${plan.maxUsers}). Archive some users first, or pick a bigger plan.` });
     }
-    const checkout = await billing.createSubscription(company, plan, company.billingEmail || req.user.email);
+    const checkout = await billing.createSubscription(company, plan, company.billingEmail || req.user.email, {
+      startTrial: Boolean(
+        company.signupRequestKey
+        && !company.subscriptionActivatedAt
+        && !company.trialStartedAt
+        && !(company.currentPeriodEnd && company.currentPeriodEnd > new Date())
+      ),
+    });
     res.status(200).json(checkout);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
@@ -101,18 +135,40 @@ exports.verify = async (req, res) => {
       return res.status(400).json({ message: 'That payment is not for this company.' });
     }
     const subscription = await billing.verifySubscription(subscriptionId);
-    if (subscription.subscription_status !== 'ACTIVE') {
+    const synced = await billing.syncMandateStatus(company, subscription);
+    if (!billing.subscriptionIsAuthorized(subscription)) {
+      const status = billing.authorizationStatusOf(subscription)
+        || billing.subscriptionStatusOf(subscription)
+        || 'PENDING';
+      if (['FAILED', 'LINK_EXPIRED', 'EXPIRED'].includes(String(status).toUpperCase())) {
+        return res.status(200).json({
+          failed: true,
+          status,
+          message: 'Cashfree payment authorization failed or expired. Start authorization again from Billing & Plan.',
+        });
+      }
       return res.status(200).json({
         pending: true,
-        message: 'Cashfree is still confirming your subscription. Refresh billing in a moment.',
-        status: subscription.subscription_status,
+        message: 'Cashfree is still confirming your mandate. The trial starts after the subscription becomes active.',
+        status,
       });
     }
-    await tenant.runAsSystem(() => prisma.company.update({
-      where: { id: company.id },
-      data: { subscriptionStatus: 'active' },
-    }));
-    res.status(200).json({ message: 'Cashfree has activated your subscription. Thank you.' });
+    const updated = await companyOf(req);
+    const inTrial = updated.subscriptionStatus === 'trialing';
+    if (!inTrial && updated.subscriptionStatus !== 'active') {
+      return res.status(200).json({
+        pending: true,
+        message: 'Cashfree confirmed the mandate, but CRM access starts only after the first subscription payment succeeds.',
+        status: updated.subscriptionStatus,
+      });
+    }
+    res.status(200).json({
+      message: inTrial
+        ? `Your ${billing.TRIAL_DAYS}-day free trial has started.`
+        : 'Cashfree has activated your subscription. Thank you.',
+      trialEndsAt: inTrial ? updated.trialEndsAt : null,
+      startedTrial: synced.startedTrial,
+    });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     sendError(res, error, 'Could not confirm the payment', 500);
@@ -122,15 +178,23 @@ exports.verify = async (req, res) => {
 exports.cancel = async (req, res) => {
   try {
     const company = await companyOf(req);
+    const accessEnd = company.currentPeriodEnd
+      || (company.subscriptionStatus === 'trialing' ? company.trialEndsAt : null);
     if (company.subscriptionGatewayId && billing.cashfreeConfigured()) {
       await billing.cashfree(`/subscriptions/${encodeURIComponent(company.subscriptionGatewayId)}/manage`, {
         method: 'POST',
         body: { action: 'CANCEL' },
       });
     }
-    await tenant.runAsSystem(() => prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled' } }));
-    res.status(200).json({ message: company.currentPeriodEnd
-      ? `Cancelled. You keep access until ${new Date(company.currentPeriodEnd).toDateString()}.`
+    await tenant.runAsSystem(() => prisma.company.update({
+      where: { id: company.id },
+      data: {
+        subscriptionStatus: 'cancelled',
+        currentPeriodEnd: accessEnd,
+      },
+    }));
+    res.status(200).json({ message: accessEnd
+      ? `Cancelled. You keep access until ${new Date(accessEnd).toDateString()}.`
       : 'Cancelled.' });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
@@ -148,6 +212,74 @@ exports.webhook = (req, res) => tenant.runAsSystem(async () => {
   try {
     const type = req.body?.type;
     const data = req.body?.data || {};
+    const linkId = data.link_id || data.link_details?.link_id;
+    if (type === 'PAYMENT_LINK_EVENT' && linkId) {
+      const company = await prisma.company.findUnique({ where: { enrollmentPaymentLinkId: linkId } });
+      const status = String(data.link_status || data.link_details?.link_status || '').toUpperCase();
+      if (!company) return res.sendStatus(200);
+      if (status === 'PAID') {
+        const paymentId = data.cf_payment_id
+          || data.payment_id
+          || data.payment?.cf_payment_id
+          || data.payment_details?.cf_payment_id
+          || `cashfree-enrollment-${linkId}`;
+        const receivedAmount = Number(
+          data.link_amount_paid
+          ?? data.payment_amount
+          ?? data.payment?.payment_amount
+          ?? data.payment_details?.payment_amount
+          ?? data.link_amount
+          ?? data.link_details?.link_amount,
+        );
+        const plan = await billing.planFor(company);
+        if (!plan) {
+          console.error('[cashfree] enrollment payment received for company without a plan', company.id);
+          return res.sendStatus(500);
+        }
+        const expectedAmountPaise = Math.round(
+          (company.subscriptionAmountPaise ?? plan.pricePaise) * (1 + billing.GST_PERCENT / 100),
+        );
+        if (Number.isFinite(receivedAmount) && receivedAmount > 0
+          && Math.round(receivedAmount * 100) !== expectedAmountPaise) {
+          console.error('[cashfree] enrollment link paid for unexpected amount', JSON.stringify({
+            companyId: company.id,
+            linkId,
+            expectedAmountPaise,
+            receivedAmountPaise: Math.round(receivedAmount * 100),
+          }));
+          return res.sendStatus(400);
+        }
+        const paymentTime = data.payment_time || data.payment?.payment_time || data.link_paid_at || new Date();
+        const start = new Date(paymentTime);
+        if (Number.isNaN(start.getTime())) return res.sendStatus(400);
+        await billing.recordPayment(company, plan, {
+          paymentId: String(paymentId),
+          periodStart: start,
+          periodEnd: new Date(start.getTime() + 30 * 86400000),
+          description: `${plan.name} plan — first payment via Cashfree`,
+        });
+        if (!company.subscriptionActivatedAt) {
+          await tenant.runAsSystem(() => prisma.company.update({
+            where: { id: company.id },
+            data: {
+              subscriptionGatewayId: null,
+              subscriptionSessionId: null,
+              subscriptionRequestKey: null,
+              authorizationStatus: null,
+            },
+          }));
+        }
+      } else if (['EXPIRED', 'CANCELLED'].includes(status)) {
+        await tenant.runAsSystem(() => prisma.company.update({
+          where: { id: company.id },
+          data: {
+            enrollmentPaymentLinkUrl: null,
+            enrollmentPaymentLinkExpiresAt: new Date(),
+          },
+        }));
+      }
+      return res.sendStatus(200);
+    }
     const sub = data.subscription_details || {};
     const subscriptionId = data.subscription_id || sub.subscription_id;
     if (!subscriptionId) return res.sendStatus(200);
@@ -155,17 +287,40 @@ exports.webhook = (req, res) => tenant.runAsSystem(async () => {
     if (!company) return res.sendStatus(200);
     const plan = await billing.planFor(company);
     const status = sub.subscription_status || data.subscription_status;
+    const authorizationStatus = billing.authorizationStatusOf(data);
     const paymentId = data.cf_payment_id || data.payment_id || null;
-    if (type === 'SUBSCRIPTION_PAYMENT_SUCCESS' && paymentId) {
+    const isAuthorizationPayment = String(data.payment_type || '').toUpperCase() === 'AUTH'
+      || String(data.payment_remarks || '').toLowerCase() === 'auth payment';
+    if (type === 'SUBSCRIPTION_PAYMENT_SUCCESS' && paymentId && !isAuthorizationPayment) {
       const paymentTime = data.payment_initiated_date ? new Date(data.payment_initiated_date) : new Date();
-      await billing.recordPayment(company, plan, { paymentId, periodStart: paymentTime });
-    } else if (type === 'SUBSCRIPTION_PAYMENT_FAILED' || status === 'ON_HOLD') {
+      const nextSchedule = sub.next_schedule_date
+        ? new Date(sub.next_schedule_date)
+        : null;
+      const periodEnd = nextSchedule && nextSchedule > paymentTime ? nextSchedule : undefined;
+      await billing.recordPayment(company, plan, { paymentId, periodStart: paymentTime, periodEnd });
+    } else if (type === 'SUBSCRIPTION_PAYMENT_FAILED' && (isAuthorizationPayment || !company.subscriptionActivatedAt)) {
+      await tenant.runAsSystem(() => prisma.company.update({
+        where: { id: company.id },
+        data: { authorizationStatus: authorizationStatus || 'FAILED' },
+      }));
+    } else if (type === 'SUBSCRIPTION_PAYMENT_FAILED') {
       await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'past_due' } });
-    } else if (type === 'SUBSCRIPTION_STATUS_CHANGED' || type === 'SUBSCRIPTION_AUTH_STATUS') {
+    } else if (status === 'ON_HOLD') {
+      await billing.syncMandateStatus(company, data);
+    } else if (type === 'SUBSCRIPTION_STATUS_CHANGED') {
+      await billing.syncMandateStatus(company, data);
+    } else if (type === 'SUBSCRIPTION_AUTH_STATUS') {
+      if (authorizationStatus || data.payment_status) {
+        await tenant.runAsSystem(() => prisma.company.update({
+          where: { id: company.id },
+          data: { authorizationStatus: String(authorizationStatus || data.payment_status).toUpperCase() },
+        }));
+      }
       if (status === 'ACTIVE') {
-        await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'active' } });
-      } else if (['CANCELLED', 'CUSTOMER_CANCELLED', 'COMPLETED', 'EXPIRED'].includes(status)) {
-        await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled' } });
+        await billing.syncMandateStatus(company, data);
+      } else if (!status && ['ACTIVE', 'SUCCESS'].includes(String(authorizationStatus || '').toUpperCase())) {
+        const verified = await billing.verifySubscription(subscriptionId);
+        await billing.syncMandateStatus(company, verified);
       }
     }
     return res.sendStatus(200);
@@ -231,6 +386,15 @@ exports.companyBilling = (req, res) => tenant.runAsSystem(async () => {
     const { action, planKey, days } = req.body || {};
     const plan = planKey ? await prisma.plan.findUnique({ where: { key: planKey } }) : await billing.planFor(company);
     if (planKey && !plan) return res.status(400).json({ message: 'Unknown plan.' });
+
+    if (action === 'create-payment-link') {
+      if (!plan) return res.status(400).json({ message: 'Choose a plan before creating a payment link.' });
+      const paymentLink = await billing.createEnrollmentPaymentLink(company, plan);
+      return res.status(200).json({
+        message: paymentLink.reused ? 'Existing Cashfree payment link copied.' : 'Cashfree payment link created.',
+        ...paymentLink,
+      });
+    }
 
     if (action === 'activate') {
       // A payment received outside Cashfree (bank transfer): record it and activate.

@@ -16,10 +16,14 @@ const crypto = require('crypto');
 test('CSP allows Cashfree checkout frames without opening other frame origins', () => {
   const csp = contentSecurityPolicy();
   const frameSrc = csp.split('; ').find((directive) => directive.startsWith('frame-src '));
+  const formAction = csp.split('; ').find((directive) => directive.startsWith('form-action '));
   assert.ok(frameSrc.includes('https://sdk.cashfree.com'));
   assert.ok(frameSrc.includes('https://payments.cashfree.com'));
   assert.ok(frameSrc.includes('https://payments-test.cashfree.com'));
   assert.ok(!frameSrc.includes('https:;'));
+  assert.ok(formAction.includes('https://sandbox.cashfree.com'));
+  assert.ok(formAction.includes('https://api.cashfree.com'));
+  assert.ok(!formAction.includes('https:;'));
 });
 
 test('TOTP matches the RFC 6238 test vectors', () => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { setAuth } from '../utils/sessionStore';
 import { GoogleMark } from '../login/ProviderLogos';
 import useAuthProviders from '../login/useAuthProviders';
+import friendlyAuthError from '../login/friendlyAuthError';
 
 /**
  * "Sign in with Google" for the login screen.
@@ -74,15 +75,19 @@ export default function GoogleSignIn({ theme = 'dark', onError, onBusyChange, on
       onErrorRef.current?.('');
       onBusyRef.current?.(true);
       try {
+        const company = new URLSearchParams(window.location.search).get('company');
         const res = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential: response.credential }),
+          body: JSON.stringify({
+            credential: response.credential,
+            ...(company ? { company } : {}),
+          }),
         });
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
-          onErrorRef.current?.(data?.message || 'Google sign-in was refused.');
+          onErrorRef.current?.(friendlyAuthError(data?.message, res.status));
           onBusyRef.current?.(false);
           return;
         }
@@ -105,7 +110,7 @@ export default function GoogleSignIn({ theme = 'dark', onError, onBusyChange, on
         localStorage.removeItem('forcePasswordChange');
         window.location.href = '/';
       } catch {
-        onErrorRef.current?.('Could not reach the server to complete Google sign-in.');
+        onErrorRef.current?.('We’re having trouble connecting to the workspace. Please try again.');
         onBusyRef.current?.(false);
       }
     };

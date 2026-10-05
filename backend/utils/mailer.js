@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 const prisma = require('../prismaClient');
-const { runAsSystem, currentCompanyId } = require('./tenant');
+const { runAsSystem, runWithCompany, currentCompanyId } = require('./tenant');
 
 /**
  * The one way the CRM sends email.
@@ -36,7 +36,10 @@ async function getTransport() {
   const settings = await prisma.mailSetting.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   if (!settings || settings.enabled === false || !settings.smtpHost) return null;
   const useAuth = settings.smtpAuth ? settings.smtpAuth === 'True' : Boolean(settings.smtpUsername);
-  const company = await runAsSystem(() => prisma.company.findUnique({ where: { id: currentCompanyId() || '' }, select: { name: true } })).catch(() => null);
+  const companyId = currentCompanyId();
+  const company = companyId
+    ? await runAsSystem(() => prisma.company.findUnique({ where: { id: companyId }, select: { name: true } })).catch(() => null)
+    : null;
   return {
     settings,
     companyName: company?.name || null,
@@ -76,9 +79,14 @@ async function deliver(row, mail) {
  * @param {boolean} [opts.queueOnFailure=true]  false: throw on failure instead
  *   of queueing — for callers that run their own retry (site-visit notices)
  *   or must report the result (the mail-settings test button).
+ * @param {string}  [opts.companyId]  Explicit tenant for system/public flows.
  * @returns {Promise<{status: 'sent'|'queued'|'skipped', id?: string, error?: string}>}
  */
-async function sendMail(message, { queueOnFailure = true } = {}) {
+async function sendMail(message, { queueOnFailure = true, companyId = currentCompanyId() } = {}) {
+  if (!companyId) throw new Error('sendMail requires a company tenant.');
+  if (currentCompanyId() !== companyId) {
+    return runWithCompany(companyId, () => sendMail(message, { queueOnFailure, companyId }));
+  }
   const to = joinAddresses(message.to);
   if (!to) return { status: 'skipped', error: 'no recipient' };
 
@@ -90,6 +98,7 @@ async function sendMail(message, { queueOnFailure = true } = {}) {
 
   const row = await prisma.emailOutbox.create({
     data: {
+      companyId,
       to,
       cc: joinAddresses(message.cc),
       bcc: joinAddresses(message.bcc),

@@ -31,7 +31,10 @@ const call = async (sessId, path, { method = 'GET', body } = {}) => {
   let data = text; try { data = JSON.parse(text); } catch {}
   return { status: r.status, body: data, text };
 };
-const login = (username, password) => call(null, '/api/auth/login', { method: 'POST', body: { username, password } });
+const login = (username, password, company) => call(null, '/api/auth/login', {
+  method: 'POST',
+  body: { username, password, ...(company ? { company } : {}) },
+});
 
 (async () => {
   const stamp = Date.now().toString(36);
@@ -74,7 +77,7 @@ const login = (username, password) => call(null, '/api/auth/login', { method: 'P
     check('bad admin email refused', r.status === 400, r.status);
     r = await call(root, base, { method: 'PUT', body: { username: ROOT } });
     check('a username taken elsewhere is refused', r.status === 409, r.status);
-    const oldToken = (await login(first.username, first.password)).body?.token;
+    const oldToken = (await login(first.username, first.password, company.slug)).body?.token;
     check('admin can sign in before the change', Boolean(oldToken));
     const renamed = `${first.username}x`;
     r = await call(root, base, { method: 'PUT', body: { username: renamed, email: `new-${stamp}@example.test`, lastName: 'Rao' } });
@@ -91,9 +94,9 @@ const login = (username, password) => call(null, '/api/auth/login', { method: 'P
     const fresh = 'Temp-Pass-456!';
     r = await call(root, `${base}/reset-password`, { method: 'POST', body: { password: fresh } });
     check('temporary password set', r.status === 200, `${r.status} ${r.body?.message || ''}`);
-    r = await login(renamed, first.password);
+    r = await login(renamed, first.password, company.slug);
     check('old password no longer works', !r.body?.token, r.status);
-    r = await login(renamed, fresh);
+    r = await login(renamed, fresh, company.slug);
     check('new temporary password works, flagged for change', Boolean(r.body?.token) && r.body.mustChangePassword === true, `${r.status} ${r.body?.message || ''}`);
     const after = await t.runWithCompany(company.id, () => p.user.findUnique({ where: { id: a.id } }));
     check('they must choose their own at next sign-in', after.forcePasswordChange === true);

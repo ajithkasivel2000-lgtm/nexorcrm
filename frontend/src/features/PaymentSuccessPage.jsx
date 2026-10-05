@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button, Page } from '../ui';
 import { api } from './api';
 
-export default function PaymentSuccessPage() {
-  const navigate = useNavigate();
+export default function PaymentSuccessPage({ publicSignup = false, onReturn }) {
   const [message, setMessage] = useState('Checking your Cashfree subscription…');
 
   useEffect(() => {
+    if (publicSignup) {
+      setMessage('Cashfree returned to NexorCRM. We confirm payments securely by webhook, not from this redirect. Verify your email and sign in; your paid access appears after Cashfree confirms the payment.');
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const subscriptionId = sessionStorage.getItem('cashfreeSubscriptionId')
       || params.get('subscription_id')
@@ -22,12 +24,17 @@ export default function PaymentSuccessPage() {
         if (!result.pending) sessionStorage.removeItem('cashfreeSubscriptionId');
       })
       .catch((error) => setMessage(error.message));
-  }, []);
+  }, [publicSignup]);
 
   return (
     <Page title="Payment status">
       <p className="fx-muted">{message}</p>
-      <Button variant="primary" onClick={() => navigate('/settings/billing')}>Return to Billing &amp; Plan</Button>
+      <Button
+        variant="primary"
+        onClick={onReturn || (() => { window.location.assign('/settings/billing'); })}
+      >
+        {publicSignup ? 'Return to sign in' : 'Return to Billing &amp; Plan'}
+      </Button>
     </Page>
   );
 }

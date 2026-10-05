@@ -1593,11 +1593,23 @@ model Company {
   verificationExpiresAt DateTime?
 
   // Subscription (utils/billing.js)
-  planKey                String?
-  subscriptionStatus     String    @default("trialing") // trialing | active | past_due | cancelled | expired | internal
-  trialEndsAt            DateTime?
-  currentPeriodEnd       DateTime?
-  subscriptionGatewayId String?   @unique
+  planKey                     String?
+  subscriptionStatus          String    @default("trialing") // pending_payment | trialing | active | past_due | cancelled | expired | internal
+  trialStartedAt              DateTime?
+  trialEndsAt                 DateTime?
+  currentPeriodEnd            DateTime?
+  nextBillingAt               DateTime?
+  subscriptionAmountPaise     Int?
+  billingCycle                String?
+  subscriptionGatewayId       String?   @unique
+  subscriptionSessionId       String?
+  subscriptionRequestKey      String?   @unique
+  authorizationStatus         String?
+  subscriptionActivatedAt     DateTime?
+  signupRequestKey            String?   @unique
+  enrollmentPaymentLinkId     String?   @unique
+  enrollmentPaymentLinkUrl    String?
+  enrollmentPaymentLinkExpiresAt DateTime?
 
   // Billing details for GST invoices
   legalName      String?

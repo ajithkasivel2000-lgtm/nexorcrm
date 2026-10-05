@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { setAuth } from '../utils/sessionStore';
 import { MicrosoftMark } from './ProviderLogos';
 import useAuthProviders from './useAuthProviders';
+import friendlyAuthError from './friendlyAuthError';
 
 /**
  * "Sign in with Microsoft" for the login screen.
@@ -77,15 +78,19 @@ export default function MicrosoftSignIn({ onError, onBusyChange }) {
         return;
       }
 
+      const company = new URLSearchParams(window.location.search).get('company');
       const res = await fetch('/api/auth/microsoft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: result.idToken }),
+        body: JSON.stringify({
+          credential: result.idToken,
+          ...(company ? { company } : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        onError?.(data?.message || 'Microsoft sign-in was refused.');
+        onError?.(friendlyAuthError(data?.message, res.status));
         return;
       }
 
@@ -113,7 +118,7 @@ export default function MicrosoftSignIn({ onError, onBusyChange }) {
       if (code === 'user_cancelled' || code === 'popup_window_error' || /closed/i.test(err?.message || '')) {
         return;
       }
-      onError?.('Could not complete Microsoft sign-in. Please try again.');
+      onError?.('We’re having trouble connecting to the workspace. Please try again.');
     } finally {
       setBusy(false);
       onBusyChange?.(false);

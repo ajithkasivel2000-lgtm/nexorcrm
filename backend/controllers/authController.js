@@ -62,6 +62,19 @@ async function appUrl(req, user) {
   return req.headers.origin || `${req.protocol}://${req.get('host')}`;
 }
 
+async function authPageUrl(baseUrl, user, query) {
+  const url = new URL('/', `${baseUrl}/`);
+  if (user?.companyId && user.companyId !== tenant.DEFAULT_COMPANY_ID) {
+    const company = await tenant.runAsSystem(() => prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: { slug: true, customDomain: true },
+    }));
+    if (company?.slug && !company.customDomain) url.searchParams.set('company', company.slug);
+  }
+  for (const [key, value] of Object.entries(query)) url.searchParams.set(key, String(value));
+  return url.toString();
+}
+
 /** User-typed names go into email HTML; escape them so a name cannot inject markup. */
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -107,42 +120,26 @@ exports.login = async (req, res) => {
      * look like someone else's email cannot shadow it. */
     const typed = String(username).trim();
 
-    /* A company's own sign-in (its domain, its ?company= link, or the Company
-       Login tab) lets only that company's people in. Someone from another
-       company is answered exactly like a wrong password, so the page does not
-       confirm which usernames exist elsewhere. */
+    /* A company sign-in is tenant-scoped; the plain platform page is scoped to
+       the default company. An account from another tenant is indistinguishable
+       from a wrong password. */
     const scope = await require('../utils/companyUrl').loginCompany(req);
     if (scope.error) return res.status(400).json({ message: scope.error });
-    const inScope = (u) => !u || !scope.company || u.companyId === scope.company.id;
 
-    /* Username is unique inside a company, not globally. On a company sign-in
-       the lookup is specific to that company; on the platform page we accept
-       exactly one match across tenants, and refuse ambiguous usernames rather
-       than guess which company the person belongs to. */
-    let user = null;
-    if (scope.company) {
-      user = await prisma.user.findUnique({
-        where: { companyId_username: { companyId: scope.company.id, username: typed } },
-      });
-    } else {
-      const matches = await prisma.user.findMany({ where: { username: typed }, take: 2 });
-      if (matches.length > 1) {
-        return res.status(400).json({ message: 'That username exists in more than one company. Sign in on your company page.' });
-      }
-      user = matches[0] || null;
-    }
-    if (!inScope(user)) user = null;
+    /* Usernames are unique inside a company; the page's resolved company scope
+       is required before looking up either a username or email. */
+    let user = await prisma.user.findUnique({
+      where: { companyId_username: { companyId: scope.company.id, username: typed } },
+    });
     if (!user && typed.includes('@')) {
-      /* An email address can belong to accounts in more than one company; the
-         username is what tells them apart, so an ambiguous email is refused
-         rather than guessed at. On a company's own sign-in only its accounts
-         are considered. */
+      /* The username distinguishes multiple accounts in one company that
+         happen to share an email address. */
       const byEmail = await prisma.user.findMany({
-        where: { email: { equals: typed, mode: 'insensitive' }, ...(scope.company ? { companyId: scope.company.id } : {}) },
+        where: { email: { equals: typed, mode: 'insensitive' }, companyId: scope.company.id },
         take: 2,
       });
       if (byEmail.length > 1) {
-        return res.status(400).json({ message: 'More than one account uses this email. Sign in with your username.' });
+        return res.status(400).json({ message: 'More than one account in this company uses this email. Sign in with your username.' });
       }
       user = byEmail[0] || null;
     }
@@ -776,6 +773,7 @@ async function sendActivationEmail(req, user) {
     console.warn(`Activation email for ${user.username} skipped — set APP_URL so the link has somewhere safe to point.`);
     return;
   }
+  const activationUrl = await authPageUrl(baseUrl, user, { activation: token });
   await sendMail({
     to: user.email,
     category: 'activation',
@@ -785,7 +783,7 @@ async function sendActivationEmail(req, user) {
         <h2>Welcome to NexorCRM</h2>
         <p>Hello ${escapeHtml(user.firstName || user.username)},</p>
         <p>Confirm your email address to activate your account:</p>
-        <p><a href="${baseUrl}/?activation=${token}"
+        <p><a href="${activationUrl}"
               style="display:inline-block;background:#f5c618;color:#0d172a;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
            Activate Account</a></p>
         <p>If you did not sign up, you can ignore this email.</p>
@@ -835,7 +833,7 @@ async function issueResetLink(req, user) {
     console.error('Password reset email not sent: APP_URL is not set, so there is no safe address for the link.');
     return;
   }
-  const resetUrl = `${baseUrl}/?resetToken=${token}`;
+  const resetUrl = await authPageUrl(baseUrl, user, { resetToken: token });
   const result = await sendMail({
     to: user.email,
     category: 'password-reset',

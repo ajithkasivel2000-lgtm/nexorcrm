@@ -155,7 +155,7 @@ export default function BookingDetailScreen({ route, navigation }) {
               <TouchableOpacity style={s.btn} onPress={() => sharePayLink(null)} disabled={Boolean(sharing)}>
                 {sharing === 'new' ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Share payment link for next due</Text>}
               </TouchableOpacity>
-            ) : <Text style={s.muted}>Online payment is off. An administrator can connect Razorpay in Settings → Integrations on the web.</Text>)}
+            ) : <Text style={s.muted}>Online payment is off. An administrator can configure Cashfree in Settings → Integrations on the web.</Text>)}
             {links.links.map((l) => (
               <View key={l.id} style={s.row}>
                 <View style={{ flex: 1 }}>

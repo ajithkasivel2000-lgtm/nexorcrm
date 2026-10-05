@@ -6,6 +6,7 @@ const leadLimit = rateLimit('public-lead', { max: 120, windowMs: 60 * 60 * 1000 
 const { requireCompanyKey } = require('../middleware/companyKey');
 const leadController = require('../controllers/leadController');
 const branding = require('../controllers/brandingController');
+const support = require('../controllers/supportController');
 
 // Public endpoint for website forms to submit leads (POST - no auth required)
 router.post('/leads', leadLimit, requireCompanyKey, leadController.websiteLead);
@@ -22,6 +23,7 @@ router.get('/verify-company', branding.verifyCompany);
 // New verification email when the first one expired or was lost. Low cap:
 // a client that keeps asking is either a bug or an attempt to flood an inbox.
 router.post('/resend-verification', rateLimit('resend-verify', { max: 3, windowMs: 60 * 60 * 1000 }), branding.resendVerification);
+router.post('/support', rateLimit('workspace-support', { max: 5, windowMs: 15 * 60 * 1000 }), support.submit);
 // A company's name, colour and logo for its sign-in page (?company=slug).
 router.get('/branding', branding.publicBranding);
 // The plans on offer, for the free-trial form.

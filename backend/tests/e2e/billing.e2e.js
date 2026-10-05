@@ -31,7 +31,7 @@ const fakeCashfree = http.createServer((req, res) => {
     };
     if (req.method === 'POST' && req.url === '/pg/plans') return send(200, { plan_id: body.plan_id });
     if (req.method === 'POST' && req.url === '/pg/subscriptions') {
-      subscriptions.set(body.subscription_id, { subscription_id: body.subscription_id, subscription_status: 'ACTIVE' });
+      subscriptions.set(body.subscription_id, { subscription_id: body.subscription_id, subscription_status: 'INITIALIZED' });
       return send(200, { subscription_id: body.subscription_id, subscription_session_id: `session_${Date.now()}` });
     }
     const manage = req.url.match(/^\/pg\/subscriptions\/([^/]+)\/manage$/);
@@ -59,7 +59,10 @@ const call = async (token, path, { method = 'GET', body, headers = {}, raw } = {
   let data = text; try { data = JSON.parse(text); } catch {}
   return { status: r.status, body: data, headers: r.headers };
 };
-const login = async (username, password) => (await call(null, '/api/auth/login', { method: 'POST', body: { username, password } })).body?.token;
+const login = async (username, password, company) => (await call(null, '/api/auth/login', {
+  method: 'POST',
+  body: { username, password, ...(company ? { company } : {}) },
+})).body?.token;
 
 (async () => {
   await new Promise((resolve) => fakeCashfree.listen(FAKE_PORT, '127.0.0.1', resolve));
@@ -74,13 +77,14 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
     check('weak password refused at signup', r.status === 400, r.status);
     const owner = `owner${stamp}`;
     const pw = 'Owner-Pass-123!';
-    r = await call(null, '/api/public/companies', { method: 'POST', body: { companyName: `Sunrise Homes ${stamp}`, name: 'Asha', email: 'asha@sunrise.test', phone: '9876543210', username: owner, password: pw, planKey: 'starter' } });
-    check('company self-signup', r.status === 201 && r.body.company?.slug, `${r.status} ${r.body?.message || ''}`);
+    r = await call(null, '/api/public/companies', { method: 'POST', body: { companyName: `Sunrise Homes ${stamp}`, name: 'Asha', email: 'asha@sunrise.test', phone: '9876543210', username: owner, password: pw, planKey: 'starter', signupRequestKey: crypto.randomUUID() } });
+    const signupCheckout = r.body?.checkout;
+    check('company self-signup creates Cashfree checkout credentials', r.status === 201 && r.body.company?.slug && signupCheckout?.subscriptionId && signupCheckout?.subscriptionSessionId, `${r.status} ${r.body?.message || ''}`);
     const slug = r.body?.company?.slug;
-    r = await call(null, '/api/public/companies', { method: 'POST', body: { companyName: 'Dup', email: 'd@x.test', username: owner, password: pw } });
+    r = await call(null, '/api/public/companies', { method: 'POST', body: { companyName: 'Dup', email: 'd@x.test', phone: '9876543210', username: owner, password: pw } });
     check('taken username refused', r.status === 409, r.status);
 
-    const token = await login(owner, pw);
+    const token = await login(owner, pw, slug);
     check('new owner signs in straight away (no forced change)', Boolean(token));
     /* The signup above may have been rate-limited, in which case `slug` is
        undefined and findUnique throws a cryptic Prisma validation error from
@@ -93,9 +97,13 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
 
     /* ---- trial & seats ---- */
     r = await call(token, '/api/billing');
-    check('billing shows the free trial', r.status === 200 && r.body.status === 'trialing' && r.body.access.daysLeft === 14, `${r.body?.status} ${r.body?.access?.daysLeft}`);
+    check('billing waits for Cashfree mandate authorization', r.status === 200 && r.body.status === 'pending_payment' && r.body.access.allowed === false, `${r.body?.status} ${r.body?.access?.allowed}`);
     check('starter plan: 1 of 5 seats used', r.body?.seats?.used === 1 && r.body?.seats?.limit === 5, JSON.stringify(r.body?.seats));
     check('three plans on offer', r.body?.plans?.length === 3);
+    const subId = company.subscriptionGatewayId;
+    subscriptions.set(subId, { subscription_id: subId, subscription_status: 'ACTIVE' });
+    r = await call(token, '/api/billing/verify', { method: 'POST', body: { subscriptionId: subId } });
+    check('verified Cashfree mandate starts the trial', r.status === 200 && r.body.startedTrial && /trial has started/.test(r.body.message), `${r.status} ${r.body?.message || ''}`);
 
     const h = bcrypt.hashSync('Seat-Pass-123!', 10);
     await t.runWithCompany(company.id, async () => {
@@ -124,10 +132,8 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
 
     /* ---- Cashfree subscription checkout and webhooks ---- */
     r = await call(token, '/api/billing/subscribe', { method: 'POST', body: { planKey: 'growth' } });
-    check('Cashfree returns subscription checkout credentials', r.status === 200 && r.body.subscriptionId && r.body.subscriptionSessionId && r.body.mode, `${r.status} ${r.body?.message || ''}`);
-    const subId = r.body.subscriptionId;
-    r = await call(token, '/api/billing/verify', { method: 'POST', body: { subscriptionId: subId } });
-    check('subscription status is checked directly with Cashfree', r.status === 200 && /activated/.test(r.body.message), `${r.status} ${r.body?.message}`);
+    check('re-authorizing an active subscription is refused', r.status === 409, `${r.status} ${r.body?.message || ''}`);
+    check('signup returns subscription checkout credentials', Boolean(signupCheckout?.subscriptionId && signupCheckout?.subscriptionSessionId && signupCheckout?.mode));
 
     const event = JSON.stringify({
       type: 'SUBSCRIPTION_PAYMENT_SUCCESS',
@@ -143,7 +149,7 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
     await call(null, '/api/webhooks/cashfree', { method: 'POST', raw: event, headers: webhookHeaders(hookSig) });
     await new Promise((res) => setTimeout(res, 500));
     const invoices = await t.runWithCompany(company.id, () => p.invoice.findMany());
-    check('payment webhook adds one GST invoice (replay ignored)', r.status === 200 && invoices.length === 1 && invoices[0].totalPaise === Math.round(299900 * 1.18), `invoices=${invoices.length}`);
+    check('payment webhook adds one GST invoice (replay ignored)', r.status === 200 && invoices.length === 1 && invoices[0].totalPaise === Math.round(99900 * 1.18), `invoices=${invoices.length}`);
 
     const halted = JSON.stringify({ type: 'SUBSCRIPTION_PAYMENT_FAILED', data: { subscription_id: subId } });
     const failedSig = crypto.createHmac('sha256', SECRET_KEY).update(`${timestamp}${halted}`).digest('base64');

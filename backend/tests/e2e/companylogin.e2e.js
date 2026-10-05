@@ -53,7 +53,7 @@ const login = (body, host) => new Promise((resolve, reject) => {
     const ua = a.admin.username;
 
     let r = await login({ username: ua, password: pw });
-    check('general sign-in still works for anyone', Boolean(r.body.token), r.status);
+    check('platform sign-in refuses company users without their company link', r.status === 401 && !r.body.token, r.status);
     r = await login({ username: ua, password: pw, company: a.company.slug });
     check('Company Login with own company code: signed in', Boolean(r.body.token), r.status);
     r = await login({ username: ua, password: pw, company: b.company.slug });
@@ -64,7 +64,7 @@ const login = (body, host) => new Promise((resolve, reject) => {
     check('company code is not case-sensitive', Boolean(r.body.token), r.status);
 
     r = await login({ username: sharedEmail, password: pw });
-    check('an email used in two companies is ambiguous on the general sign-in', r.status === 400, r.status);
+    check('platform sign-in refuses an email belonging to a client company', r.status === 401, r.status);
     r = await login({ username: sharedEmail, password: pw, company: b.company.slug });
     check('...but on a company\'s sign-in the email is enough', Boolean(r.body.token) && r.body.user?.username === b.admin.username, `${r.status} ${r.body.user?.username}`);
 

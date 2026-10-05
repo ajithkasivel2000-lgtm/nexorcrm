@@ -5,6 +5,7 @@ import Preloader from './components/Preloader';
 import LoginLayout from './login/LoginLayout';
 import CompanyLoginLayout from './login/CompanyLoginLayout';
 import SignInCard from './login/SignInCard';
+import friendlyAuthError from './login/friendlyAuthError';
 import './ui/globalConfirm';
 
 // Lazy load layout components and pages
@@ -94,7 +95,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   // Set when the password was right but the account needs its 2FA code.
   const [twoFactorChallenge, setTwoFactorChallenge] = useState(null);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   /* An administrator can flag an account so its next sign-in must set a new
      password. The login response carries mustChangePassword; the flag lives in
@@ -169,18 +170,27 @@ function App() {
   // the staff registration form, so the trial card could never appear.
   // 'verify' is forced when the URL is /verify-company?token=... so the
   // emailed link lands directly on the verification result card.
-  const initialView = window.location.pathname === '/verify-company' ? 'verify' : 'login';
+  const initialView = window.location.pathname === '/verify-company'
+    ? 'verify'
+    : (window.location.pathname === '/payment/success' ? 'payment' : 'login');
   const [view, setView] = useState(initialView);
-  /* A company's own sign-in link (?company=slug), or its own domain
-     (crm.roofonwalls.com), shows its logo and name. */
+  const [companyLoginSlug] = useState(() => new URLSearchParams(window.location.search)
+    .get('company')?.trim().toLowerCase() || '');
+  /* A company's own sign-in link (?company=slug), or its own domain,
+     must never fall back to the platform owner's login if branding cannot
+     be resolved. */
   const [brand, setBrand] = useState(null);
+  const [brandResolved, setBrandResolved] = useState(false);
   useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get('company');
-    fetch(slug ? `/api/public/branding?company=${encodeURIComponent(slug)}` : '/api/public/branding')
+    let cancelled = false;
+    fetch(companyLoginSlug
+      ? `/api/public/branding?company=${encodeURIComponent(companyLoginSlug)}`
+      : '/api/public/branding')
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
+        if (cancelled) return;
         if (!b) {
-          // No tenant brand (we're on the platform host) — keep NexorCRM.
+          setBrand(null);
           applyBranding();
           return;
         }
@@ -189,8 +199,14 @@ function App() {
         // Tab title ends with the company name, favicon follows the company.
         applyBranding({ name: b.name, faviconUrl: b.faviconUrl });
       })
-      .catch(() => { });
-  }, []);
+      .catch(() => {
+        if (!cancelled) setBrand(null);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandResolved(true);
+      });
+    return () => { cancelled = true; };
+  }, [companyLoginSlug]);
   const [forgotInput, setForgotInput] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -239,7 +255,9 @@ function App() {
   const [signupRules, setSignupRules] = useState(null);
   const [signupBusy, setSignupBusy] = useState(false);
   // Email-activation link result: null | 'working' | 'done' | 'failed'
-  const [activationState, setActivationState] = useState(null);
+  const [activationState, setActivationState] = useState(() => (
+    new URLSearchParams(window.location.search).has('activation') ? 'working' : null
+  ));
   const [activationMessage, setActivationMessage] = useState('');
   const [signupUsername, setSignupUsername] = useState('');
   const [signupFirstName, setSignupFirstName] = useState('');
@@ -270,7 +288,7 @@ function App() {
        Registration Settings still decides whether the server accepts a signup
        at all, which is where to turn it off properly rather than by hiding a
        link. */
-    if (params.get('signup') === '1') {
+    if (params.get('signup') === '1' && !companyLoginSlug) {
       openSignup();
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
@@ -354,7 +372,12 @@ function App() {
         // rememberMe decides how long the server keeps the session; it was
         // never sent, so every session lasted one day whatever the box said.
         /* A company's own page (its link or domain) signs in to that company only. */
-        body: JSON.stringify({ username, password, rememberMe, ...(brand?.slug ? { company: brand.slug } : {}) })
+        body: JSON.stringify({
+          username,
+          password,
+          rememberMe,
+          ...((brand?.slug || companyLoginSlug) ? { company: brand?.slug || companyLoginSlug } : {}),
+        })
       });
 
       const data = await response.json();
@@ -367,9 +390,9 @@ function App() {
         finishLogin(data);
         return;
       }
-      setError(data.message || 'Login failed');
+      setError(friendlyAuthError(data.message, response.status));
     } catch {
-      setError('Could not connect to the server. Make sure the backend is running.');
+      setError('We’re having trouble connecting to the workspace. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -423,7 +446,7 @@ function App() {
         status: data.user?.status,
         // The branded page this sign-in belongs to (brand comes from the
         // ?company= slug or the company's own domain); null on the generic page.
-        companySlug: brand?.slug || null,
+        companySlug: brand?.slug || companyLoginSlug || null,
       },
       remember !== undefined ? remember : rememberMe,
     );
@@ -435,7 +458,14 @@ function App() {
     // Individual home pages (GlobalUserSetting) land the user where the
     // administrator pointed them; null falls back to the dashboard.
     const home = data.homePage || '/';
-    window.location.href = home.startsWith('/') ? home : '/';
+    const params = new URLSearchParams(window.location.search);
+    const paymentCompany = params.get('company');
+    const resumePaymentAuthorization = params.get('authorizeSubscription') === '1'
+      && paymentCompany
+      && brand?.slug === paymentCompany;
+    window.location.href = resumePaymentAuthorization
+      ? `/settings/billing?company=${encodeURIComponent(paymentCompany)}&authorizeSubscription=1`
+      : (home.startsWith('/') ? home : '/');
   };
 
   const handleForgotPassword = async (e) => {
@@ -768,12 +798,32 @@ function App() {
     );
   }
 
-  /* A client company's page (its link or domain) gets its own sign-in page;
-     the platform keeps the NexorCRM one. */
-  const SignedOutLayout = brand ? CompanyLoginLayout : LoginLayout;
+  if (!brandResolved) return <Preloader />;
+
+  /* The platform owner keeps the NexorCRM page. A company link always stays
+     on the compact company page, even when that company is unavailable. */
+  const isCompanyLogin = Boolean(brand || companyLoginSlug);
+  const companyLoginUnavailable = Boolean(
+    companyLoginSlug
+    && !brand
+    && view === 'login'
+    && !activationState,
+  );
+  const SignedOutLayout = isCompanyLogin ? CompanyLoginLayout : LoginLayout;
   return (
-    <SignedOutLayout theme={theme} onToggleTheme={toggleTheme} brand={brand}>
-      {view === 'verify' ? (
+    <SignedOutLayout
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      brand={brand}
+      companySlug={companyLoginSlug}
+      unavailable={companyLoginUnavailable}
+    >
+      {companyLoginUnavailable ? null : view === 'payment' ? (
+        <PaymentSuccessPage
+          publicSignup
+          onReturn={() => { window.location.assign('/'); }}
+        />
+      ) : view === 'verify' ? (
         <VerifyCompany onDone={() => { history.replaceState(null, '', '/'); setView('login'); }} />
       ) : view === 'start' ? (
         <CompanySignupCard
@@ -804,6 +854,8 @@ function App() {
           theme={theme}
           brandName={brand?.name}
           welcomeTitle={brand?.loginContent?.welcomeTitle}
+          subtitle={isCompanyLogin ? `Sign in to your ${brand?.name || 'workspace'}` : undefined}
+          usernameLabel={isCompanyLogin ? 'Work email or username' : undefined}
           username={username}
           onUsernameChange={setUsername}
           password={password}
@@ -825,7 +877,7 @@ function App() {
           formRef={loginFormRef}
         />
       ) : null}
-      {view === 'login' && !twoFactorChallenge && !brand && (
+      {view === 'login' && !twoFactorChallenge && !isCompanyLogin && (
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: 'var(--nx-text-secondary, #94a3b8)' }}>
           New to NexorCRM?{' '}
           <button type="button" className="nx-card__link" onClick={() => { setError(''); setView('start'); }}>Start a free trial</button>
