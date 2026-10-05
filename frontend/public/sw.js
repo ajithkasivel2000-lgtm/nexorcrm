@@ -25,8 +25,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'NexorCRM';
   const options = {
     body: payload.body || 'You have a new notification.',
-    icon: '/favicon.png',
-    badge: '/favicon.png',
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
     // Same tag replaces an earlier notification about the same record rather
     // than stacking duplicates.
     tag: payload.tag || 'nexorcrm',

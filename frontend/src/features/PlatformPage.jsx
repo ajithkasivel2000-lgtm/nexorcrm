@@ -101,7 +101,17 @@ const Companies = React.forwardRef((props, ref) => {
           },
           { key: 'users', label: 'Users', align: 'right' },
           { key: 'leads', label: 'Leads', align: 'right' },
-          { key: 'status', label: 'Account', render: (r) => <Pill tone={r.status === 'Active' ? 'success' : 'danger'}>{r.status}</Pill> },
+          { key: 'status', label: 'Account', render: (r) => {
+            /* Three states, three tones: Active green, Pending amber (new
+               signup, email not yet verified), Suspended red. The old
+               two-state render coloured Pending the same red as Suspended,
+               so a new trial read as "something is wrong" rather than
+               "there is a new customer to welcome". */
+            const tone = r.status === 'Active' ? 'success'
+              : r.status === 'Pending' ? 'warning' : 'danger';
+            const label = r.status === 'Pending' ? 'Pending verification' : r.status;
+            return <Pill tone={tone}>{label}</Pill>;
+          } },
           { key: 'createdAt', label: 'Since', render: (r) => fmtDate(r.createdAt) },
         ]}
         rows={rows || []}
@@ -119,9 +129,16 @@ const Companies = React.forwardRef((props, ref) => {
             <div className="nx-page__row-actions">
               <Button size="sm" variant="ghost" icon={Eye} aria-label={`View ${r.name}`} title="View" onClick={(e) => { e.stopPropagation(); setViewing(r); }} />
               <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r.name}`} title="Edit" onClick={(e) => { e.stopPropagation(); setChanging(r); }} />
+              {/* Three states, three actions:
+                   Active    → Suspend (close for violation / non-payment)
+                   Pending   → Activate (skip the email verification by
+                               hand, for a customer who told you in person)
+                   Suspended → Reactivate (lift the suspension) */}
               {r.status === 'Active'
                 ? <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Suspended'); }}>Suspend</Button>
-                : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
+                : r.status === 'Pending'
+                  ? <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Activate</Button>
+                  : <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setStatus(r, 'Active'); }}>Reactivate</Button>}
             </div>
           )
         )}
@@ -508,7 +525,7 @@ const Plans = React.forwardRef((props, ref) => {
           { key: 'pricePaise', label: 'Price / month', align: 'right', render: (r) => rupees(r.pricePaise) },
           { key: 'maxUsers', label: 'Users', align: 'right', render: (r) => (r.maxUsers ? r.maxUsers : 'Unlimited') },
           { key: 'active', label: 'On sale', render: (r) => (r.active ? <Pill tone="success" dot>Yes</Pill> : <Pill>No</Pill>) },
-          { key: 'razorpayPlanId', label: 'Razorpay', render: (r) => r.razorpayPlanId || <span className="fx-muted">created on first sale</span> },
+          { key: 'gatewayPlanId', label: 'Cashfree plan', render: (r) => r.gatewayPlanId || <span className="fx-muted">created on first sale</span> },
         ]}
         rows={rows || []}
         loading={!rows}

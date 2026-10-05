@@ -761,62 +761,6 @@
   white-space: nowrap;
 }
 
-/* ---- the security line -------------------------------------------------- */
-
-.nx-card__secure {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 18px 0 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--lg-card-line);
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--lg-ink-faint);
-}
-
-.nx-card__secure>svg {
-  color: var(--lg-ink-soft);
-  flex-shrink: 0;
-}
-
-.nx-card__secure>span {
-  flex: 1;
-  min-width: 0;
-}
-
-.nx-card__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12.5px;
-  white-space: nowrap;
-}
-
-.nx-card__more svg {
-  transition: transform .18s;
-}
-
-.nx-card__more svg.is-open {
-  transform: rotate(90deg);
-}
-
-.nx-card__secure-list {
-  margin: 10px 0 0;
-  padding: 12px 14px 12px 30px;
-  border-radius: 10px;
-  background: var(--lg-field);
-  border: 1px solid var(--lg-card-line);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--lg-ink-soft);
-}
-
-.nx-card__secure-list li+li {
-  margin-top: 4px;
-}
-
 /* Why a provider tile is dimmed — on the page, not in a tooltip a disabled
    button will not show. */
 .nx-card__offline {

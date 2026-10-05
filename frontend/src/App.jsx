@@ -15,6 +15,7 @@ import { setAuth, getToken, getUsername, getSessionId, clearAuth } from './utils
 import { connectRealtime, disconnectRealtime } from './utils/realtime';
 import TwoFactorCard from './login/TwoFactorCard';
 import CompanySignupCard from './login/CompanySignupCard';
+import VerifyCompany from './login/VerifyCompany';
 
 const lazyWithRetry = (componentImport) =>
   lazy(async () => {
@@ -75,6 +76,7 @@ const LoginLayoutPage = lazyWithRetry(() => import('./features/LoginLayoutPage')
 const PlatformPage = lazyWithRetry(() => import('./features/PlatformPage'));
 const PartnerPortal = lazyWithRetry(() => import('./features/PartnerPortal'));
 const BillingPage = lazyWithRetry(() => import('./features/BillingPage'));
+const PaymentSuccessPage = lazyWithRetry(() => import('./features/PaymentSuccessPage'));
 const ReportBuilderPage = lazyWithRetry(() => import('./features/ReportBuilderPage'));
 
 /**
@@ -161,11 +163,14 @@ function App() {
   // used to do nothing at all.
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Password reset flow: 'login' | 'forgot' | 'reset'
+  // Password reset flow: 'login' | 'forgot' | 'reset' | 'verify'
   // ?signup=1 is handled once on mount below, where openSignup() reads it —
   // starting here on 'start' instead made the mount effect override it with
   // the staff registration form, so the trial card could never appear.
-  const [view, setView] = useState('login');
+  // 'verify' is forced when the URL is /verify-company?token=... so the
+  // emailed link lands directly on the verification result card.
+  const initialView = window.location.pathname === '/verify-company' ? 'verify' : 'login';
+  const [view, setView] = useState(initialView);
   /* A company's own sign-in link (?company=slug), or its own domain
      (crm.roofonwalls.com), shows its logo and name. */
   const [brand, setBrand] = useState(null);
@@ -744,6 +749,7 @@ function App() {
               <Route path="settings/integrations" element={<IntegrationsPage />} />
               <Route path="settings/login-layout" element={<LoginLayoutPage />} />
               <Route path="settings/billing" element={<BillingPage />} />
+              <Route path="payment/success" element={<PaymentSuccessPage />} />
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="report-builder" element={<ReportBuilderPage />} />
               <Route path="platform/companies" element={<PlatformPage />} />
@@ -767,7 +773,9 @@ function App() {
   const SignedOutLayout = brand ? CompanyLoginLayout : LoginLayout;
   return (
     <SignedOutLayout theme={theme} onToggleTheme={toggleTheme} brand={brand}>
-      {view === 'start' ? (
+      {view === 'verify' ? (
+        <VerifyCompany onDone={() => { history.replaceState(null, '', '/'); setView('login'); }} />
+      ) : view === 'start' ? (
         <CompanySignupCard
           onBack={() => setView('login')}
           onCreated={async (creds) => {
@@ -829,9 +837,22 @@ function App() {
            separate piece of work, and they sit inside the new shell meanwhile. */
         <div className="login-card-premium">
           <div className="login-brand-premium">
+            {/* Branded sign-in pages (?company=slug or a custom domain) show
+                the tenant's wide logo in this header, so forgot-password and
+                reset-password read as "LandMint" the same way the sign-in
+                card does. The icon is a fallback for tenants that uploaded
+                only the square one; the static NexorCRM image is the final
+                fallback on the platform sign-in page. */}
             <img
-              src={theme === 'dark' ? '/logo_light.png' : '/logo_dark.png'}
-              alt="NexorCRM Logo"
+              src={
+                /* Theme-aware pick: dark theme shows the light-coloured
+                   logoDarkUrl, light theme shows the dark-coloured logoUrl.
+                   Each falls back to the other if a tenant uploaded only one. */
+                theme === 'dark'
+                  ? (brand?.logoDarkUrl || brand?.logoUrl || brand?.iconUrl || '/light-logo.svg')
+                  : (brand?.logoUrl || brand?.logoDarkUrl || brand?.iconUrl || '/dark-logo.svg')
+              }
+              alt={`${brand?.name || 'NexorCRM'} logo`}
               className="login-brand-logo-file"
             />
           </div>

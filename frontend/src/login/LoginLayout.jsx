@@ -42,16 +42,22 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
   const [langOpen, setLangOpen] = useState(false);
 
   const dark = theme !== 'light';
-  // A company's own sign-in page (?company=slug, or its own domain) shows its
-  // logo, or its name when it has not uploaded one.
-  const logo = brand?.logoUrl || (dark ? '/logo_light.png' : '/logo_dark.png');
+  /* Theme-aware brand logo. On the dark theme the light-coloured logoDarkUrl
+     reads best; on the light theme the dark-coloured logoUrl does. Each falls
+     back to the other if a tenant uploaded only one. The static NexorCRM
+     marks are the fallback for the unbranded platform page. */
+  const brandWideLogo = dark
+    ? (brand?.logoDarkUrl || brand?.logoUrl)
+    : (brand?.logoUrl || brand?.logoDarkUrl);
+  const logo = brandWideLogo || (dark ? '/light-logo.svg' : '/dark-logo.svg');
+  const hasBrandLogo = Boolean(brandWideLogo);
 
   return (
     <div className={`nx-login ${dark ? 'is-dark' : 'is-light'}`}>
       <div className="nx-login__scene" aria-hidden="true" />
 
       <header className="nx-login__top">
-        {brand && !brand.logoUrl
+        {brand && !hasBrandLogo
           ? <span className="nx-login__brandname">{brand.name}</span>
           : <img src={logo} alt={brand?.name || 'NexorCRM'} className="nx-login__logo" />}
 
@@ -105,9 +111,9 @@ export default function LoginLayout({ theme, onToggleTheme, version = '1.0.0', b
           {/* A company's own sign-in page leads with its logo and name. */}
           {brand ? (
             <>
-              {brand.logoUrl && <img src={brand.logoUrl} alt="" className="nx-login__brandlogo" />}
+              {hasBrandLogo && <img src={brandWideLogo} alt="" className="nx-login__brandlogo" />}
               <h1 className="nx-login__wordmark nx-login__wordmark--brand">{brand.name}</h1>
-              <p className="nx-login__tagline">powered by NexorCRM</p>
+              <p className="nx-login__tagline">powered by Infitoolz</p>
             </>
           ) : (
             <>

@@ -9,15 +9,15 @@ const billing = require('../utils/billing');
  * For a company's administrators (/api/billing):
  *   GET  /                     plan, status, trial, seats, plans on offer, invoices
  *   PUT  /details              legal name, GSTIN, address for invoices
- *   POST /subscribe            { planKey } → Razorpay subscription for Checkout
- *   POST /verify               Checkout's success callback → active
+ *   POST /subscribe            { planKey } → Cashfree subscription checkout
+ *   POST /verify               Checkout's return → check the subscription with Cashfree
  *   POST /cancel               stop renewing at the end of the paid period
  *
  * For the platform administrator (/api/platform):
  *   GET/POST/PUT /plans
  *   POST /companies/:id/billing  { action: 'activate'|'extend-trial'|'set-plan'|'expire', planKey?, days? }
  *
- * Razorpay → POST /api/webhooks/razorpay (signature-checked)
+ * Cashfree → POST /api/webhooks/cashfree (signature-checked)
  */
 
 const companyOf = (req) => tenant.runAsSystem(() => prisma.company.findUnique({ where: { id: req.companyId } }));
@@ -50,7 +50,7 @@ exports.overview = async (req, res) => {
       seats: { used: seats, limit: company.subscriptionStatus === 'internal' ? 0 : (limitPlan?.maxUsers || 0) },
       plans: plans.map(publicPlan),
       invoices,
-      onlinePayments: billing.razorpayConfigured(),
+      onlinePayments: billing.cashfreeConfigured(),
       isPlatformAdmin: require('./platformController').isPlatformAdmin(req.user),
     });
   } catch (error) {
@@ -85,13 +85,8 @@ exports.subscribe = async (req, res) => {
     if (plan.maxUsers && await billing.seatsUsed() > plan.maxUsers) {
       return res.status(400).json({ message: `You have more active users than the ${plan.name} plan allows (${plan.maxUsers}). Archive some users first, or pick a bigger plan.` });
     }
-    const checkout = await billing.createSubscription(company, plan);
-    res.status(200).json({
-      ...checkout,
-      name: 'NexorCRM',
-      description: `${plan.name} plan (monthly)`,
-      prefill: { name: company.legalName || company.name, email: company.billingEmail || req.user.email, contact: company.phone || '' },
-    });
+    const checkout = await billing.createSubscription(company, plan, company.billingEmail || req.user.email);
+    res.status(200).json(checkout);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     sendError(res, error, 'Could not start the subscription', 500);
@@ -100,18 +95,26 @@ exports.subscribe = async (req, res) => {
 
 exports.verify = async (req, res) => {
   try {
-    const { paymentId, subscriptionId, signature } = req.body || {};
+    const { subscriptionId } = req.body || {};
     const company = await companyOf(req);
-    if (!subscriptionId || subscriptionId !== company.razorpaySubscriptionId) {
+    if (!subscriptionId || subscriptionId !== company.subscriptionGatewayId) {
       return res.status(400).json({ message: 'That payment is not for this company.' });
     }
-    if (!billing.verifyCheckoutSignature({ paymentId, subscriptionId, signature })) {
-      return res.status(400).json({ message: 'The payment could not be verified.' });
+    const subscription = await billing.verifySubscription(subscriptionId);
+    if (subscription.subscription_status !== 'ACTIVE') {
+      return res.status(200).json({
+        pending: true,
+        message: 'Cashfree is still confirming your subscription. Refresh billing in a moment.',
+        status: subscription.subscription_status,
+      });
     }
-    const plan = await billing.planFor(company);
-    const invoice = await billing.recordPayment(company, plan, { paymentId });
-    res.status(200).json({ message: 'Payment received — thank you. Your plan is active.', invoice });
+    await tenant.runAsSystem(() => prisma.company.update({
+      where: { id: company.id },
+      data: { subscriptionStatus: 'active' },
+    }));
+    res.status(200).json({ message: 'Cashfree has activated your subscription. Thank you.' });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
     sendError(res, error, 'Could not confirm the payment', 500);
   }
 };
@@ -119,8 +122,11 @@ exports.verify = async (req, res) => {
 exports.cancel = async (req, res) => {
   try {
     const company = await companyOf(req);
-    if (company.razorpaySubscriptionId && billing.razorpayConfigured()) {
-      await billing.razorpay(`/subscriptions/${company.razorpaySubscriptionId}/cancel`, { method: 'POST', body: { cancel_at_cycle_end: 1 } });
+    if (company.subscriptionGatewayId && billing.cashfreeConfigured()) {
+      await billing.cashfree(`/subscriptions/${encodeURIComponent(company.subscriptionGatewayId)}/manage`, {
+        method: 'POST',
+        body: { action: 'CANCEL' },
+      });
     }
     await tenant.runAsSystem(() => prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled' } }));
     res.status(200).json({ message: company.currentPeriodEnd
@@ -132,37 +138,40 @@ exports.cancel = async (req, res) => {
   }
 };
 
-/* ---- Razorpay webhook ---------------------------------------------------- */
+/* ---- Cashfree webhook ---------------------------------------------------- */
 
-/* ACK only after the work succeeds: the handler used to answer 200 first, so a
-   recordPayment failure was reported to Razorpay as delivered and never
-   retried — a paying company could sit past_due until someone read the log.
-   Every write below is idempotent on the payment id, so a replayed webhook
-   after a 500 is safe. */
+/* ACK only after processing succeeds so Cashfree retries transient failures. */
 exports.webhook = (req, res) => tenant.runAsSystem(async () => {
-  if (!billing.verifyWebhookSignature(req.rawBody, req.headers['x-razorpay-signature'])) return res.sendStatus(400);
+  const signature = req.headers['x-webhook-signature'];
+  const timestamp = req.headers['x-webhook-timestamp'];
+  if (!billing.verifyWebhookSignature(req.rawBody, signature, timestamp)) return res.sendStatus(400);
   try {
-    const event = req.body?.event;
-    const sub = req.body?.payload?.subscription?.entity;
-    const payment = req.body?.payload?.payment?.entity;
-    if (!sub?.id) return res.sendStatus(200);
-    const company = await prisma.company.findUnique({ where: { razorpaySubscriptionId: sub.id } });
+    const type = req.body?.type;
+    const data = req.body?.data || {};
+    const sub = data.subscription_details || {};
+    const subscriptionId = data.subscription_id || sub.subscription_id;
+    if (!subscriptionId) return res.sendStatus(200);
+    const company = await prisma.company.findUnique({ where: { subscriptionGatewayId: subscriptionId } });
     if (!company) return res.sendStatus(200);
     const plan = await billing.planFor(company);
-    const periodEnd = sub.current_end ? new Date(sub.current_end * 1000) : undefined;
-    const periodStart = sub.current_start ? new Date(sub.current_start * 1000) : new Date();
-
-    if (event === 'subscription.charged' || event === 'subscription.activated') {
-      await billing.recordPayment(company, plan, { paymentId: payment?.id || null, periodStart, periodEnd });
-    } else if (event === 'subscription.pending' || event === 'subscription.halted') {
+    const status = sub.subscription_status || data.subscription_status;
+    const paymentId = data.cf_payment_id || data.payment_id || null;
+    if (type === 'SUBSCRIPTION_PAYMENT_SUCCESS' && paymentId) {
+      const paymentTime = data.payment_initiated_date ? new Date(data.payment_initiated_date) : new Date();
+      await billing.recordPayment(company, plan, { paymentId, periodStart: paymentTime });
+    } else if (type === 'SUBSCRIPTION_PAYMENT_FAILED' || status === 'ON_HOLD') {
       await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'past_due' } });
-    } else if (event === 'subscription.cancelled' || event === 'subscription.completed') {
-      await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled', currentPeriodEnd: periodEnd || company.currentPeriodEnd } });
+    } else if (type === 'SUBSCRIPTION_STATUS_CHANGED' || type === 'SUBSCRIPTION_AUTH_STATUS') {
+      if (status === 'ACTIVE') {
+        await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'active' } });
+      } else if (['CANCELLED', 'CUSTOMER_CANCELLED', 'COMPLETED', 'EXPIRED'].includes(status)) {
+        await prisma.company.update({ where: { id: company.id }, data: { subscriptionStatus: 'cancelled' } });
+      }
     }
     return res.sendStatus(200);
   } catch (error) {
-    console.error('Razorpay webhook failed:', error.message);
-    return res.sendStatus(500); // Razorpay retries
+    console.error('Cashfree subscription webhook failed:', error.message);
+    return res.sendStatus(500);
   }
 });
 
@@ -205,8 +214,8 @@ exports.updatePlan = (req, res) => tenant.runAsSystem(async () => {
   try {
     const data = planData(req.body || {});
     delete data.key; // companies reference plans by key
-    // A price change needs a new Razorpay plan; existing subscribers keep theirs.
-    if (data.pricePaise !== undefined) data.razorpayPlanId = null;
+    // A price change needs a new Cashfree plan; existing subscribers keep theirs.
+    if (data.pricePaise !== undefined) data.gatewayPlanId = null;
     res.status(200).json(await prisma.plan.update({ where: { id: req.params.id }, data }));
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
@@ -224,7 +233,7 @@ exports.companyBilling = (req, res) => tenant.runAsSystem(async () => {
     if (planKey && !plan) return res.status(400).json({ message: 'Unknown plan.' });
 
     if (action === 'activate') {
-      // A payment received outside Razorpay (bank transfer): record it and activate.
+      // A payment received outside Cashfree (bank transfer): record it and activate.
       // An amount needs a plan to price it against — activating without one
       // recorded a ₹0 invoice and made the company 'active' for nothing.
       if (!plan) return res.status(400).json({ message: 'Choose a plan to activate against (the invoice needs a price).' });

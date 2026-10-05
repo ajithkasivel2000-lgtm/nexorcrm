@@ -88,7 +88,7 @@ function corsOptions() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type', 'Authorization', 'X-Auth-Token', 'X-Session-Id',
-      'X-Company-Key', 'X-Hub-Signature-256', 'X-Razorpay-Signature',
+      'X-Company-Key', 'X-Hub-Signature-256', 'X-Webhook-Signature', 'X-Webhook-Timestamp',
     ],
     credentials: false, // token auth, never cookies
     maxAge: 86400,

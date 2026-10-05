@@ -4,6 +4,7 @@ import {
   Button, DataTable, Field, FormGrid, Input, Modal, Page, Pill, Select, Switch, toast,
 } from '../ui';
 import { api, copyText, fmtDate, readAsDataUrl } from './api';
+import { applySidebarTheme } from '../utils/sidebarTheme';
 import './features.css';
 
 /**
@@ -411,13 +412,11 @@ function BrandingCard({ slugLink }) {
         document.documentElement.style.setProperty('--nx-accent', b.brandColor);
         document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
       }
-      // Live-preview the sidebar colour so a save shows immediately without a
-      // reload. Clearing it (sidebarColor: null) returns the shell to defaults.
-      if (b.sidebarColor) {
-        document.documentElement.style.setProperty('--nx-sidebar-bg', b.sidebarColor);
-      } else {
-        document.documentElement.style.removeProperty('--nx-sidebar-bg');
-      }
+      /* Live-preview the whole sidebar palette (not just the background)
+         so a save shows immediately without a reload. applySidebarTheme
+         flips text/hover/active to stay readable against the chosen colour.
+         Clearing it returns the shell to the stock dark navy. */
+      applySidebarTheme(b.sidebarColor);
       toast.success(message);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
@@ -447,8 +446,12 @@ function BrandingCard({ slugLink }) {
       <h3 className="fx-card__title">Branding</h3>
       <p className="fx-card__hint">Your logo, icon, favicon and colour. The logo and colour show in the app, on your sign-in page and in PDFs. The icon shows in the narrow sidebar and on mobile. The favicon is the browser tab icon. The browser tab title uses your company name. Emails are sent in your company's name unless Mail Settings says otherwise.</p>
 
-      <Field label="Logo (wide)" hint="Shown in the top bar, on the sign-in page and in PDFs. Up to 1MB.">
+      <Field label="Logo for light theme (wide)" hint="A dark-coloured logo that reads against light backgrounds. Shown in the top bar, on the sign-in page in light mode and in PDFs. Up to 1MB.">
         {uploadRow({ label: 'Logo', hint: 'No logo yet.', urlField: 'logoUrl', dataField: 'logoDataUrl', removeField: 'removeLogo', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', maxBytes: 1024 * 1024, maxLabel: '1MB', previewBg: '#fff' })}
+      </Field>
+
+      <Field label="Logo for dark theme (wide)" hint="A light-coloured version of the logo for dark backgrounds. Falls back to the light-theme logo if you leave this empty. Up to 1MB.">
+        {uploadRow({ label: 'Dark-theme logo', hint: 'Using the light-theme logo everywhere.', urlField: 'logoDarkUrl', dataField: 'logoDarkDataUrl', removeField: 'removeLogoDark', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', maxBytes: 1024 * 1024, maxLabel: '1MB', previewBg: 'var(--nx-sidebar-bg, #111827)' })}
       </Field>
 
       <Field label="Icon (square)" hint="Shown in the narrow sidebar strip and on the mobile top bar. A ~128×128 square works best. Up to 512KB.">
@@ -512,20 +515,19 @@ function BuyerPaymentsTab() {
 
   return (
     <>
-      <form className="fx-card" onSubmit={(e) => { e.preventDefault(); save({ gateway: { enabled: gw.enabled, keyId: gw.keyId, keySecret: gw.keySecret, webhookSecret: gw.webhookSecret } }); }}>
-        <h3 className="fx-card__title">Online payments from buyers (Razorpay)</h3>
+      <form className="fx-card" onSubmit={(e) => { e.preventDefault(); save({ gateway: { enabled: gw.enabled, appId: gw.appId, secretKey: gw.secretKey } }); }}>
+        <h3 className="fx-card__title">Online payments from buyers (Cashfree)</h3>
         <p className="fx-card__hint">
-          Your company's own Razorpay account: buyers' money goes straight to you. Keys are under
-          <strong> Razorpay Dashboard → Account & Settings → API Keys</strong>. Use test keys first.
+          Your company's own Cashfree account: buyers' money goes straight to you. Copy the App ID and Secret Key
+          from Cashfree Dashboard → Developers → API Keys. Use sandbox credentials first.
         </p>
         <Switch label="Accept online payments" checked={Boolean(gw.enabled)} onChange={setG('enabled')} />
         <FormGrid columns={2}>
-          <Field label="Key ID" required><Input value={gw.keyId} onChange={setG('keyId')} placeholder="rzp_live_…" /></Field>
-          <Field label="Key secret" hint={gw.keySecretSet ? 'Saved. Leave blank to keep it.' : undefined}><Input type="password" value={gw.keySecret} onChange={setG('keySecret')} autoComplete="off" /></Field>
-          <Field label="Webhook secret" hint={gw.webhookSecretSet ? 'Saved. Leave blank to keep it.' : 'The secret you type when adding the webhook below.'}><Input type="password" value={gw.webhookSecret} onChange={setG('webhookSecret')} autoComplete="off" /></Field>
+          <Field label="Cashfree App ID" required><Input value={gw.appId} onChange={setG('appId')} /></Field>
+          <Field label="Cashfree Secret Key" hint={gw.secretKeySet ? 'Saved. Leave blank to keep it.' : undefined}><Input type="password" value={gw.secretKey} onChange={setG('secretKey')} autoComplete="off" /></Field>
         </FormGrid>
-        <h3 className="fx-card__title" style={{ marginTop: 'var(--nx-space-4)' }}>Webhook (Razorpay → Settings → Webhooks)</h3>
-        <p className="fx-card__hint">Add this URL with the webhook secret above and tick <code>payment_link.paid</code>, <code>payment_link.expired</code> and <code>payment_link.cancelled</code>. Paid links are then recorded on the booking automatically, with a receipt emailed to the buyer.</p>
+        <h3 className="fx-card__title" style={{ marginTop: 'var(--nx-space-4)' }}>Cashfree payment-link webhook</h3>
+        <p className="fx-card__hint">Add this URL in Cashfree Dashboard → Developers → Webhooks and enable <code>PAYMENT_LINK_EVENT</code>. The webhook is verified with the Secret Key above. Successful payments are recorded on the booking automatically, with a receipt emailed to the buyer.</p>
         <CopyLine value={data.webhookUrl} />
         <div className="fx-card__actions"><Button variant="primary" type="submit" loading={saving}>Save payment settings</Button></div>
       </form>
@@ -549,7 +551,7 @@ function BuyerPaymentsTab() {
           <Field label="Overdue reminders at most"><Input type="number" min="0" max="20" value={rm.maxOverdue} onChange={setR('maxOverdue')} /></Field>
         </FormGrid>
         <Switch label="By email" checked={Boolean(rm.email)} onChange={setR('email')} />
-        <Switch label="Include a pay-online link (when Razorpay is on)" checked={Boolean(rm.includePayLink)} onChange={setR('includePayLink')} />
+        <Switch label="Include a pay-online link (when Cashfree is on)" checked={Boolean(rm.includePayLink)} onChange={setR('includePayLink')} />
         <Switch label="By WhatsApp (approved template)" checked={Boolean(rm.whatsapp)} onChange={setR('whatsapp')} />
         {rm.whatsapp && (
           <FormGrid columns={2}>

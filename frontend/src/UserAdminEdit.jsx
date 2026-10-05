@@ -722,14 +722,28 @@ const UserAdminEdit = ({ user, onBack }) => {
               <RecordAvatarField
                 label=""
                 value={fullUser.profile_image}
-                onChange={(v) => {
+                onChange={async (v) => {
+                  // Shown straight away, then persisted. A failed save used to
+                  // be swallowed by `.catch(console.error)`, so a rejected
+                  // upload looked like it had worked until the next reload.
                   setFormData((p) => ({ ...p, profile_image: v }));
                   setFullUser((p) => ({ ...p, profile_image: v }));
-                  fetch(`/api/users/${user.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ profile_image: v }),
-                  }).catch(console.error);
+                  try {
+                    const res = await fetch(`/api/users/${user.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ profile_image: v }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json().catch(() => ({}));
+                      throw new Error(data.message || 'Could not save the profile picture.');
+                    }
+                    loadUser();
+                  } catch (err) {
+                    window.appAlert?.(err.message || 'Could not save the profile picture.');
+                    // Put the previously saved picture back on screen.
+                    loadUser();
+                  }
                 }}
               />
               <div className="u360-hero__id" style={{ marginLeft: 6 }}>

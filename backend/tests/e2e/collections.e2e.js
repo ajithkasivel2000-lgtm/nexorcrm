@@ -1,9 +1,9 @@
 /*
  * HTTP end-to-end checks for the buyer portal, online payments from buyers
- * (Razorpay payment links) and payment reminders.
+ * (Cashfree payment links) and payment reminders.
  *
  * Needs a RUNNING backend on a THROWAWAY database, started with
- *   RAZORPAY_API_BASE=http://127.0.0.1:7091   (this script plays Razorpay there)
+ *   CASHFREE_API_URL=http://127.0.0.1:7091/pg   (this script plays Cashfree there)
  * and this process pointed at the same database (DATABASE_URL).
  *
  *   E2E_BASE_URL   default http://localhost:7003
@@ -19,9 +19,9 @@ const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ADMIN = process.env.E2E_ADMIN || 'subodh';
 const FAKE_PORT = Number(process.env.E2E_FAKE_PORT || 7091);
 const CO = t.DEFAULT_COMPANY_ID;
-const KEY_ID = 'rzp_test_buyer';
-const KEY_SECRET = 'buyer_key_secret';
-const HOOK_SECRET = 'buyer_hook_secret';
+const APP_ID = 'cashfree_test_buyer';
+const SECRET_KEY = 'buyer_secret_key';
+const HOOK_SECRET = SECRET_KEY;
 const DAY = 86400000;
 
 const results = [];
@@ -37,18 +37,22 @@ const call = async (auth, path, { method = 'GET', body, headers = {}, raw } = {}
   return { status: r.status, body: data };
 };
 
-/* A stand-in for Razorpay's payment-links API. */
+/* A stand-in for Cashfree's payment-links API. */
 const fake = { requests: [], n: 0 };
 const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
   req.on('end', () => {
     const parsed = body ? JSON.parse(body) : {};
-    fake.requests.push({ method: req.method, url: req.url, auth: req.headers.authorization, body: parsed });
-    if (req.method === 'POST' && req.url === '/payment_links') {
+    fake.requests.push({
+      method: req.method, url: req.url, auth: req.headers.authorization,
+      appId: req.headers['x-client-id'], secretKey: req.headers['x-client-secret'],
+      apiVersion: req.headers['x-api-version'], body: parsed,
+    });
+    if (req.method === 'POST' && req.url === '/pg/links') {
       fake.n += 1;
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ id: `plink_e2e_${Date.now()}_${fake.n}`, short_url: `https://rzp.io/i/e2e${fake.n}`, amount: parsed.amount, status: 'created' }));
+      return res.end(JSON.stringify({ link_id: parsed.link_id, link_url: `https://payments-test.cashfree.com/links/e2e${fake.n}`, link_amount: parsed.link_amount, link_status: 'ACTIVE' }));
     }
     res.writeHead(404); return res.end('{}');
   });
@@ -56,7 +60,11 @@ const server = http.createServer((req, res) => {
 
 const signed = (payload, secret = HOOK_SECRET) => {
   const raw = JSON.stringify(payload);
-  return { raw, headers: { 'X-Razorpay-Signature': crypto.createHmac('sha256', secret).update(raw).digest('hex') } };
+  const timestamp = String(Date.now());
+  return { raw, headers: {
+    'x-webhook-timestamp': timestamp,
+    'x-webhook-signature': crypto.createHmac('sha256', secret).update(`${timestamp}${raw}`).digest('base64'),
+  } };
 };
 
 (async () => {
@@ -83,24 +91,24 @@ const signed = (payload, secret = HOOK_SECRET) => {
     made.bookingId = bookingId;
     const first = r.body.summary.milestones[0];
 
-    /* ---- online payments are off until the company connects Razorpay ---- */
+    /* ---- online payments are off until the company connects Cashfree ---- */
     r = await call(adm, `/api/bookings/${bookingId}/payment-links`);
     check('payment links listed, online off', r.status === 200 && r.body.online === false && r.body.links.length === 0, r.status);
     r = await call(adm, `/api/bookings/${bookingId}/payment-links`, { method: 'POST', body: {} });
-    check('payment link refused before Razorpay is set up', r.status === 400 && /not set up/.test(r.body.message), r.status);
-    r = await call(adm, '/api/integrations/buyer-payments', { method: 'PUT', body: { gateway: { enabled: true, keyId: KEY_ID } } });
+    check('payment link refused before Cashfree is set up', r.status === 400 && /not set up/.test(r.body.message), r.status);
+    r = await call(adm, '/api/integrations/buyer-payments', { method: 'PUT', body: { gateway: { enabled: true, appId: APP_ID } } });
     check('turning on without a secret is refused', r.status === 400, r.status);
-    r = await call(adm, '/api/integrations/buyer-payments', { method: 'PUT', body: { gateway: { enabled: true, keyId: KEY_ID, keySecret: KEY_SECRET, webhookSecret: HOOK_SECRET } } });
-    check('gateway saved; secrets never sent back', r.status === 200 && r.body.gateway.keySecret === '' && r.body.gateway.keySecretSet && r.body.gateway.webhookSecretSet, r.status);
-    check('webhook URL names the company', String(r.body.webhookUrl).endsWith(`/api/webhooks/razorpay-payments/${CO}`), r.body.webhookUrl);
+    r = await call(adm, '/api/integrations/buyer-payments', { method: 'PUT', body: { gateway: { enabled: true, appId: APP_ID, secretKey: SECRET_KEY } } });
+    check('gateway saved; secret never sent back', r.status === 200 && r.body.gateway.secretKey === '' && r.body.gateway.secretKeySet, r.status);
+    check('webhook URL names the company', String(r.body.webhookUrl).endsWith(`/api/webhooks/cashfree-payments/${CO}`), r.body.webhookUrl);
 
     /* ---- staff create a payment link ---- */
     r = await call(adm, `/api/bookings/${bookingId}/payment-links`, { method: 'POST', body: {} });
     const link = r.body;
     const sent = fake.requests.at(-1);
-    check('payment link created for the next due milestone', r.status === 201 && link.shortUrl?.startsWith('https://rzp.io/') && Number(link.amount) === first.outstanding, `${r.status} ${r.body?.message || ''}`);
-    check('Razorpay called with company keys, paise and notes',
-      sent?.auth === `Basic ${Buffer.from(`${KEY_ID}:${KEY_SECRET}`).toString('base64')}` && sent.body.amount === first.outstanding * 100 && sent.body.notes.bookingId === bookingId && sent.body.callback_url.includes('/portal?company='));
+    check('payment link created for the next due milestone', r.status === 201 && link.shortUrl?.startsWith('https://payments-test.cashfree.com/') && Number(link.amount) === first.outstanding, `${r.status} ${r.body?.message || ''}`);
+    check('Cashfree called with company credentials, amount and notes',
+      sent?.appId === APP_ID && sent?.secretKey === SECRET_KEY && sent.apiVersion && sent.body.link_amount === first.outstanding && sent.body.link_notes.bookingId === bookingId && sent.body.link_meta.return_url.includes('/portal?company='));
     r = await call(adm, `/api/bookings/${bookingId}/payment-links`, { method: 'POST', body: {} });
     check('an open link is reused, not duplicated', r.status === 201 && r.body.id === link.id, r.body?.id);
     r = await call(adm, `/api/bookings/${bookingId}/payment-links`, { method: 'POST', body: { amount: 99999999 } });
@@ -140,7 +148,7 @@ const signed = (payload, secret = HOOK_SECRET) => {
     check('a buyer token is not a staff sign-in', r.status === 401, r.status);
 
     r = await call(buyer, `/api/buyer/bookings/${bookingId}/pay`, { method: 'POST', body: { milestoneId: first.id } });
-    check('buyer pays a milestone: gets the Razorpay link', r.status === 200 && r.body.shortUrl === link.shortUrl, r.status);
+    check('buyer pays a milestone: gets the Cashfree link', r.status === 200 && r.body.shortUrl === link.shortUrl, r.status);
     r = await call(buyer, '/api/buyer/bookings/BKG-0000-999/pay', { method: 'POST', body: {} });
     check('buyer cannot pay someone else\'s booking', r.status === 404, r.status);
 
@@ -158,21 +166,18 @@ const signed = (payload, secret = HOOK_SECRET) => {
     r = await call(buyer, `/api/buyer/documents/${otherDoc}`);
     check('buyer cannot download other documents', r.status === 404, r.status);
 
-    /* ---- Razorpay reports the payment ---- */
+    /* ---- Cashfree reports the payment ---- */
     const paidEvent = {
-      event: 'payment_link.paid',
-      payload: {
-        payment_link: { entity: { id: link.razorpayLinkId, amount_paid: first.outstanding * 100, status: 'paid' } },
-        payment: { entity: { id: `pay_e2e_${stamp}`, amount: first.outstanding * 100, method: 'upi', status: 'captured' } },
-      },
+      type: 'PAYMENT_LINK_EVENT',
+      data: { link_id: link.gatewayLinkId, link_amount_paid: first.outstanding, link_status: 'PAID', cf_payment_id: `pay_e2e_${stamp}`, payment_group: 'upi' },
     };
     let s = signed(paidEvent, 'wrong-secret');
-    r = await call(null, `/api/webhooks/razorpay-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
+    r = await call(null, `/api/webhooks/cashfree-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
     check('webhook with a bad signature is refused', r.status === 401, r.status);
     s = signed(paidEvent);
-    r = await call(null, `/api/webhooks/razorpay-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
+    r = await call(null, `/api/webhooks/cashfree-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
     check('signed payment_link.paid accepted', r.status === 200, r.status);
-    r = await call(null, `/api/webhooks/razorpay-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
+    r = await call(null, `/api/webhooks/cashfree-payments/${CO}`, { method: 'POST', raw: s.raw, headers: s.headers });
     check('replayed webhook accepted', r.status === 200, r.status);
     const payments = await inCo(() => p.payment.findMany({ where: { bookingId } }));
     check('payment recorded exactly once', payments.length === 1 && Number(payments[0].amount) === first.outstanding && payments[0].gatewayPaymentId === `pay_e2e_${stamp}` && /Online/.test(payments[0].mode), JSON.stringify(payments.map((x) => [x.amount, x.mode])));
@@ -182,7 +187,7 @@ const signed = (payload, secret = HOOK_SECRET) => {
     if (!link?.id) { check('link marked paid', false, 'no link id — earlier payment-link step failed'); return; }
     const linkAfter = await inCo(() => p.paymentLink.findUnique({ where: { id: link.id } }));
     check('link marked paid', linkAfter?.status === 'paid' && linkAfter?.paymentId === `pay_e2e_${stamp}`, linkAfter?.status);
-    r = await call(null, '/api/webhooks/razorpay-payments/CMP-NOPE', { method: 'POST', raw: s.raw, headers: s.headers });
+    r = await call(null, '/api/webhooks/cashfree-payments/CMP-NOPE', { method: 'POST', raw: s.raw, headers: s.headers });
     check('webhook for an unknown company is refused', r.status === 404, r.status);
     r = await call(buyer, '/api/buyer/me');
     check('buyer sees the receipt', r.body.bookings[0].payments.length === 1 && r.body.bookings[0].summary.milestones[0].outstanding === 0, r.status);

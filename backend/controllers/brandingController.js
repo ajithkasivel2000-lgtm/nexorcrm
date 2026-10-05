@@ -1,9 +1,11 @@
 const prisma = require('../prismaClient');
+const crypto = require('crypto');
 const tenant = require('../utils/tenant');
 const storage = require('../utils/storage');
 const { sendError } = require('../utils/apiError');
-const { provisionCompany } = require('../utils/provisioning');
+const { provisionCompany, activatePendingCompany } = require('../utils/provisioning');
 const { normalizeDomain, platformUrl, companyByHost } = require('../utils/companyUrl');
+const { sendMail } = require('../utils/mailer');
 
 /**
  * Company self-signup and per-company branding.
@@ -30,9 +32,12 @@ const brandingOf = (company) => ({
   slug: company.slug,
   brandColor:   company.brandColor   || null,
   sidebarColor: company.sidebarColor || null,
-  logoUrl:    assetUrl(company, 'logo',    company.logoKey),
-  iconUrl:    assetUrl(company, 'icon',    company.iconKey),
-  faviconUrl: assetUrl(company, 'favicon', company.faviconKey),
+  logoUrl:     assetUrl(company, 'logo',      company.logoKey),
+  /* Falls back on the client side with `logoDarkUrl || logoUrl` so a tenant
+     with only one logo still gets something readable in the other theme. */
+  logoDarkUrl: assetUrl(company, 'logo-dark', company.logoDarkKey),
+  iconUrl:     assetUrl(company, 'icon',      company.iconKey),
+  faviconUrl:  assetUrl(company, 'favicon',   company.faviconKey),
   loginContent: company.loginContent || null,
 });
 
@@ -51,10 +56,16 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
     if (pw.length < 10 || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
       return res.status(400).json({ message: 'Use a password of at least 10 characters with a number and a symbol.' });
     }
-    const { company } = await provisionCompany({
+    /* Verify-first is the default self-signup mode: the account exists but
+       cannot sign in until the emailed link is clicked. Opting out via the
+       env flag is for the test suite, which creates throwaway companies and
+       cannot click an email in the browser. */
+    const verifyFirst = String(process.env.SKIP_SIGNUP_VERIFICATION || '').toLowerCase() !== 'true';
+    const { company, verificationToken } = await provisionCompany({
       name: b.companyName,
       planKey: b.planKey || 'growth',
       phone: b.phone ? String(b.phone).trim() : null,
+      verifyBeforeActivate: verifyFirst,
       admin: {
         username: String(b.username).trim(),
         email,
@@ -63,6 +74,32 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
         mustChangePassword: false, // they chose it themselves just now
       },
     });
+
+    /* Tell the platform admins somebody started a trial — a quiet "ping"
+       so they can watch signups land, follow up, and spot abuse without
+       having to refresh the Companies screen. Non-blocking: a mail failure
+       must not block the signup response. */
+    notifyPlatformAdminsOfSignup({ req, company, email, planKey: b.planKey || 'growth' })
+      .catch((err) => console.log('[signup] platform admin notification failed:', err.message));
+
+    if (verifyFirst && verificationToken) {
+      const { link, sent } = await sendVerificationEmail({ req, email, company, verificationToken });
+      /* In production the link must never leave the backend — only the
+         inbox owner should have it. In dev, if the mailer wasn't configured
+         and nothing was sent, hand the link back so the developer can click
+         it from the browser's response panel. */
+      const devLink = (!sent && process.env.NODE_ENV !== 'production') ? link : undefined;
+      return res.status(201).json({
+        message: sent
+          ? `Check your email. We sent a verification link to ${email}.`
+          : `Account created. Mail is not configured on this server — ask an administrator for the verification link, or configure SMTP in Mail Settings.`,
+        pending: true,
+        email,
+        company: { slug: company.slug, name: company.name },
+        ...(devLink ? { _devVerifyLink: devLink } : {}),
+      });
+    }
+
     res.status(201).json({
       message: 'Your company is ready. Signing you in…',
       company: { slug: company.slug, name: company.name, trialEndsAt: company.trialEndsAt },
@@ -70,6 +107,205 @@ exports.signup = (req, res) => tenant.runAsSystem(async () => {
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     sendError(res, error, 'Could not create your company', 500);
+  }
+});
+
+/* ---- platform-admin signup notification --------------------------------- */
+
+/**
+ * Email the people listed in PLATFORM_ADMINS when a new company signs up for
+ * a trial.
+ *
+ * The list is read from the env rather than from a role column so that a
+ * client company's admin can never make themselves a platform admin by
+ * editing their own row. The recipient address is each listed user's own
+ * email, which lives on the User row.
+ *
+ * Deliberately quiet when nothing is configured: a platform without
+ * PLATFORM_ADMINS set is one person running everything themselves, and the
+ * Companies screen is enough. The failure path logs rather than throws, so
+ * a mis-configured notifier never blocks a legitimate signup.
+ */
+async function notifyPlatformAdminsOfSignup({ req, company, email, planKey }) {
+  const names = String(process.env.PLATFORM_ADMINS || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  if (!names.length) return;
+
+  const admins = await tenant.runWithCompany(tenant.DEFAULT_COMPANY_ID, () =>
+    prisma.user.findMany({
+      where: { username: { in: names }, email: { not: null } },
+      select: { username: true, email: true },
+    }));
+  if (!admins.length) return;
+
+  const base = appBaseUrl(req);
+  const safe = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const companiesUrl = `${base}/platform/companies`;
+  const subject = `New ${planKey} trial: ${company.name}`;
+  const text =
+`A new company has signed up for a free trial.
+
+  Company:  ${company.name}
+  Email:    ${email}
+  Plan:     ${planKey}
+  Status:   ${company.status} (${company.status === 'Pending' ? 'awaiting email verification' : 'active'})
+
+See it on the Companies screen:
+${companiesUrl}
+
+(This is an automated notification from NexorCRM.)`;
+  const html = `
+<!doctype html><html><body style="font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f5f6fa;padding:24px;color:#0f172a">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <h2 style="margin:0 0 12px 0">New trial signup</h2>
+    <table style="border-collapse:collapse;margin:12px 0 20px 0">
+      <tr><td style="padding:6px 12px 6px 0;color:#64748b">Company</td><td style="padding:6px 0"><strong>${safe(company.name)}</strong></td></tr>
+      <tr><td style="padding:6px 12px 6px 0;color:#64748b">Email</td><td style="padding:6px 0">${safe(email)}</td></tr>
+      <tr><td style="padding:6px 12px 6px 0;color:#64748b">Plan</td><td style="padding:6px 0">${safe(planKey)}</td></tr>
+      <tr><td style="padding:6px 12px 6px 0;color:#64748b">Status</td><td style="padding:6px 0">${safe(company.status)}</td></tr>
+    </table>
+    <p style="margin:16px 0">
+      <a href="${safe(companiesUrl)}" style="display:inline-block;background:#4F46E5;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Open Companies</a>
+    </p>
+  </div>
+</body></html>`;
+
+  for (const admin of admins) {
+    const result = await sendMail({ to: admin.email, subject, text, html })
+      .catch((e) => ({ status: 'skipped', error: e.message }));
+    if (result?.status !== 'sent') {
+      console.log(`[signup] admin notification to ${admin.username} <${admin.email}> not sent (${result?.error || 'unknown'})`);
+    }
+  }
+}
+
+/* ---- verification handshake --------------------------------------------- */
+
+/** Where emailed links point. APP_URL in production, falls back to the request
+ *  origin in dev so the local login page is reachable without extra config. */
+function appBaseUrl(req) {
+  const configured = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  return `${req.protocol}://${req.get('host')}`;
+}
+
+/** The HTML/text used in the verification email. Kept inline rather than in
+ *  the EmailTemplate table because this fires BEFORE a company (and its
+ *  per-tenant templates) exists. The link's token is single-use. */
+function verificationEmailBody({ link, companyName, hours }) {
+  const safe = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const name = safe(companyName);
+  const text =
+`Welcome to NexorCRM.
+
+Confirm your email to activate ${companyName} and start your free trial:
+
+${link}
+
+This link expires in ${hours} hours. If you did not create an account, ignore this email.`;
+  const html = `
+<!doctype html><html><body style="font-family:system-ui,Segoe UI,Arial,sans-serif;background:#f5f6fa;padding:24px;color:#0f172a">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+    <h2 style="margin:0 0 8px 0">Welcome to NexorCRM</h2>
+    <p>Confirm your email to activate <strong>${name}</strong> and start your free trial.</p>
+    <p style="margin:24px 0">
+      <a href="${safe(link)}" style="display:inline-block;background:#4F46E5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Verify my email</a>
+    </p>
+    <p style="color:#64748b;font-size:14px">Or paste this address into your browser:<br>
+      <span style="word-break:break-all">${safe(link)}</span></p>
+    <p style="color:#64748b;font-size:14px">This link expires in ${hours} hours. If you did not create an account, you can ignore this email.</p>
+  </div>
+</body></html>`;
+  return { text, html };
+}
+
+/** Build the link, dispatch the email, and return the link alongside the
+ *  mail-send result. Non-blocking at the controller level: if SMTP is not
+ *  configured, we return the link so the controller can decide what to do —
+ *  log it in production, surface it in the response in dev. */
+async function sendVerificationEmail({ req, email, company, verificationToken }) {
+  const base = appBaseUrl(req);
+  const link = `${base}/verify-company?token=${verificationToken}`;
+  const { text, html } = verificationEmailBody({ link, companyName: company.name, hours: 24 });
+  const result = await sendMail({
+    to: email,
+    subject: `Verify your email to activate ${company.name}`,
+    text,
+    html,
+  }).catch((e) => ({ status: 'skipped', error: e.message }));
+  if (result?.status !== 'sent') {
+    // Visible both ways: a prominent log line AND the link in the string so
+    // a tail -f on the backend picks it up without scrolling.
+    console.log('\n' + '='.repeat(72));
+    console.log(`[signup] verification email NOT SENT (${result?.error || 'unknown reason'})`);
+    console.log(`[signup] to: ${email}`);
+    console.log(`[signup] link: ${link}`);
+    console.log('='.repeat(72) + '\n');
+  }
+  return { link, sent: result?.status === 'sent' };
+}
+
+/* GET /api/public/verify-company?token=xxx
+ *
+ * Flips a Pending company and its first admin to Active, starts the trial
+ * clock, and clears the token. One-shot: a used token no longer matches, so
+ * refreshing the success page cannot re-trigger activation. */
+exports.verifyCompany = (req, res) => tenant.runAsSystem(async () => {
+  try {
+    const token = String(req.query.token || '').trim();
+    if (!token || token.length < 32) {
+      return res.status(400).json({ message: 'That verification link is not valid.' });
+    }
+    const company = await prisma.company.findUnique({ where: { verificationToken: token } });
+    if (!company) {
+      return res.status(404).json({ message: 'This link has already been used or is not recognised.' });
+    }
+    if (!company.verificationExpiresAt || company.verificationExpiresAt < new Date()) {
+      return res.status(410).json({ message: 'This verification link has expired. Please request a new one.' });
+    }
+    await activatePendingCompany(company.id);
+    res.status(200).json({
+      message: 'Verified! You can sign in now.',
+      slug: company.slug,
+      companyName: company.name,
+    });
+  } catch (error) {
+    sendError(res, error, 'Could not verify your account', 500);
+  }
+});
+
+/* POST /api/public/resend-verification { email }
+ *
+ * Issues a fresh token and sends a new email for a Pending company. Finds the
+ * company by its admin's email so the caller does not need the token (which
+ * is the exact thing they lost). Rate-limited at the route to one request
+ * per minute per IP so this is not a spam vector. */
+exports.resendVerification = (req, res) => tenant.runAsSystem(async () => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: 'Email is required.' });
+    /* Find the Pending admin by email, then the company. runAsSystem is OK
+       here because we are not reading sensitive tenant data — just checking
+       whether this address has a pending signup to re-notify. */
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' }, status: 'Pending' },
+      orderBy: { createdAt: 'desc' },
+    });
+    /* Always answer the same message, whether we matched or not, so this
+       cannot be used to probe for registered addresses. */
+    const generic = 'If that email has a pending account, we sent a new verification link.';
+    if (!user) return res.status(200).json({ message: generic });
+    const company = await prisma.company.findUnique({ where: { id: user.companyId } });
+    if (!company || company.status !== 'Pending') return res.status(200).json({ message: generic });
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const updated = await prisma.company.update({
+      where: { id: company.id },
+      data: { verificationToken, verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    });
+    await sendVerificationEmail({ req, email: user.email, company: updated, verificationToken });
+    res.status(200).json({ message: generic });
+  } catch (error) {
+    sendError(res, error, 'Could not resend the verification email', 500);
   }
 });
 
@@ -122,9 +358,10 @@ function serveAsset(kind, keyField, typeMap) {
   });
 }
 
-exports.logo    = serveAsset('logo',    'logoKey',    LOGO_TYPES);
-exports.icon    = serveAsset('icon',    'iconKey',    LOGO_TYPES);
-exports.favicon = serveAsset('favicon', 'faviconKey', FAVICON_TYPES);
+exports.logo     = serveAsset('logo',      'logoKey',      LOGO_TYPES);
+exports.logoDark = serveAsset('logo-dark', 'logoDarkKey',  LOGO_TYPES);
+exports.icon     = serveAsset('icon',      'iconKey',      LOGO_TYPES);
+exports.favicon  = serveAsset('favicon',   'faviconKey',   FAVICON_TYPES);
 
 exports.current = (req, res) => tenant.runAsSystem(async () => {
   const company = await prisma.company.findUnique({ where: { id: req.companyId } });
@@ -166,9 +403,10 @@ exports.update = (req, res) => tenant.runAsSystem(async () => {
        identical to what the UI used before this refactor, so an admin saving
        just a logo sees no behaviour change. */
     const UPLOADS = [
-      { kind: 'logo',    column: 'logoKey',    types: LOGO_TYPES,    maxBytes: 1024 * 1024, badType: 'Use a PNG, JPG, WebP or SVG logo.',    tooBig: 'Keep the logo under 1MB.' },
-      { kind: 'icon',    column: 'iconKey',    types: LOGO_TYPES,    maxBytes:  512 * 1024, badType: 'Use a PNG, JPG, WebP or SVG icon.',    tooBig: 'Keep the icon under 512KB.' },
-      { kind: 'favicon', column: 'faviconKey', types: FAVICON_TYPES, maxBytes:  256 * 1024, badType: 'Use a PNG, ICO, JPG or SVG favicon.', tooBig: 'Keep the favicon under 256KB.' },
+      { kind: 'logo',     column: 'logoKey',     types: LOGO_TYPES,    maxBytes: 1024 * 1024, badType: 'Use a PNG, JPG, WebP or SVG logo.',    tooBig: 'Keep the logo under 1MB.' },
+      { kind: 'logoDark', column: 'logoDarkKey', types: LOGO_TYPES,    maxBytes: 1024 * 1024, badType: 'Use a PNG, JPG, WebP or SVG logo.',    tooBig: 'Keep the logo under 1MB.' },
+      { kind: 'icon',     column: 'iconKey',     types: LOGO_TYPES,    maxBytes:  512 * 1024, badType: 'Use a PNG, JPG, WebP or SVG icon.',    tooBig: 'Keep the icon under 512KB.' },
+      { kind: 'favicon',  column: 'faviconKey',  types: FAVICON_TYPES, maxBytes:  256 * 1024, badType: 'Use a PNG, ICO, JPG or SVG favicon.', tooBig: 'Keep the favicon under 256KB.' },
     ];
     for (const u of UPLOADS) {
       const removeFlag = `remove${u.kind.charAt(0).toUpperCase()}${u.kind.slice(1)}`;

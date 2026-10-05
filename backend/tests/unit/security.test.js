@@ -10,7 +10,17 @@ const { handleOf, publicSession } = require('../../utils/sessionHandle');
 const { resourceFromPath } = require('../../utils/realtime');
 const { prefixFor } = require('../../utils/refId');
 const { verifyMetaSignature } = require('../../utils/whatsapp');
+const { contentSecurityPolicy } = require('../../utils/securityHeaders');
 const crypto = require('crypto');
+
+test('CSP allows Cashfree checkout frames without opening other frame origins', () => {
+  const csp = contentSecurityPolicy();
+  const frameSrc = csp.split('; ').find((directive) => directive.startsWith('frame-src '));
+  assert.ok(frameSrc.includes('https://sdk.cashfree.com'));
+  assert.ok(frameSrc.includes('https://payments.cashfree.com'));
+  assert.ok(frameSrc.includes('https://payments-test.cashfree.com'));
+  assert.ok(!frameSrc.includes('https:;'));
+});
 
 test('TOTP matches the RFC 6238 test vectors', () => {
   const secret = totp.base32Encode(Buffer.from('12345678901234567890'));

@@ -30,10 +30,11 @@ test('nothing is sent for a paid milestone or one with no due date', () => {
 });
 
 test('payment webhooks must carry a valid signature', () => {
+  const timestamp = '1725899940000';
   const body = Buffer.from('{"event":"payment_link.paid"}');
-  const good = crypto.createHmac('sha256', 'secret').update(body).digest('hex');
-  assert.ok(verifyWebhookSignature(body, good, 'secret'));
-  assert.ok(!verifyWebhookSignature(body, good, 'other'));
-  assert.ok(!verifyWebhookSignature(body, 'abc', 'secret'));
-  assert.ok(!verifyWebhookSignature(body, good, ''));
+  const good = crypto.createHmac('sha256', 'secret').update(`${timestamp}${body}`).digest('base64');
+  assert.ok(verifyWebhookSignature(body, good, timestamp, 'secret'));
+  assert.ok(!verifyWebhookSignature(body, good, timestamp, 'other'));
+  assert.ok(!verifyWebhookSignature(body, 'abc', timestamp, 'secret'));
+  assert.ok(!verifyWebhookSignature(body, good, '', 'secret'));
 });

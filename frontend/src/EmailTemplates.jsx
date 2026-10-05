@@ -5,6 +5,7 @@ import './EmailTemplates.css';
 import submitOnEnter from './utils/submitOnEnter';
 import { DataTable, Pill, RowActions, Switch } from './ui';
 import { isSystemTemplate } from './utils/emailTemplates';
+import useLiveRefresh from './utils/useLiveRefresh';
 
 
 const EmailTemplates = () => {
@@ -22,10 +23,6 @@ const EmailTemplates = () => {
     status: true
   });
 
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
   const fetchTemplates = async () => {
     try {
       const response = await fetch('/api/settings/email-templates');
@@ -37,6 +34,16 @@ const EmailTemplates = () => {
       console.error('Error fetching email templates:', error);
     }
   };
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  /* Keep the table in step with writes from any tab or user, so creating or
+     editing a template on one screen shows up here without a page reload. The
+     list and the form render independently, so this does not stomp on unsaved
+     input in the form below. */
+  useLiveRefresh(['email-templates', 'settings'], fetchTemplates);
 
   const handleToggleStatus = async (id, currentStatus) => {
     try {

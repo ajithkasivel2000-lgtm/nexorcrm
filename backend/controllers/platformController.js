@@ -103,8 +103,8 @@ exports.bulkDeleteCompanies = (req, res) => tenant.runAsSystem(async () => {
     // Stop any NexorCRM subscription still billing them.
     const billing = require('../utils/billing');
     for (const c of companies) {
-      if (c.razorpaySubscriptionId && billing.razorpayConfigured() && ['active', 'past_due', 'trialing'].includes(c.subscriptionStatus)) {
-        await billing.razorpay(`/subscriptions/${c.razorpaySubscriptionId}/cancel`, { method: 'POST', body: { cancel_at_cycle_end: 0 } })
+      if (c.subscriptionGatewayId && billing.cashfreeConfigured() && ['active', 'past_due', 'trialing'].includes(c.subscriptionStatus)) {
+        await billing.cashfree(`/subscriptions/${encodeURIComponent(c.subscriptionGatewayId)}/manage`, { method: 'POST', body: { action: 'CANCEL' } })
           .catch((error) => console.error(`Could not cancel ${c.name}'s subscription:`, error.message));
       }
     }
@@ -140,7 +140,23 @@ exports.updateCompany = (req, res) => tenant.runAsSystem(async () => {
       }
       data.status = req.body.status;
     }
-    const company = await prisma.company.update({ where: { id: req.params.id }, data });
+    /* Pending → Active is a special case: just flipping the column leaves
+       the admin user stuck in Pending (so they still cannot sign in) and
+       the trial clock un-started. activatePendingCompany does the whole
+       set of writes the verification endpoint would have done. */
+    if (req.body?.status === 'Active') {
+      const existing = await prisma.company.findUnique({ where: { id: req.params.id }, select: { status: true } });
+      if (existing?.status === 'Pending') {
+        const { activatePendingCompany } = require('../utils/provisioning');
+        await activatePendingCompany(req.params.id);
+        /* activatePendingCompany already set status, trialEndsAt, etc. We
+           still need to apply any other field changes from this PUT. */
+        delete data.status;
+      }
+    }
+    const company = Object.keys(data).length
+      ? await prisma.company.update({ where: { id: req.params.id }, data })
+      : await prisma.company.findUnique({ where: { id: req.params.id } });
     res.status(200).json(company);
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ message: 'Company not found' });

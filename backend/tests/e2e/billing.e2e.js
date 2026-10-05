@@ -1,10 +1,8 @@
 /*
  * HTTP end-to-end checks for SaaS billing, self-signup and branding.
- * Needs a RUNNING backend on a THROWAWAY database, started with test Razorpay
- * secrets, e.g.:
- *   RAZORPAY_KEY_ID=rzp_test_dummy RAZORPAY_KEY_SECRET=test_key_secret_abc
- *   RAZORPAY_WEBHOOK_SECRET=test_webhook_secret_xyz PLATFORM_ADMINS=admin
- * and the same two secrets in this process's environment.
+ * Needs a RUNNING backend on a THROWAWAY database, started with test Cashfree
+ * credentials and CASHFREE_API_URL=http://127.0.0.1:7092/pg (the fake
+ * service below).
  *
  *   E2E_BASE_URL   default http://localhost:7003
  *   E2E_ROOT       a platform admin username (default admin)
@@ -12,14 +10,45 @@
  */
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const http = require('http');
 const p = require('../../prismaClient');
 const t = require('../../utils/tenant');
 
 const B = process.env.E2E_BASE_URL || 'http://localhost:7003';
 const ROOT = process.env.E2E_ROOT || 'admin';
 const ROOT_PASSWORD = process.env.E2E_ROOT_PASSWORD || 'UiTest-Pass-123!';
-const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test_key_secret_abc';
-const HOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || 'test_webhook_secret_xyz';
+const FAKE_PORT = Number(process.env.E2E_FAKE_PORT || 7092);
+const SECRET_KEY = process.env.CASHFREE_SECRET_KEY || 'cashfree_test_secret';
+const subscriptions = new Map();
+const fakeCashfree = http.createServer((req, res) => {
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    const body = raw ? JSON.parse(raw) : {};
+    const send = (status, value) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(value));
+    };
+    if (req.method === 'POST' && req.url === '/pg/plans') return send(200, { plan_id: body.plan_id });
+    if (req.method === 'POST' && req.url === '/pg/subscriptions') {
+      subscriptions.set(body.subscription_id, { subscription_id: body.subscription_id, subscription_status: 'ACTIVE' });
+      return send(200, { subscription_id: body.subscription_id, subscription_session_id: `session_${Date.now()}` });
+    }
+    const manage = req.url.match(/^\/pg\/subscriptions\/([^/]+)\/manage$/);
+    if (req.method === 'POST' && manage) {
+      const subscription = subscriptions.get(decodeURIComponent(manage[1]));
+      if (!subscription) return send(404, { message: 'Not found' });
+      if (body.action === 'CANCEL') subscription.subscription_status = 'CANCELLED';
+      return send(200, subscription);
+    }
+    const lookup = req.url.match(/^\/pg\/subscriptions\/([^/]+)$/);
+    if (req.method === 'GET' && lookup) {
+      const subscription = subscriptions.get(decodeURIComponent(lookup[1]));
+      return subscription ? send(200, subscription) : send(404, { message: 'Not found' });
+    }
+    return send(404, { message: 'Unknown fake Cashfree route' });
+  });
+});
 const results = [];
 const check = (name, ok, extra = '') => { results.push(Boolean(ok)); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${extra}`); };
 const call = async (token, path, { method = 'GET', body, headers = {}, raw } = {}) => {
@@ -33,6 +62,7 @@ const call = async (token, path, { method = 'GET', body, headers = {}, raw } = {
 const login = async (username, password) => (await call(null, '/api/auth/login', { method: 'POST', body: { username, password } })).body?.token;
 
 (async () => {
+  await new Promise((resolve) => fakeCashfree.listen(FAKE_PORT, '127.0.0.1', resolve));
   const stamp = Date.now().toString(36);
   const made = { companyId: null };
   try {
@@ -92,39 +122,32 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
     r = await call(token, '/api/leads');
     check('extended trial: CRM opens again', r.status === 200, r.status);
 
-    /* ---- Razorpay: subscribe fails cleanly with test keys, checkout + webhooks ---- */
+    /* ---- Cashfree subscription checkout and webhooks ---- */
     r = await call(token, '/api/billing/subscribe', { method: 'POST', body: { planKey: 'growth' } });
-    check('subscribe with dummy Razorpay keys fails with a clear error', r.status === 502 && /Razorpay/.test(r.body.message), `${r.status} ${r.body?.message}`);
+    check('Cashfree returns subscription checkout credentials', r.status === 200 && r.body.subscriptionId && r.body.subscriptionSessionId && r.body.mode, `${r.status} ${r.body?.message || ''}`);
+    const subId = r.body.subscriptionId;
+    r = await call(token, '/api/billing/verify', { method: 'POST', body: { subscriptionId: subId } });
+    check('subscription status is checked directly with Cashfree', r.status === 200 && /activated/.test(r.body.message), `${r.status} ${r.body?.message}`);
 
-    const subId = `sub_test_${stamp}`;
-    await t.runAsSystem(() => p.company.update({ where: { id: company.id }, data: { razorpaySubscriptionId: subId, planKey: 'growth' } }));
-    const payId = `pay_test_${stamp}`;
-    r = await call(token, '/api/billing/verify', { method: 'POST', body: { paymentId: payId, subscriptionId: subId, signature: 'forged' } });
-    check('forged checkout signature refused', r.status === 400, r.status);
-    const sig = crypto.createHmac('sha256', KEY_SECRET).update(`${payId}|${subId}`).digest('hex');
-    r = await call(token, '/api/billing/verify', { method: 'POST', body: { paymentId: payId, subscriptionId: subId, signature: sig } });
-    check('genuine checkout payment activates the plan', r.status === 200 && r.body.invoice?.number, `${r.status} ${r.body?.message}`);
-    check('invoice total includes 18% GST', r.body?.invoice?.totalPaise === Math.round(299900 * 1.18), r.body?.invoice?.totalPaise);
-
-    const now = Math.floor(Date.now() / 1000);
     const event = JSON.stringify({
-      event: 'subscription.charged',
-      payload: {
-        subscription: { entity: { id: subId, current_start: now, current_end: now + 30 * 86400 } },
-        payment: { entity: { id: `pay_renew_${stamp}` } },
-      },
+      type: 'SUBSCRIPTION_PAYMENT_SUCCESS',
+      data: { subscription_id: subId, cf_payment_id: `pay_first_${stamp}`, payment_initiated_date: new Date().toISOString() },
+      event_time: new Date().toISOString(),
     });
-    r = await call(null, '/api/webhooks/razorpay', { method: 'POST', raw: event, headers: { 'X-Razorpay-Signature': 'bad' } });
+    const timestamp = String(Date.now());
+    const webhookHeaders = (signature) => ({ 'x-webhook-signature': signature, 'x-webhook-timestamp': timestamp });
+    r = await call(null, '/api/webhooks/cashfree', { method: 'POST', raw: event, headers: webhookHeaders('bad') });
     check('webhook with bad signature refused', r.status === 400, r.status);
-    const hookSig = crypto.createHmac('sha256', HOOK_SECRET).update(event).digest('hex');
-    r = await call(null, '/api/webhooks/razorpay', { method: 'POST', raw: event, headers: { 'X-Razorpay-Signature': hookSig } });
-    await call(null, '/api/webhooks/razorpay', { method: 'POST', raw: event, headers: { 'X-Razorpay-Signature': hookSig } });
+    const hookSig = crypto.createHmac('sha256', SECRET_KEY).update(`${timestamp}${event}`).digest('base64');
+    r = await call(null, '/api/webhooks/cashfree', { method: 'POST', raw: event, headers: webhookHeaders(hookSig) });
+    await call(null, '/api/webhooks/cashfree', { method: 'POST', raw: event, headers: webhookHeaders(hookSig) });
     await new Promise((res) => setTimeout(res, 500));
     const invoices = await t.runWithCompany(company.id, () => p.invoice.findMany());
-    check('renewal webhook adds exactly one invoice (replay ignored)', r.status === 200 && invoices.length === 2, `invoices=${invoices.length}`);
+    check('payment webhook adds one GST invoice (replay ignored)', r.status === 200 && invoices.length === 1 && invoices[0].totalPaise === Math.round(299900 * 1.18), `invoices=${invoices.length}`);
 
-    const halted = JSON.stringify({ event: 'subscription.halted', payload: { subscription: { entity: { id: subId } } } });
-    await call(null, '/api/webhooks/razorpay', { method: 'POST', raw: halted, headers: { 'X-Razorpay-Signature': crypto.createHmac('sha256', HOOK_SECRET).update(halted).digest('hex') } });
+    const halted = JSON.stringify({ type: 'SUBSCRIPTION_PAYMENT_FAILED', data: { subscription_id: subId } });
+    const failedSig = crypto.createHmac('sha256', SECRET_KEY).update(`${timestamp}${halted}`).digest('base64');
+    await call(null, '/api/webhooks/cashfree', { method: 'POST', raw: halted, headers: webhookHeaders(failedSig) });
     await new Promise((res) => setTimeout(res, 300));
     r = await call(token, '/api/billing');
     check('failed renewal → past due with grace period', r.body?.status === 'past_due' && r.body?.access?.allowed === true, `${r.body?.status}`);
@@ -153,6 +176,7 @@ const login = async (username, password) => (await call(null, '/api/auth/login',
     console.error(error);
     results.push(false);
   } finally {
+    fakeCashfree.close();
     if (made.companyId) {
       await t.runWithCompany(made.companyId, async () => {
         const c = await t.runAsSystem(() => p.company.findUnique({ where: { id: made.companyId } }));

@@ -432,7 +432,7 @@ function BookingDetail({ id, perms, onClose }) {
 
 const LINK_TONE = { created: 'info', paid: 'success', expired: 'neutral', cancelled: 'neutral', failed: 'danger' };
 
-/** The buyer's portal link to share, and Razorpay payment links for their dues. */
+/** The buyer's portal link to share, and Cashfree payment links for their dues. */
 function BuyerTools({ booking, canEdit }) {
   const [links, setLinks] = useState(null);
   const [online, setOnline] = useState(false);
@@ -494,7 +494,7 @@ function BuyerTools({ booking, canEdit }) {
             </div>
             <Button size="sm" variant="primary" icon={Link2} loading={busy === 'link'} onClick={request}>Create payment link</Button>
           </div>
-        ) : <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Online payment is off. An administrator can connect Razorpay in Settings → Integrations → Buyer payments.</p>
+        ) : <p className="fx-muted" style={{ marginTop: 'var(--nx-space-3)' }}>Online payment is off. An administrator can connect Cashfree in Settings → Integrations → Buyer payments.</p>
       )}
 
       {links?.length > 0 && (

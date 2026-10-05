@@ -5,8 +5,8 @@
  * drawn from what the SPA really loads — anything stricter broke the app,
  * anything looser is not in here:
  *
- *   - Google Fonts (stylesheets and font files) and flagcdn.com images are
- *     the only third-party loads;
+ *   - Google Fonts (stylesheets and font files), Cashfree checkout, and
+ *     flagcdn.com images are the only third-party loads;
  *   - Google Identity Services renders its sign-in button in an iframe from
  *     accounts.google.com, and its token endpoints are contacted by its
  *     script — frame-src and connect-src admit those hosts;
@@ -36,10 +36,10 @@ function contentSecurityPolicy() {
     `font-src 'self' ${fontHosts}`,
     `img-src 'self' data: blob: https://flagcdn.com`,
     // Google Identity Services: its button iframe and its token endpoints.
-    `script-src 'self' https://accounts.google.com`,
-    `frame-src 'self' blob: https://accounts.google.com`,
+    `script-src 'self' https://accounts.google.com https://sdk.cashfree.com`,
+    `frame-src 'self' blob: https://accounts.google.com https://sdk.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com`,
     // blob: for the PDF preview; ws/wss for Socket.IO on the same origin.
-    `connect-src 'self' blob: ws: wss: ${fontHosts} https://flagcdn.com`,
+    `connect-src 'self' blob: ws: wss: ${fontHosts} https://flagcdn.com https://sdk.cashfree.com https://api.cashfree.com https://payments.cashfree.com https://payments-test.cashfree.com`,
     "object-src 'none'",
     "base-uri 'none'",
     "form-action 'self'",

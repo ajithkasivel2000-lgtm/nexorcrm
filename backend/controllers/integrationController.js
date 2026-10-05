@@ -235,7 +235,7 @@ exports.emailLog = async (req, res) => {
 
 /* ------------------------------------------- Buyer payments & reminders --- */
 
-const GATEWAY_SECRETS = ['keySecret', 'webhookSecret'];
+const GATEWAY_SECRETS = ['secretKey'];
 
 /** The buyer portal's address: the company's own domain, or ?company= on the platform's. */
 async function portalUrlFor(companyId, base) {
@@ -251,7 +251,7 @@ exports.getBuyerPayments = async (_req, res) => {
     res.status(200).json({
       gateway: hide(gateway, GATEWAY_SECRETS),
       reminders,
-      webhookUrl: `${base}/api/webhooks/razorpay-payments/${gateway.companyId}`,
+      webhookUrl: `${base}/api/webhooks/cashfree-payments/${gateway.companyId}`,
       portalUrl: await portalUrlFor(gateway.companyId, base),
     });
   } catch (error) { sendError(res, error, 'Could not load buyer payment settings', 500); }
@@ -262,9 +262,9 @@ exports.updateBuyerPayments = async (req, res) => {
     const gateway = await singleton('paymentGatewaySetting');
     const reminders = await singleton('collectionReminderSetting');
     if (req.body?.gateway) {
-      const data = pick(req.body.gateway, ['enabled', 'keyId', 'keySecret', 'webhookSecret'], GATEWAY_SECRETS);
+      const data = pick(req.body.gateway, ['enabled', 'appId', 'secretKey'], GATEWAY_SECRETS);
       const next = { ...gateway, ...data };
-      if (next.enabled && (!next.keyId || !next.keySecret)) return res.status(400).json({ message: 'Enter the Razorpay key id and key secret to turn on online payments.' });
+      if (next.enabled && (!next.appId || !next.secretKey)) return res.status(400).json({ message: 'Enter the Cashfree App ID and Secret Key to turn on online payments.' });
       await prisma.paymentGatewaySetting.update({ where: { id: gateway.id }, data });
     }
     if (req.body?.reminders) {

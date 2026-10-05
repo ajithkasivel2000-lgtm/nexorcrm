@@ -4,9 +4,11 @@
 <head>
   <meta charset="UTF-8" />
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="apple-touch-icon" href="/favicon.png" />
+  <!-- Favicon. SVG as the primary — scales crisp on retina / zoomed tabs
+       and dark-mode-aware in modern browsers. PNG kept for apple-touch-icon
+       since iOS still prefers raster. -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/dark-logo-square.svg" />
 
   <!-- Viewport -->
   <meta
@@ -56,7 +58,7 @@
 
   <meta
     property="og:image"
-    content="/logo_dark.png"
+    content="/dark-logo.svg"
   />
 
   <meta
@@ -92,7 +94,7 @@
 
   <meta
     name="twitter:image"
-    content="/logo_dark.png"
+    content="/dark-logo.svg"
   />
 
   <!-- Canonical: set this to the deployment domain before going live. A

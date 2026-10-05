@@ -29,7 +29,7 @@ export default function PartnerPortal({ onLogout }) {
     <div className="nx-scope" style={{ minHeight: '100vh', background: 'var(--nx-bg-app)', padding: 'var(--nx-space-6) var(--nx-space-4)' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div className="fx-row" style={{ marginBottom: 'var(--nx-space-5)' }}>
-          <img src="/logo_dark.png" alt="NexorCRM" style={{ height: 32 }} />
+          <img src="/dark-logo.svg" alt="NexorCRM" style={{ height: 32 }} />
           <div className="fx-grow">
             <h1 style={{ margin: 0, fontSize: 'var(--nx-text-xl)', color: 'var(--nx-text)' }}>Partner portal</h1>
             <p className="fx-muted" style={{ margin: 0 }}>{me?.partner?.companyName || ''}</p>

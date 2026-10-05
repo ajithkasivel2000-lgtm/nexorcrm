@@ -1577,18 +1577,27 @@ model Company {
   slug      String  @unique
   /// The company's own web address (crm.roofonwalls.com), set by the platform owner.
   customDomain String? @unique
-  status    String  @default("Active") // Active | Suspended
+  status    String  @default("Active") // Pending | Active | Suspended
   plan      String?
   /// Identifies the company to the public lead endpoints and webhooks.
   publicKey String  @unique
+
+  /// Email-verification handshake for self-signup. A customer fills in the
+  /// trial form (POST /api/public/companies), we create the Company and its
+  /// admin in Pending state and email a one-time link with this token. The
+  /// link's GET endpoint flips both to Active and starts the trial countdown,
+  /// so the trial begins when the email is actually reachable, not when the
+  /// form was submitted. Unused links expire in 24h; a sweep deletes rows
+  /// whose token is past expiry so unverified sign-ups do not pile up.
+  verificationToken     String?   @unique
+  verificationExpiresAt DateTime?
 
   // Subscription (utils/billing.js)
   planKey                String?
   subscriptionStatus     String    @default("trialing") // trialing | active | past_due | cancelled | expired | internal
   trialEndsAt            DateTime?
   currentPeriodEnd       DateTime?
-  razorpaySubscriptionId String?   @unique
-  razorpayCustomerId     String?
+  subscriptionGatewayId String?   @unique
 
   // Billing details for GST invoices
   legalName      String?
@@ -1598,7 +1607,15 @@ model Company {
   phone          String?
 
   // Branding
+  /// Wide logo for the LIGHT theme — a dark-coloured mark that reads against
+  /// light backgrounds (sign-in page in light mode, PDFs, the dashboard header
+  /// when the UI is light). This is the primary logo and the fallback for the
+  /// dark-theme variant when the tenant uploads only one.
   logoKey    String?
+  /// Wide logo for the DARK theme — a light-coloured mark for dark backgrounds
+  /// (sign-in page in dark mode, dashboard header in dark mode). Falls back to
+  /// logoKey if a tenant uploads only one.
+  logoDarkKey String?
   /// Square icon version of the logo — used in the sidebar's narrow strip
   /// and on the mobile top bar, where the wide logoKey is too long to read.
   iconKey    String?
@@ -1708,7 +1725,7 @@ model Payment {
   receiptNo        String?
   notes            String?
   recordedBy       String?
-  /// Razorpay payment id when paid online: a webhook replay cannot record it twice.
+  /// Gateway payment id when paid online: webhook replays cannot record it twice.
   gatewayPaymentId String?  @unique
   createdAt        DateTime @default(now())
   booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -1872,7 +1889,7 @@ model Plan {
   features       String[] @default([])
   active         Boolean  @default(true)
   sortOrder      Int      @default(0)
-  razorpayPlanId String?  @unique
+  gatewayPlanId  String?  @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -1891,7 +1908,7 @@ model Invoice {
   status            String    @default("paid") // paid | due | failed | void
   periodStart       DateTime?
   periodEnd         DateTime?
-  razorpayPaymentId String?   @unique
+  gatewayPaymentId String?   @unique
   paidAt            DateTime?
   createdAt         DateTime  @default(now())
 
@@ -1919,20 +1936,19 @@ model SavedReport {
  * ---------------------------------------------------------------------------
  */
 
-/// The company's OWN Razorpay account, for collecting from buyers (money goes
+/// The company's own Cashfree account, for collecting from buyers (money goes
 /// to the builder). Separate from the platform's subscription billing keys.
 model PaymentGatewaySetting {
   companyId     String   @unique
   id            String   @id @default(uuid())
   enabled       Boolean  @default(false)
-  keyId         String   @default("")
-  keySecret     String   @default("")
-  webhookSecret String   @default("")
+  appId         String   @default("")
+  secretKey     String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
-/// A Razorpay Payment Link sent to a buyer for (part of) a booking's dues.
+/// A Cashfree payment link sent to a buyer for (part of) a booking's dues.
 model PaymentLink {
   companyId      String
   id             String    @id @default(uuid())
@@ -1940,7 +1956,7 @@ model PaymentLink {
   milestoneId    String?
   description    String
   amount         Decimal
-  razorpayLinkId String?   @unique
+  gatewayLinkId  String?   @unique
   shortUrl       String?
   status         String    @default("created") // created | paid | expired | cancelled | failed
   paymentId      String?

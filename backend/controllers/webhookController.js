@@ -264,16 +264,16 @@ exports.exotelStatus = (req, res) => tenant.runAsSystem(async () => {
   return res.sendStatus(200);
 });
 
-/* ------------------------------------------- Razorpay (buyer payments) --- */
+/* ------------------------------------------- Cashfree (buyer payments) --- */
 
 /**
- * POST /api/webhooks/razorpay-payments/:companyId
+ * POST /api/webhooks/cashfree-payments/:companyId
  *
- * The company's own Razorpay account reports payment-link events here, signed
- * with the webhook secret the company saved. A paid link is recorded on the
- * booking; recording is idempotent, so Razorpay's retries are harmless.
+ * The company's own Cashfree account reports payment-link events here, signed
+ * with the company's Cashfree secret key. A paid link is recorded on the
+ * booking; recording is idempotent, so webhook retries are harmless.
  */
-exports.razorpayPayments = async (req, res) => {
+exports.cashfreePayments = async (req, res) => {
   const companyId = String(req.params.companyId || '');
   try {
     const company = await tenant.runAsSystem(() => prisma.company.findUnique({ where: { id: companyId } }));
@@ -281,26 +281,37 @@ exports.razorpayPayments = async (req, res) => {
     const result = await tenant.runWithCompany(companyId, async () => {
       const collections = require('../utils/collections');
       const settings = await prisma.paymentGatewaySetting.findFirst();
-      if (!collections.verifyWebhookSignature(req.rawBody, req.headers['x-razorpay-signature'], settings?.webhookSecret)) return 401;
+      if (!collections.verifyWebhookSignature(
+        req.rawBody,
+        req.headers['x-webhook-signature'],
+        req.headers['x-webhook-timestamp'],
+        settings?.secretKey,
+      )) return 401;
 
-      const event = req.body?.event;
-      const linkEntity = req.body?.payload?.payment_link?.entity;
-      if (!linkEntity?.id) return 200; // not a payment-link event: nothing to do
-      const link = await prisma.paymentLink.findFirst({ where: { razorpayLinkId: linkEntity.id } });
+      const type = req.body?.type;
+      const data = req.body?.data || {};
+      const linkId = data.link_id || data.link_details?.link_id;
+      if (!linkId) return 200;
+      const link = await prisma.paymentLink.findFirst({ where: { gatewayLinkId: linkId } });
       if (!link) return 200;
 
-      if (event === 'payment_link.paid') {
-        const payment = req.body?.payload?.payment?.entity || {};
-        if (!payment.id) return 400;
-        await collections.recordLinkPayment(link, { paymentId: payment.id, amountPaise: payment.amount || linkEntity.amount_paid, method: payment.method });
-      } else if (event === 'payment_link.expired' || event === 'payment_link.cancelled') {
-        await prisma.paymentLink.updateMany({ where: { id: link.id, status: 'created' }, data: { status: event.split('.')[1] } });
+      const status = String(data.link_status || data.link_details?.link_status || '').toUpperCase();
+      if (type === 'PAYMENT_LINK_EVENT' && status === 'PAID') {
+        const paymentId = data.cf_payment_id || data.payment_id || data.payment_details?.cf_payment_id || `cashfree-link-${linkId}`;
+        const amount = Number(data.link_amount_paid ?? data.payment_amount ?? data.payment_details?.payment_amount);
+        await collections.recordLinkPayment(link, {
+          paymentId: String(paymentId),
+          amountPaise: Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : undefined,
+          method: data.payment_group || data.payment_details?.payment_group,
+        });
+      } else if (type === 'PAYMENT_LINK_EVENT' && ['EXPIRED', 'CANCELLED'].includes(status)) {
+        await prisma.paymentLink.updateMany({ where: { id: link.id, status: 'created' }, data: { status: status.toLowerCase() } });
       }
       return 200;
     });
     return res.sendStatus(result);
   } catch (error) {
-    console.error('Razorpay payments webhook failed:', error.message);
-    return res.sendStatus(500); // Razorpay retries
+    console.error('Cashfree payment-link webhook failed:', error.message);
+    return res.sendStatus(500);
   }
 };

@@ -3,21 +3,22 @@ const prisma = require('../prismaClient');
 const tenant = require('./tenant');
 const { summarize, round2 } = require('./bookings');
 const { sendMail } = require('./mailer');
+const { verifyWebhookSignature } = require('./cashfree');
+const { getCashfreeConfig } = require('./cashfreeConfig');
 
 /**
  * Collections: getting buyers to pay.
  *
- *   - Payment links through the COMPANY's own Razorpay account (money goes to
+ *   - Payment links through the COMPANY's own Cashfree account (money goes to
  *     the builder, not the platform), recorded on the booking automatically
- *     when Razorpay's signed webhook says they were paid.
+ *     when Cashfree's signed webhook says they were paid.
  *   - The buyer portal's sign-in: one-time links (emailed, or made by staff
  *     to send on WhatsApp) exchanged for a buyer session.
  *   - Reminders before and after each milestone's due date, sent once each.
  */
 
 const DAY = 86400000;
-/* Overridable so tests can stand in a fake Razorpay. */
-const RAZORPAY_API = process.env.RAZORPAY_API_BASE || 'https://api.razorpay.com/v1';
+const cashfreeApiVersion = () => process.env.CASHFREE_API_VERSION || '2023-08-01';
 const hash = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -30,18 +31,29 @@ const appBase = async (companyId) => (await require('./companyUrl').companyBaseU
 async function gateway() {
   // One row per company; oldest wins if a duplicate ever appears (see settings.js).
   const s = await prisma.paymentGatewaySetting.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
-  return s && s.enabled && s.keyId && s.keySecret ? s : null;
+  return s && s.enabled && s.appId && s.secretKey ? s : null;
 }
 
-async function razorpay(settings, pathname, { method = 'GET', body } = {}) {
-  const auth = Buffer.from(`${settings.keyId}:${settings.keySecret}`).toString('base64');
-  const res = await fetch(`${RAZORPAY_API}${pathname}`, {
-    method,
-    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+async function cashfree(settings, pathname, { method = 'GET', body, idempotencyKey } = {}) {
+  const { apiUrl } = getCashfreeConfig();
+  let res;
+  try {
+    res = await fetch(`${apiUrl}${pathname}`, {
+      method,
+      headers: {
+        'x-client-id': settings.appId,
+        'x-client-secret': settings.secretKey,
+        'x-api-version': cashfreeApiVersion(),
+        ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    throw Object.assign(new Error(`Cashfree network error: ${error.message}`), { status: 502 });
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(`Razorpay: ${data?.error?.description || res.status}`), { status: 502 });
+  if (!res.ok) throw Object.assign(new Error(`Cashfree: ${data?.message || data?.error?.description || res.status}`), { status: 502 });
   return data;
 }
 
@@ -59,7 +71,7 @@ function dueFor(booking, milestoneId) {
  */
 async function createPaymentLink(booking, { milestoneId = null, amount = null, createdBy = null } = {}) {
   const settings = await gateway();
-  if (!settings) throw Object.assign(new Error('Online payments are not set up. An administrator can connect Razorpay in Settings → Integrations → Buyer payments.'), { status: 400 });
+  if (!settings) throw Object.assign(new Error('Online payments are not set up. An administrator can connect Cashfree in Settings → Integrations → Buyer payments.'), { status: 400 });
   if (booking.status === 'Cancelled') throw Object.assign(new Error('This booking is cancelled.'), { status: 400 });
 
   const { summary, milestone } = dueFor(booking, milestoneId);
@@ -80,31 +92,39 @@ async function createPaymentLink(booking, { milestoneId = null, amount = null, c
     data: { bookingId: booking.id, milestoneId: milestone?.id || null, description, amount: value, createdBy, expiresAt },
   });
   try {
-    const link = await razorpay(settings, '/payment_links', {
+    const cashfreeLinkId = `nx_${row.id.replace(/-/g, '')}`;
+    const base = await appBase(booking.companyId);
+    const portal = `${base}/portal?company=${encodeURIComponent(company?.slug || '')}`;
+    const link = await cashfree(settings, '/links', {
       method: 'POST',
+      idempotencyKey: row.id,
       body: {
-        amount: Math.round(value * 100),
-        currency: 'INR',
-        description: description.slice(0, 2048),
-        reference_id: row.id,
-        expire_by: Math.floor(expiresAt.getTime() / 1000),
-        customer: {
-          name: booking.buyerName,
-          ...(booking.buyerEmail ? { email: booking.buyerEmail } : {}),
-          ...(booking.buyerMobile ? { contact: String(booking.buyerMobile).replace(/\D/g, '').slice(-10) } : {}),
+        link_id: cashfreeLinkId,
+        link_amount: value,
+        link_currency: 'INR',
+        link_purpose: description.slice(0, 500),
+        customer_details: {
+          customer_name: String(booking.buyerName || 'Buyer').slice(0, 100),
+          ...(booking.buyerEmail ? { customer_email: booking.buyerEmail } : {}),
+          ...(booking.buyerMobile ? { customer_phone: String(booking.buyerMobile).replace(/\D/g, '').slice(-10) } : {}),
         },
-        notify: { sms: false, email: false }, // we send our own messages
-        reminder_enable: false,
-        notes: { companyId: booking.companyId, bookingId: booking.id, paymentLinkId: row.id },
-        callback_url: `${await appBase(booking.companyId)}/portal?company=${encodeURIComponent(company?.slug || '')}`,
-        callback_method: 'get',
+        link_partial_payments: false,
+        link_expiry_time: expiresAt.toISOString(),
+        link_notify: { send_email: false, send_sms: false, send_whatsapp: false },
+        link_auto_reminders: false,
+        link_notes: { companyId: booking.companyId, bookingId: booking.id, paymentLinkId: row.id },
+        link_meta: {
+          return_url: portal,
+          notify_url: `${base}/api/webhooks/cashfree-payments/${encodeURIComponent(booking.companyId)}`,
+        },
       },
     });
-    return prisma.paymentLink.update({ where: { id: row.id }, data: { razorpayLinkId: link.id, shortUrl: link.short_url } });
-  } catch (error) {
-    await prisma.paymentLink.update({ where: { id: row.id }, data: { status: 'failed' } }).catch(() => {});
-    throw error;
-  }
+      if (!link.link_id || !link.link_url) throw new Error('Cashfree did not return a payment link URL.');
+      return prisma.paymentLink.update({ where: { id: row.id }, data: { gatewayLinkId: link.link_id, shortUrl: link.link_url } });
+    } catch (error) {
+      await prisma.paymentLink.update({ where: { id: row.id }, data: { status: 'failed' } }).catch(() => {});
+      throw error;
+    }
 }
 
 /**
@@ -126,7 +146,7 @@ async function recordLinkPayment(link, { paymentId, amountPaise, method }) {
         reference: paymentId,
         receiptNo: `RCPT-${link.bookingId}-${count + 1}`,
         notes: link.description,
-        recordedBy: 'razorpay',
+        recordedBy: 'cashfree',
         gatewayPaymentId: paymentId,
       },
     });
@@ -163,20 +183,13 @@ async function recordLinkPayment(link, { paymentId, amountPaise, method }) {
       html: `<div style="font-family:Arial,sans-serif;padding:20px">
         <h2 style="margin:0 0 12px">Thank you, ${esc(booking.buyerName)}</h2>
         <p>We have received <strong>${inr(amount)}</strong> (${esc(link.description)}).</p>
-        <p>Receipt: <strong>${esc(payment.receiptNo)}</strong> · Razorpay ref ${esc(paymentId)}</p>
+        <p>Receipt: <strong>${esc(payment.receiptNo)}</strong> · Cashfree ref ${esc(paymentId)}</p>
         <p>Paid so far: ${inr(s.paid)} of ${inr(s.agreementValue)}. Balance: ${inr(s.balance)}.</p>
         <p>You can download your receipts any time from your buyer portal.</p>
       </div>`,
     }).catch(() => {});
   }
   return { payment, duplicate: false };
-}
-
-function verifyWebhookSignature(rawBody, signature, secret) {
-  if (!secret || !rawBody || !signature) return false;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  const a = Buffer.from(expected); const b = Buffer.from(String(signature));
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 /* ---- buyer sign-in ------------------------------------------------------- */

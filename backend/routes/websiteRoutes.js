@@ -17,13 +17,19 @@ router.get('/campaign-leads', leadLimit, requireCompanyKey, leadController.campa
 
 // Start a free trial: a new company and its first administrator.
 router.post('/companies', rateLimit('company-signup', { max: 5, windowMs: 60 * 60 * 1000 }), branding.signup);
+// Click-through from the signup verification email.
+router.get('/verify-company', branding.verifyCompany);
+// New verification email when the first one expired or was lost. Low cap:
+// a client that keeps asking is either a bug or an attempt to flood an inbox.
+router.post('/resend-verification', rateLimit('resend-verify', { max: 3, windowMs: 60 * 60 * 1000 }), branding.resendVerification);
 // A company's name, colour and logo for its sign-in page (?company=slug).
 router.get('/branding', branding.publicBranding);
 // The plans on offer, for the free-trial form.
 router.get('/plans', branding.publicPlans);
-router.get('/branding/logo/:id',    branding.logo);
-router.get('/branding/icon/:id',    branding.icon);
-router.get('/branding/favicon/:id', branding.favicon);
+router.get('/branding/logo/:id',      branding.logo);
+router.get('/branding/logo-dark/:id', branding.logoDark);
+router.get('/branding/icon/:id',      branding.icon);
+router.get('/branding/favicon/:id',   branding.favicon);
 // Caddy's on-demand TLS asks here before issuing a cert: 200 if we recognise
 // the Host (platform or an active company's customDomain), 404 otherwise.
 router.get('/branding/allow-host', branding.allowHost);

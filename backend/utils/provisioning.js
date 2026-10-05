@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../prismaClient');
 const tenant = require('./tenant');
 const { isUsernameTaken } = require('./companyAdmin');
+const { deleteCompanies } = require('./companyDelete');
 const { TRIAL_DAYS } = require('./billing');
 
 /**
@@ -93,13 +94,29 @@ async function provisionCompany(input) {
   const planKey = input.planKey || 'growth';
   const plan = await prisma.plan.findUnique({ where: { key: planKey } });
   if (!plan) throw Object.assign(new Error('Unknown plan.'), { status: 400 });
+
+  /* Verify-first mode (self-signup):
+     company and admin are both created in a Pending state, the trial clock
+     does not start yet, and a token good for 24h is attached. The customer
+     clicks the verification link, the controller flips both to Active and
+     starts the trial — so the 14 days begin when the email was actually
+     reachable, not when the form was submitted. Platform-admin provisioning
+     (and seed scripts) keep activating immediately as before. */
+  const verifyFirst = input.verifyBeforeActivate === true;
+  const verificationToken = verifyFirst ? crypto.randomBytes(32).toString('hex') : null;
+  const verificationExpiresAt = verifyFirst ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null;
+
   const company = await prisma.company.create({
     data: {
-      name, slug, plan: plan.name, planKey: plan.key, status: 'Active', publicKey: newPublicKey(),
+      name, slug, plan: plan.name, planKey: plan.key,
+      status: verifyFirst ? 'Pending' : 'Active',
+      publicKey: newPublicKey(),
       subscriptionStatus: 'trialing',
-      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86400000),
+      trialEndsAt: verifyFirst ? null : new Date(Date.now() + TRIAL_DAYS * 86400000),
       billingEmail: String(input.admin?.email || '').trim() || null,
       phone: input.phone || null,
+      verificationToken,
+      verificationExpiresAt,
     },
   });
 
@@ -111,7 +128,10 @@ async function provisionCompany(input) {
         lastName: admin.lastName ? String(admin.lastName).trim() : null,
         email: String(admin.email).trim(),
         password: await bcrypt.hash(String(admin.password), 10),
-        status: 'superadmin',
+        /* The admin is held in Pending until the email is verified. The login
+           middleware already refuses Pending (accountBlockReason), so even
+           knowing the password would not let them in before verification. */
+        status: verifyFirst ? 'Pending' : 'superadmin',
         role: 'Admin',
         userlevel: 10,
         forcePasswordChange: admin.mustChangePassword !== false,
@@ -119,8 +139,68 @@ async function provisionCompany(input) {
     });
     await seedDefaults();
     const { password, totpSecret, ...safe } = user;
-    return { company, admin: safe };
+    return { company, admin: safe, verificationToken };
   });
 }
 
-module.exports = { provisionCompany, seedDefaults, newPublicKey, slugify, DEFAULT_MASTERS };
+/**
+ * Flip a verify-pending company and its first admin to Active, starting the
+ * trial clock. Called by the GET /api/public/verify-company endpoint after a
+ * matching token. Idempotent at the controller level: a used/expired token
+ * no longer finds a row so this never runs twice for the same company.
+ */
+async function activatePendingCompany(companyId) {
+  const now = new Date();
+  await prisma.company.update({
+    where: { id: companyId },
+    data: {
+      status: 'Active',
+      verificationToken: null,
+      verificationExpiresAt: null,
+      trialEndsAt: new Date(now.getTime() + TRIAL_DAYS * 86400000),
+    },
+  });
+  await tenant.runWithCompany(companyId, async () => {
+    const admin = await prisma.user.findFirst({
+      where: { status: 'Pending' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (admin) {
+      await prisma.user.update({ where: { id: admin.id }, data: { status: 'superadmin' } });
+    }
+  });
+}
+
+/**
+ * Delete self-signups that never confirmed their email address.
+ *
+ * A Pending company is one whose owner has not clicked the link in the signup
+ * email. The token is good for 24 hours (`verificationExpiresAt`); once that
+ * has passed the link can never fire again, so the row — and the slug, admin
+ * and default lists it seeded — is dead weight a real customer might collide
+ * with. Everything it owns goes through deleteCompanies, the same path the
+ * platform's own delete uses, so no table is missed.
+ *
+ * This spans companies: a Pending one is by definition not in the Active list
+ * the per-company sweeps walk, so the background job calls this once per tick
+ * rather than per company. Returns how many were removed, for the log line.
+ */
+async function sweepExpiredSignups({ now = new Date() } = {}) {
+  const expired = await tenant.runAsSystem(() => prisma.company.findMany({
+    where: { status: 'Pending', verificationExpiresAt: { lt: now } },
+    select: { id: true },
+  }));
+  if (!expired.length) return 0;
+  await deleteCompanies(expired.map((company) => company.id));
+  return expired.length;
+}
+
+module.exports = {
+  provisionCompany,
+  activatePendingCompany,
+  sweepExpiredSignups,
+  seedDefaults,
+  newPublicKey,
+  slugify,
+  DEFAULT_MASTERS,
+};

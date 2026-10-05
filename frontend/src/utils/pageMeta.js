@@ -301,13 +301,13 @@ export function applyBranding({ name = null, faviconUrl = null } = {}) {
   activeFaviconUrl = faviconUrl || null;
   if (typeof document === 'undefined') return;
   // Favicon — leave the <link rel="icon"> alone when no override is given, so
-  // the static /favicon.png in index.html stays authoritative on the platform.
+  // the static /favicon.svg in index.html stays authoritative on the platform.
   if (activeFaviconUrl) {
     setLink('icon', activeFaviconUrl);
     setLink('apple-touch-icon', activeFaviconUrl);
   } else {
-    setLink('icon', '/favicon.png');
-    setLink('apple-touch-icon', '/favicon.png');
+    setLink('icon', '/favicon.svg');
+    setLink('apple-touch-icon', '/favicon.svg');
   }
   // Repaint the title/meta tags so the change is visible without a navigation.
   const current = resolvePageMeta(window.location.pathname);

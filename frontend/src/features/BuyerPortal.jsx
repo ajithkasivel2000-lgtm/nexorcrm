@@ -11,7 +11,7 @@ import './BuyerPortal.css';
  *
  * Buyers sign in with a one-time link sent to the email on their booking (or
  * sent by the sales team on WhatsApp). They see each booking's payment plan,
- * pay a milestone online through Razorpay, and download receipts and the
+ * pay a milestone online through Cashfree, and download receipts and the
  * documents the builder shared. It has nothing to do with a staff sign-in and
  * uses its own token (X-Buyer-Token).
  */
@@ -40,7 +40,8 @@ export default function BuyerPortal() {
   });
   const [slug, setSlug] = useState(() => params.get('company') || readStore()?.slug || '');
   const [linkToken] = useState(() => params.get('token'));
-  const [paid] = useState(() => params.get('razorpay_payment_link_status') === 'paid');
+  const [paid] = useState(() => params.get('link_status')?.toUpperCase() === 'PAID'
+    || params.get('payment_status')?.toUpperCase() === 'SUCCESS');
   const [branding, setBranding] = useState(null);
   const [error, setError] = useState('');
   const [exchanging, setExchanging] = useState(Boolean(linkToken));
@@ -126,7 +127,7 @@ function Dashboard({ session, justPaid, onExpired }) {
     .catch((e) => (e.status === 401 ? onExpired() : setError(e.message))), [session.token, onExpired]);
   useEffect(() => { load(); }, [load]);
 
-  // Razorpay tells us about the payment a moment after the buyer comes back.
+  // Cashfree sends the buyer back before the payment webhook may arrive.
   useEffect(() => {
     if (!justPaid) return undefined;
     const timers = [4000, 10000, 20000].map((ms) => setTimeout(load, ms));

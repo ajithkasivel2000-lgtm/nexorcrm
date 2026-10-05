@@ -6,6 +6,7 @@ import AssistantWidget from './assistant/AssistantWidget';
 import { SearchInput } from './ui';
 import './Dashboard.css';
 import { applyThemeColor, applyBranding } from './utils/pageMeta';
+import { applySidebarTheme } from './utils/sidebarTheme';
 import NotificationMenu from './components/NotificationMenu';
 import { subscribeDataChanged } from './utils/dataBus';
 import SubscriptionBanner from './features/SubscriptionBanner';
@@ -125,13 +126,11 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         document.documentElement.style.setProperty('--nx-accent', b.brandColor);
         document.documentElement.style.setProperty('--nx-accent-hover', b.brandColor);
       }
-      // The sidebar background follows the company. Removing the override when
-      // the field is clear lets the default dark theme reassert itself.
-      if (b.sidebarColor) {
-        document.documentElement.style.setProperty('--nx-sidebar-bg', b.sidebarColor);
-      } else {
-        document.documentElement.style.removeProperty('--nx-sidebar-bg');
-      }
+      /* The whole sidebar palette follows the chosen colour, not just the
+         background. See utils/sidebarTheme.js — a light tenant colour needs
+         dark text and dark overlays to stay readable, which was the bug a
+         white-sidebar tenant hit: text disappeared and hovers vanished. */
+      applySidebarTheme(b.sidebarColor);
       // Signed-in tab title and favicon follow the company — same hook the
       // signed-out view uses, so the tab reads consistently across both.
       applyBranding({ name: b.name, faviconUrl: b.faviconUrl });
@@ -219,6 +218,14 @@ export default function Dashboard({ onLogout, loggedInUser }) {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const inactive = Boolean(inactiveReason || (brand?.subscription && !brand.subscription.allowed));
+    const billingFlow = location.pathname === '/settings/billing' || location.pathname === '/payment/success';
+    if (inactive && !billingFlow) {
+      navigate('/settings/billing', { replace: true });
+    }
+  }, [brand?.subscription, inactiveReason, location.pathname, navigate]);
 
   const mainWrapperRef = useRef(null);
   const sidebarRef = useRef(null);
@@ -458,11 +465,14 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         onMouseLeave={() => setIsSidebarHovered(false)}
       >
         <div className="sidebar-logo">
+          {/* The sidebar background is dark by default (--nx-sidebar-bg
+              #111827), so the light-coloured logoDarkUrl is the right pick,
+              with logoUrl as the fallback for tenants that uploaded only one.
+              The static NexorCRM mark is the final fallback for the unbranded
+              platform shell. */}
           {isSidebarOpen ? (
             <div className="dashboard-logo-full">
-              {brand?.logoUrl
-                ? <img src={brand.logoUrl} alt={brand.name} style={{ height: '40px', maxWidth: '170px', objectFit: 'contain' }} />
-                : <img src="/logo_light.png" alt="NexorCRM" style={{ height: '40px', objectFit: 'contain' }} />}
+              <img src={brand?.logoDarkUrl || brand?.logoUrl || '/light-logo.svg'} alt={brand?.name || 'NexorCRM'} style={{ height: '40px', maxWidth: '170px', objectFit: 'contain' }} />
             </div>
           ) : (
             /* Collapsed sidebar: 28×28 slot. Use the square assets a tenant
@@ -471,7 +481,7 @@ export default function Dashboard({ onLogout, loggedInUser }) {
                and Branding tells the admin why ("Icon shows in the narrow
                sidebar... A ~128×128 square works best."). */
             <div className="dashboard-logo-icon">
-              <img src={brand?.iconUrl || brand?.faviconUrl || '/favicon.png'} alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+              <img src={brand?.iconUrl || brand?.faviconUrl || '/light-logo-square.svg'} alt="" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
             </div>
           )}
           <button
@@ -668,9 +678,6 @@ export default function Dashboard({ onLogout, loggedInUser }) {
                   >
                     <User size={16} /> My Profile
                   </button>
-                  <button className="dropdown-item">
-                    <Settings size={16} /> Settings
-                  </button>
                   <button
                     className="dropdown-item text-danger"
                     onClick={onLogout}
@@ -696,8 +703,13 @@ export default function Dashboard({ onLogout, loggedInUser }) {
         </div>
 
         <footer className="dashboard-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* The signed-in company's name, and this year. */}
+          {/* The signed-in company's name on the left, the platform maker on
+              the right. "Powered by Infitoolz" sits regardless of which tenant
+              is signed in; the client company brands the left side. */}
           <span>Copyright {new Date().getFullYear()} © {brand?.name || 'NexorCRM'}</span>
+          <span className="dashboard-footer__powered">
+            powered by <strong>Infitoolz</strong>
+          </span>
         </footer>
       </main>
 

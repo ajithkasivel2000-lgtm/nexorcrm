@@ -14,7 +14,7 @@ monitoring.installProcessHandlers();
 /* Browser origins allowed to call this API cross-origin (utils/corsPolicy.js).
    Same-origin production traffic needs no CORS; the list admits the Vite dev
    server, the platform's own address, every company's custom domain, and
-   CORS_EXTRA_ORIGINS. Webhooks (Meta, Razorpay, Exotel) are server-to-server
+   CORS_EXTRA_ORIGINS. Webhooks (Meta, Cashfree, Exotel) are server-to-server
    and send no Origin header, so they pass regardless. */
 const { corsOptions, isOriginAllowed } = require('./utils/corsPolicy');
 const { securityHeaders } = require('./utils/securityHeaders');
@@ -106,10 +106,12 @@ const jsonParse = (limit) => express.json({ limit, verify: keepRawBody });
 app.use('/api/team-chat', jsonParse('6mb'));
 // Record documents: 10MB decoded cap in the controller + base64 overhead.
 app.use('/api/records', jsonParse('14mb'));
+// Profile pictures: 2MB decoded cap in the controller + base64 overhead.
+app.use('/api/users', jsonParse('4mb'));
 // Company branding logo: 1MB decoded cap in the controller.
 app.use('/api/company', jsonParse('2mb'));
 app.use('/api/platform', jsonParse('2mb'));
-// Signed webhook payloads (Meta batches, Razorpay events) can be sizeable.
+// Signed webhook payloads (Meta batches, Cashfree events) can be sizeable.
 app.use('/api/webhooks', jsonParse('1mb'));
 // Lead import posts the whole spreadsheet as JSON rows.
 app.use('/api/leads', jsonParse('2mb'));

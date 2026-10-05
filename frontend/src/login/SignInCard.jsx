@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, ChevronRight, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Mail, X } from 'lucide-react';
 import GoogleSignIn from '../components/GoogleSignIn';
 import MicrosoftSignIn from './MicrosoftSignIn';
 import useAuthProviders from './useAuthProviders';
@@ -41,7 +41,6 @@ export default function SignInCard({
   formRef,
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [showSecurity, setShowSecurity] = useState(false);
   const providers = useAuthProviders();
   /* A provider that IS configured but that the vendor then rejects — a client
      id Google has never heard of, an origin not on the allow-list. Google only
@@ -189,30 +188,6 @@ export default function SignInCard({
         </p>
       )}
 
-      <p className="nx-card__secure">
-        <ShieldCheck size={15} aria-hidden="true" />
-        <span>Your data is secure with enterprise-grade protection</span>
-        <button
-          type="button"
-          className="nx-card__link nx-card__more"
-          aria-expanded={showSecurity}
-          onClick={() => setShowSecurity((v) => !v)}
-        >
-          Learn more
-          <ChevronRight size={14} aria-hidden="true" className={showSecurity ? 'is-open' : ''} />
-        </button>
-      </p>
-
-      {/* What this install actually does, not a marketing page — there is
-              no such page to link to, and these four are true of the code. */}
-      {showSecurity && (
-        <ul className="nx-card__secure-list">
-          <li>Passwords are stored as bcrypt hashes, never in plain text.</li>
-          <li>Signing in creates a server-side session; every request is checked against it.</li>
-          <li>An administrator ending a session cuts off access immediately.</li>
-          <li>Repeated failed sign-ins lock the account for a period.</li>
-        </ul>
-      )}
     </div>
   );
 }

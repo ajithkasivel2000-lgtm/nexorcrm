@@ -103,6 +103,46 @@ const validatePassword = (password) => {
   return null;
 };
 
+/* A profile picture arrives one of two ways: as a data: URL from the file
+   picker on the create/edit forms ("JPG or PNG, up to 2MB"), or as an https:
+   URL when Google sign-in supplies one. The column is plain text, so whatever
+   is posted is what gets stored — and since /api/users now accepts a body big
+   enough for a photo, the cap has to be enforced here rather than trusted to
+   the browser. '' means "remove the picture". */
+const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const PROFILE_DATA_URL_RE = /^data:(image\/(?:png|jpe?g|gif|webp|bmp));base64,([A-Za-z0-9+/=\s]+)$/;
+
+/**
+ * Checks a posted profile_image and returns the value to store.
+ *
+ * `{ ok: true, value }` where value is the cleaned data URL, an http(s) URL
+ * left as-is, or null to clear the column; `{ ok: false, error }` otherwise.
+ */
+function validateProfileImage(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === '') return { ok: true, value: null };
+  if (typeof value !== 'string') {
+    return { ok: false, error: 'That profile image is not valid.' };
+  }
+  // Photos set by Google sign-in are ordinary web URLs, not uploads.
+  if (/^https?:\/\//i.test(value)) return { ok: true, value };
+
+  const match = PROFILE_DATA_URL_RE.exec(value.trim());
+  if (!match) {
+    return { ok: false, error: 'Profile image must be a PNG, JPG, GIF, WebP or BMP.' };
+  }
+  // Measure the decoded bytes, not the string, so base64 padding cannot hide
+  // an oversized file.
+  const bytes = Buffer.from(match[2], 'base64').length;
+  if (bytes === 0) {
+    return { ok: false, error: 'That profile image is empty.' };
+  }
+  if (bytes > PROFILE_IMAGE_MAX_BYTES) {
+    return { ok: false, error: 'Image must be smaller than 2MB.' };
+  }
+  return { ok: true, value: value.trim() };
+}
+
 
 // ────────────────────────────────────────────────────────────────────────────
 // withoutPassword moved to utils/userSafe.js so every controller strips the
@@ -212,6 +252,12 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: phoneErr.message });
     }
 
+    // The picture is the one field here measured in megabytes; validate it
+    // here so the raised /api/users body limit cannot carry an oversized blob
+    // (or a non-image) into the row.
+    const picture = validateProfileImage(profile_image);
+    if (!picture.ok) return res.status(400).json({ message: picture.error });
+
     // The id is assigned by the client extension in prismaClient.js.
 
     const savedUser = await prisma.user.create({
@@ -231,7 +277,7 @@ exports.createUser = async (req, res) => {
         dept_id: dept_id || null,
         reporting_to: reporting_to || null,
         user_home_path: user_home_path || null,
-        profile_image: profile_image || null,
+        profile_image: picture.value,
         ip: ip || req.ip || '127.0.0.1',
         lastip: lastip || req.ip || '127.0.0.1'
       }
@@ -269,6 +315,15 @@ exports.updateUser = async (req, res) => {
 
     // '' is not an Employee ID, it is the absence of one. See the constant.
     blankUniquesToNull(updateData);
+
+    // The profile picture can be several megabytes, so it is checked and
+    // capped here — see validateProfileImage. Anything else is small enough
+    // that the body limit itself is the guard.
+    if (updateData.profile_image !== undefined) {
+      const picture = validateProfileImage(updateData.profile_image);
+      if (!picture.ok) return res.status(400).json({ message: picture.error });
+      updateData.profile_image = picture.value;
+    }
 
     const badEmail = coerceEmails(updateData, [['email', 'E-mail']]);
     if (badEmail) return res.status(400).json({ message: badEmail });

@@ -27,6 +27,13 @@ const initials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice
 
 export default function CompanyLoginLayout({ theme, onToggleTheme, brand, children }) {
   const dark = theme !== 'light';
+  /* Branded sign-in shell has a dark coloured-brand panel on the left and
+     the sign-in card on the right. The panel's background is the accent
+     colour, so the light-coloured logoDarkUrl is the right pick there. The
+     card itself follows the UI theme and uses the matching variant. Each
+     falls back to the other variant when a tenant uploaded only one. */
+  const panelLogo = brand.logoDarkUrl || brand.logoUrl;
+  const miniLogo  = dark ? (brand.logoDarkUrl || brand.logoUrl) : (brand.logoUrl || brand.logoDarkUrl);
   const accent = brand.brandColor || '#2563eb';
   const onAccent = inkOn(accent);
   const style = {
@@ -42,8 +49,8 @@ export default function CompanyLoginLayout({ theme, onToggleTheme, brand, childr
       <aside className="nx-colog__brand" aria-hidden="false">
         <div className="nx-colog__brand-inner">
           <div className="nx-colog__logo">
-            {brand.logoUrl
-              ? <img src={brand.logoUrl} alt={`${brand.name} logo`} />
+            {panelLogo
+              ? <img src={panelLogo} alt={`${brand.name} logo`} />
               : <span className="nx-colog__initials">{initials(brand.name)}</span>}
           </div>
           <p className="nx-colog__eyebrow">Welcome to</p>
@@ -56,7 +63,7 @@ export default function CompanyLoginLayout({ theme, onToggleTheme, brand, childr
         <div className="nx-colog__top">
           {/* On a phone the colour panel is gone, so the logo and name ride here. */}
           <div className="nx-colog__mini">
-            {brand.logoUrl ? <img src={brand.logoUrl} alt="" /> : <span className="nx-colog__initials is-small">{initials(brand.name)}</span>}
+            {miniLogo ? <img src={miniLogo} alt="" /> : <span className="nx-colog__initials is-small">{initials(brand.name)}</span>}
             <strong>{brand.name}</strong>
           </div>
           <button
@@ -74,7 +81,7 @@ export default function CompanyLoginLayout({ theme, onToggleTheme, brand, childr
 
         <footer className="nx-colog__foot">
           <span>© {new Date().getFullYear()} {brand.name}. All rights reserved.</span>
-          <span className="nx-colog__powered">Powered by NexorCRM</span>
+          <span className="nx-colog__powered">Powered by Infitoolz</span>
         </footer>
       </main>
     </div>

@@ -7,7 +7,7 @@ import './features.css';
 
 /**
  * Settings → Billing & Plan (company administrators): the subscription, the
- * plans on offer with Razorpay checkout, invoices with GST PDFs, and the
+ * plans on offer with Cashfree checkout, invoices with GST PDFs, and the
  * billing details printed on them.
  */
 
@@ -22,12 +22,12 @@ const STATE = {
 };
 
 function loadCheckout() {
-  if (window.Razorpay) return Promise.resolve(window.Razorpay);
+  if (window.Cashfree) return Promise.resolve(window.Cashfree);
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    s.onload = () => resolve(window.Razorpay);
-    s.onerror = () => reject(new Error('Could not load Razorpay. Check your connection.'));
+    s.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    s.onload = () => resolve(window.Cashfree);
+    s.onerror = () => reject(new Error('Could not load Cashfree checkout. Check your connection.'));
     document.body.appendChild(s);
   });
 }
@@ -48,33 +48,36 @@ function BillingPageInner() {
   useEffect(() => { load(); }, [load]);
 
   const choose = async (plan) => {
+    if (String(data?.company?.phone || '').replace(/\D/g, '').length < 10) {
+      toast.error('Add a valid 10-digit phone number in Billing details before choosing a plan.');
+      document.getElementById('billing-phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => document.getElementById('billing-phone')?.focus(), 250);
+      return;
+    }
     setBusy(plan.key);
     try {
       const checkout = await api('/api/billing/subscribe', { method: 'POST', body: { planKey: plan.key } });
-      const Razorpay = await loadCheckout();
-      await new Promise((resolve) => {
-        const rzp = new Razorpay({
-          key: checkout.keyId,
-          subscription_id: checkout.subscriptionId,
-          name: checkout.name,
-          description: checkout.description,
-          prefill: checkout.prefill,
-          theme: { color: getComputedStyle(document.documentElement).getPropertyValue('--nx-accent').trim() || '#4F46E5' },
-          handler: async (resp) => {
-            try {
-              const r = await api('/api/billing/verify', {
-                method: 'POST',
-                body: { paymentId: resp.razorpay_payment_id, subscriptionId: resp.razorpay_subscription_id, signature: resp.razorpay_signature },
-              });
-              toast.success(r.message);
-              load();
-            } catch (e) { toast.error(e.message); }
-            resolve();
-          },
-          modal: { ondismiss: resolve },
-        });
-        rzp.open();
+      const Cashfree = await loadCheckout();
+      const cashfree = Cashfree({ mode: checkout.mode });
+      sessionStorage.setItem('cashfreeSubscriptionId', checkout.subscriptionId);
+      const result = await cashfree.checkout({
+        subsSessionId: checkout.subscriptionSessionId,
+        redirectTarget: '_self',
       });
+      if (result?.error) {
+        sessionStorage.removeItem('cashfreeSubscriptionId');
+        throw new Error(result.error.message || 'Cashfree checkout was not completed.');
+      }
+      const verified = await api('/api/billing/verify', {
+        method: 'POST',
+        body: { subscriptionId: checkout.subscriptionId },
+      });
+      if (verified.pending) toast.info(verified.message);
+      else {
+        sessionStorage.removeItem('cashfreeSubscriptionId');
+        toast.success(verified.message);
+      }
+      await load();
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -124,7 +127,14 @@ function BillingPageInner() {
           <>
             <h3 className="fx-card__title">Plans</h3>
             {!data.onlinePayments && (
-              <p className="fx-muted">Online payment is not set up on this server yet. Contact the platform administrator to activate a plan.</p>
+              <p className="fx-muted">
+                Cashfree Sandbox isn’t configured on this backend. Add your test
+                <code> CASHFREE_APP_ID </code> and <code>CASHFREE_SECRET_KEY</code> to
+                <code> backend/.env</code>, then restart the backend. Don’t use production keys for local testing.
+              </p>
+            )}
+            {data.onlinePayments && String(data.company.phone || '').replace(/\D/g, '').length < 10 && (
+              <p className="fx-error" role="alert">Add a 10-digit billing phone number below before starting Cashfree checkout.</p>
             )}
             <div className="fx-stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
               {data.plans.map((plan) => {
@@ -195,7 +205,9 @@ function BillingDetails({ company, onSaved }) {
         <Field label="Legal name"><Input value={form.legalName} onChange={set('legalName')} placeholder={company.name} /></Field>
         <Field label="GSTIN"><Input value={form.gstin} onChange={set('gstin')} placeholder="29ABCDE1234F1Z5" /></Field>
         <Field label="Billing email"><Input type="email" value={form.billingEmail} onChange={set('billingEmail')} /></Field>
-        <Field label="Phone"><Input value={form.phone} onChange={set('phone')} /></Field>
+        <Field label="Phone (required for Cashfree)" hint="Enter a number with at least 10 digits. Include the country code if needed.">
+          <Input id="billing-phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} />
+        </Field>
         <Field label="Billing address" className="nx-field--full"><Textarea rows={3} value={form.billingAddress} onChange={set('billingAddress')} /></Field>
       </FormGrid>
       <div className="fx-card__actions"><Button variant="primary" type="submit" loading={saving}>Save details</Button></div>
@@ -225,6 +237,6 @@ async function invoicePdf(inv, company) {
     ],
     columnStyles: { 1: { halign: 'right' } },
   });
-  doc.text(`Status: ${inv.status.toUpperCase()}${inv.razorpayPaymentId ? `   Payment ref: ${inv.razorpayPaymentId}` : ''}`, 14, doc.lastAutoTable.finalY + 10);
+  doc.text(`Status: ${inv.status.toUpperCase()}${inv.gatewayPaymentId ? `   Payment ref: ${inv.gatewayPaymentId}` : ''}`, 14, doc.lastAutoTable.finalY + 10);
   doc.save(`${inv.number}.pdf`);
 }

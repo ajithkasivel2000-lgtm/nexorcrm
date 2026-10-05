@@ -24,6 +24,7 @@ const { runDueReports } = require('../utils/scheduledReports');
 const { sweepSubscription } = require('../utils/billing');
 const { runCollectionReminders } = require('../utils/collections');
 const { runRetentionSweep } = require('../utils/retention');
+const { sweepExpiredSignups } = require('../utils/provisioning');
 
 /** How often to look for expired windows. Not the window itself. */
 const SWEEP_INTERVAL_MS = 60 * 1000;
@@ -76,6 +77,17 @@ async function sweepOnce() {
     }));
     for (const company of companies) {
       await runWithCompany(company.id, () => sweepCompany(company));
+    }
+
+    /* Sign-ups that never clicked the emailed link. Runs once, not per
+       company: the rows it deletes belong to Pending companies, which are
+       deliberately not in the Active list above. Its own try so a failure
+       here cannot abort the sweep of everyone else. */
+    try {
+      const removed = await sweepExpiredSignups();
+      if (removed) console.log(`[expired-signups] removed ${removed}`);
+    } catch (error) {
+      require('../utils/monitoring').captureError(error, { context: 'sweep:expired-signups' });
     }
   } catch (error) {
     console.error('[sweep] could not list companies:', error.message);
